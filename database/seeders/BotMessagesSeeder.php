@@ -45,7 +45,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_CONFIRMACION',
                 'category' => 'general',
                 'label'    => 'Confirmación de reserva (genérico)',
-                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             ],
             [
                 'key'      => 'MSG_RESERVA_EXITOSA',
@@ -106,6 +106,12 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "¿Cuál es tu mail? Lo usamos para enviarte la confirmación y un recordatorio de tu reserva.\n\nIngresá tu dirección de correo electrónico.",
             ],
             [
+                'key'      => 'MSG_CONFIRMAR_MAIL',
+                'category' => 'general',
+                'label'    => 'Confirmación de mail conocido',
+                'content'  => "Tu mail registrado es *{{mail}}*.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
+            ],
+            [
                 'key'      => 'MSG_RES_MAIL_INVALIDO',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — mail inválido',
@@ -147,7 +153,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_EVT_02',
                 'category' => 'eventos',
                 'label'    => 'Eventos — fecha del evento',
-                'content'  => "¿Para qué fecha es el evento?\n\nIngresá la fecha en formato DD/MM/AA (ejemplo: 15/08/26).\n\nEscribí *0* para hablar con un asesor.",
+                'content'  => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             ],
             [
                 'key'      => 'MSG_EVT_FERIADO_AVISO',
@@ -159,13 +165,25 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_EVT_03_ENTERO',
                 'category' => 'eventos',
                 'label'    => 'Eventos — hora (número entero)',
-                'content'  => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio como número entero entre 8 y 23 (ejemplo: 20).\n\nEscribí *0* para hablar con un asesor.",
+                'content'  => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio entre las 8 y las 23 hs.\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             ],
             [
                 'key'      => 'MSG_EVT_03_HHMM',
                 'category' => 'eventos',
                 'label'    => 'Eventos — hora (formato HH:MM)',
-                'content'  => "¿A qué hora comienza el evento?\n\nIngresá la hora en formato HH:MM en 24 hs (ejemplo: 20:00).\n\nEscribí *0* para hablar con un asesor.",
+                'content'  => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio.\nFormatos válidos: *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
+            ],
+            [
+                'key'      => 'MSG_EVT_CAMBIAR',
+                'category' => 'eventos',
+                'label'    => 'Eventos — qué dato cambiar (general)',
+                'content'  => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
+            ],
+            [
+                'key'      => 'MSG_EVT_NINOS_CAMBIAR',
+                'category' => 'eventos',
+                'label'    => 'Eventos — qué dato cambiar (niños)',
+                'content'  => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del responsable\n*4.* Mail\n\n*0.* Hablar con un asesor",
             ],
             [
                 'key'      => 'MSG_EVT_05',
@@ -238,6 +256,13 @@ class BotMessagesSeeder extends Seeder
                 'category' => 'eventos',
                 'label'    => 'Eventos — cantidad de personas',
                 'content'  => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
+            ],
+            // ─── Navegación ──────────────────────────────────────────────────
+            [
+                'key'      => 'MSG_VOLVER_CONFIRMADA',
+                'category' => 'general',
+                'label'    => 'Volver — reserva ya confirmada',
+                'content'  => "Tu reserva ya fue confirmada, por lo que no es posible modificarla desde acá.\n\nSi necesitás hacer un cambio o cancelación, un asesor de El Anden puede ayudarte.\n\nEscribí *0* para hablar con un asesor.",
             ],
         ];
 

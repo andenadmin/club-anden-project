@@ -18,7 +18,8 @@
       "Bash(pnpm add *)",
       "Bash(php *)",
       "WebFetch(domain:argentinadatos.com)",
-      "Bash(\"C:/Users/Compumar/AppData/Roaming/herd/bin/php84.bat\" artisan *)"
+      "Bash(\"C:/Users/Compumar/AppData/Roaming/herd/bin/php84.bat\" artisan *)",
+      "Bash(\"C:/Users/Compumar/AppData/Roaming/Herd/bin/php84.bat\" -l app/Services/BotEngine.php)"
     ]
   }
 }
