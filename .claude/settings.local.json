@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(herd php *)",
+      "Bash(/c/Users/Compumar/Herd/bin/php84 artisan *)",
+      "Bash(php8.4 artisan *)",
+      "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe artisan *)",
+      "Bash(\"/c/Users/Compumar/.config/herd/bin/php84/php.exe\" artisan *)",
+      "Bash(npm run *)",
+      "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe -r ' *)",
+      "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe -l app/Services/BotEngine.php)",
+      "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe -l app/Services/BotMessages.php)",
+      "Bash(php -l app/Services/BotEngine.php)",
+      "Bash(php -l app/Services/BotMessages.php)"
+    ]
+  }
+}
