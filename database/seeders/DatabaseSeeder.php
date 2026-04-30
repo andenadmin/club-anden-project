@@ -13,10 +13,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        User::firstOrCreate(
+            ['email' => 'administracionadn2026@gmail.com'],
+            [
+                'name'              => 'Administración Anden',
+                'password'          => bcrypt('ANDEN2026_BOT'),
+                'email_verified_at' => now(),
+            ]
+        );
 
         $this->call([
             CostosEventosSeeder::class,
