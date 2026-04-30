@@ -150,6 +150,12 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "¿Para qué fecha es el evento?\n\nIngresá la fecha en formato DD/MM/AA (ejemplo: 15/08/26).\n\nEscribí *0* para hablar con un asesor.",
             ],
             [
+                'key'      => 'MSG_EVT_FERIADO_AVISO',
+                'category' => 'eventos',
+                'label'    => 'Eventos — aviso fecha feriado',
+                'content'  => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
+            ],
+            [
                 'key'      => 'MSG_EVT_03_ENTERO',
                 'category' => 'eventos',
                 'label'    => 'Eventos — hora (número entero)',

@@ -550,6 +550,7 @@ class BotEngine
         $esFutura = $datos['fecha_es_futura'] ?? false;
 
         $estado = match(true) {
+            $rama === 'EVENTOS'                  => 'PENDIENTE_CONFIRMACION',
             $rama === 'RESTAURANTE' && $esFutura => 'PENDIENTE_CONFIRMACION',
             default                              => 'CONFIRMADA',
         };
