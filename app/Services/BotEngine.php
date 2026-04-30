@@ -265,9 +265,14 @@ class BotEngine
                 if (!preg_match('/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{2}$/', $text)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
                 }
+                $esFeriadoNinos = Feriado::esFeriado($text);
                 $this->saveDato($session, 'fecha', $text);
-                $this->saveDato($session, 'es_feriado', Feriado::esFeriado($text) ? 1 : 2);
-                return $this->nextStep($session, 'hora_inicio', 'MSG_EVT_03_ENTERO');
+                $this->saveDato($session, 'es_feriado', $esFeriadoNinos ? 1 : 2);
+                $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
+                $msgs = [];
+                if ($esFeriadoNinos) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
+                $msgs[] = BotMessages::render('MSG_EVT_03_ENTERO');
+                return $msgs;
 
             case 'hora_inicio':
                 if (!ctype_digit($text) || (int)$text < 8 || (int)$text > 23) {
@@ -461,9 +466,14 @@ class BotEngine
                 if (!preg_match('/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{2}$/', $text)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
                 }
+                $esFeriadoGen = Feriado::esFeriado($text);
                 $this->saveDato($session, 'fecha', $text);
-                $this->saveDato($session, 'es_feriado', Feriado::esFeriado($text) ? 1 : 2);
-                return $this->nextStep($session, 'hora_inicio', 'MSG_EVT_03_HHMM');
+                $this->saveDato($session, 'es_feriado', $esFeriadoGen ? 1 : 2);
+                $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
+                $msgsGen = [];
+                if ($esFeriadoGen) $msgsGen[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
+                $msgsGen[] = BotMessages::render('MSG_EVT_03_HHMM');
+                return $msgsGen;
 
             case 'hora_inicio':
                 if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $text)) {
@@ -819,6 +829,9 @@ class BotEngine
                     $lines[] = "─────────────────";
                     $lines[] = "*TOTAL ESTIMADO: $" . number_format($ppto['total'], 0, ',', '.') . "*";
                 }
+            } elseif (($datos['es_feriado'] ?? 2) === 1) {
+                $lines[] = "";
+                $lines[] = "⚠️ *Fecha feriado: se aplicará un recargo del 30% sobre el costo del evento.*";
             }
         }
 
