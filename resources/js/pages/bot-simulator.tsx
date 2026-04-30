@@ -2,13 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
-import { dashboard } from '@/routes';
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Msg { role: 'user' | 'bot'; text: string; ts: Date }
 interface Session { estado_actual: string; rama_activa: string | null; subtipo_activo: string | null; current_step: string | null }
 
-// ─── Utils ────────────────────────────────────────────────────────────────────
 const fmt = (d: Date) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
 function waMd(raw: string) {
@@ -31,7 +28,6 @@ async function postJson(url: string, body: object) {
     return r.json();
 }
 
-// ─── Componentes de burbuja ────────────────────────────────────────────────────
 function BotBubble({ text, ts }: { text: string; ts: Date }) {
     return (
         <div className="flex items-end gap-2 max-w-[78%]">
@@ -72,7 +68,6 @@ function Typing() {
     );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
 const FROM = '5491100000001';
 
 export default function BotSimulator() {
@@ -89,10 +84,8 @@ export default function BotSimulator() {
         const msg = (override ?? inputRef.current?.value ?? '').trim();
         if (!msg || loading) return;
         if (inputRef.current) inputRef.current.value = '';
-
         setMsgs(p => [...p, { role: 'user', text: msg, ts: new Date() }]);
         setLoading(true);
-
         try {
             const data = await postJson('/bot/message', { numero_contacto: FROM, message: msg });
             const bots: Msg[] = (data.messages ?? []).map((t: string) => ({ role: 'bot' as const, text: t, ts: new Date() }));
@@ -118,35 +111,17 @@ export default function BotSimulator() {
         session?.estado_actual === 'CONFIRMACION'   ? ['SI','CAMBIAR','0'] : [];
 
     return (
-        <div className="h-svh overflow-hidden">
         <AppShell variant="sidebar">
             <AppSidebar />
-            <AppContent variant="sidebar">
-            <div className="flex flex-col h-full overflow-hidden">
+            {/* height: 100svh + overflow: hidden fuerza una altura real en SidebarInset
+                que tiene min-h-svh, lo que permite que todos los flex-1 hijos funcionen */}
+            <AppContent variant="sidebar" style={{ height: '100svh', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
 
-                {/* ── Header verde estilo WhatsApp ─── */}
-                <header className="flex items-center justify-between px-3 h-12 bg-[#075e54] text-white shrink-0 shadow transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2.5">
-                            <div className="size-7 rounded-full bg-[#25d366] flex items-center justify-center text-white text-xs font-bold shadow">A</div>
-                            <div>
-                                <p className="text-white text-sm font-semibold leading-tight">Andy</p>
-                                <p className={`text-[10px] ${loading ? 'text-yellow-200' : 'text-green-200'}`}>
-                                    {loading ? 'escribiendo…' : '● en línea'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <span className="text-xs text-[#a8d8d1]">El Anden 🌿</span>
-                </header>
-
-                {/* ── Cuerpo ─────────────────────────── */}
-                <div className="flex flex-1 overflow-hidden">
-
-                    {/* Panel izquierdo: sesión */}
-                    <aside className="w-52 shrink-0 flex flex-col bg-white border-r">
-                        <div className="flex-1 p-4 overflow-y-auto space-y-3">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Sesión</p>
+                    {/* Panel sesión */}
+                    <aside style={{ width: '13rem', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'white', borderRight: '1px solid #e5e7eb' }}>
+                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Sesión</p>
                             {session ? (
                                 <>
                                     {[
@@ -155,7 +130,7 @@ export default function BotSimulator() {
                                         ['Subtipo', session.subtipo_activo],
                                         ['Paso', session.current_step],
                                     ].map(([label, val]) => val ? (
-                                        <div key={label}>
+                                        <div key={label} className="mb-2">
                                             <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</p>
                                             <p className="text-xs font-medium bg-emerald-50 text-emerald-700 rounded px-2 py-1">{val}</p>
                                         </div>
@@ -165,7 +140,7 @@ export default function BotSimulator() {
                                 <p className="text-xs text-gray-400 italic">Sin sesión activa</p>
                             )}
                         </div>
-                        <div className="p-3 border-t">
+                        <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
                             <button onClick={reset}
                                 className="w-full text-xs text-red-500 border border-red-200 rounded-lg py-1.5 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
                                 <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,26 +152,42 @@ export default function BotSimulator() {
                     </aside>
 
                     {/* Chat */}
-                    <div className="flex-1 flex flex-col min-w-0" style={{ background: '#e5ddd5' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e5ddd5' }}>
 
-                        {/* Mensajes */}
-                        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-                            {msgs.length === 0 && (
-                                <div className="flex flex-1 flex-col items-center justify-center gap-3 select-none text-center">
-                                    <div className="size-16 rounded-full bg-[#075e54] flex items-center justify-center text-3xl shadow-lg">🌿</div>
-                                    <div>
-                                        <p className="font-semibold text-gray-600">Bot El Anden</p>
-                                        <p className="text-sm text-gray-500 mt-0.5">Escribí cualquier mensaje para iniciar</p>
-                                    </div>
+                        {/* Header verde — fijo arriba del chat */}
+                        <header style={{ background: '#075e54', color: 'white', padding: '0 0.75rem', height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.2)' }}>
+                            <div className="flex items-center gap-2.5">
+                                <div className="size-7 rounded-full bg-[#25d366] flex items-center justify-center text-white text-xs font-bold shadow">A</div>
+                                <div>
+                                    <p className="text-white text-sm font-semibold leading-tight">Andy</p>
+                                    <p className={`text-[10px] ${loading ? 'text-yellow-200' : 'text-green-200'}`}>
+                                        {loading ? 'escribiendo…' : '● en línea'}
+                                    </p>
                                 </div>
-                            )}
-                            {msgs.map((m, i) =>
-                                m.role === 'bot'
-                                    ? <BotBubble key={i} text={m.text} ts={m.ts} />
-                                    : <UserBubble key={i} text={m.text} ts={m.ts} />
-                            )}
-                            {loading && <Typing />}
-                            <div ref={bottomRef} />
+                            </div>
+                            <span className="text-xs text-[#a8d8d1]">El Anden 🌿</span>
+                        </header>
+
+                        {/* Mensajes con scroll */}
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <div className="px-4 py-4 flex flex-col gap-3">
+                                {msgs.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center gap-3 select-none text-center py-16">
+                                        <div className="size-16 rounded-full bg-[#075e54] flex items-center justify-center text-3xl shadow-lg">🌿</div>
+                                        <div>
+                                            <p className="font-semibold text-gray-600">Bot El Anden</p>
+                                            <p className="text-sm text-gray-500 mt-0.5">Escribí cualquier mensaje para iniciar</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {msgs.map((m, i) =>
+                                    m.role === 'bot'
+                                        ? <BotBubble key={i} text={m.text} ts={m.ts} />
+                                        : <UserBubble key={i} text={m.text} ts={m.ts} />
+                                )}
+                                {loading && <Typing />}
+                                <div ref={bottomRef} />
+                            </div>
                         </div>
 
                         {/* Quick replies */}
@@ -232,10 +223,7 @@ export default function BotSimulator() {
                         </div>
                     </div>
                 </div>
-
-            </div>
             </AppContent>
         </AppShell>
-        </div>
     );
 }

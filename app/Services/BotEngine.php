@@ -183,9 +183,9 @@ class BotEngine
 
             case 'nombre_responsable':
                 $opts05  = BotMessages::parseOptions('MSG_RES_05');
-                $keysRes = array_values(array_filter(array_keys($opts05), fn ($k) => $k !== '0'));
+                $keysRes = array_values(array_filter(array_map('strval', array_keys($opts05)), fn ($k) => $k !== '0'));
                 $upper   = strtoupper(trim($text));
-                if (!isset($opts05[$upper])) {
+                if (!in_array($upper, array_map('strval', array_keys($opts05)), true)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_05')]);
                 }
                 if ($upper === ($keysRes[0] ?? '1')) {
@@ -430,9 +430,9 @@ class BotEngine
 
             case 'nombre_responsable':
                 $opts07  = BotMessages::parseOptions('MSG_EVT_07');
-                $keys07  = array_values(array_filter(array_keys($opts07), fn ($k) => $k !== '0'));
+                $keys07  = array_values(array_filter(array_map('strval', array_keys($opts07)), fn ($k) => $k !== '0'));
                 $upper07 = strtoupper(trim($text));
-                if (!isset($opts07[$upper07])) {
+                if (!in_array($upper07, array_map('strval', array_keys($opts07)), true)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_07')]);
                 }
                 if ($upper07 === ($keys07[0] ?? '1')) {
@@ -481,9 +481,9 @@ class BotEngine
 
             case 'nombre_responsable':
                 $optsG07  = BotMessages::parseOptions('MSG_EVT_07');
-                $keysG07  = array_values(array_filter(array_keys($optsG07), fn ($k) => $k !== '0'));
+                $keysG07  = array_values(array_filter(array_map('strval', array_keys($optsG07)), fn ($k) => $k !== '0'));
                 $upperG07 = strtoupper(trim($text));
-                if (!isset($optsG07[$upperG07])) {
+                if (!in_array($upperG07, array_map('strval', array_keys($optsG07)), true)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_07')]);
                 }
                 if ($upperG07 === ($keysG07[0] ?? '1')) {
@@ -525,6 +525,7 @@ class BotEngine
             if ($session->rama_activa !== 'RESTAURANTE') {
                 return $this->handleInvalid($session, fn () => [$this->buildConfirmacionMsg($session)]);
             }
+            $this->saveDato($session, 'cambiando_paso', null);
             $session->mergeEstado(['estado_actual' => 'CAMBIANDO_DATO', 'contador_invalidos' => 0]);
             return [BotMessages::render('MSG_RES_CAMBIAR')];
         }
@@ -594,14 +595,15 @@ class BotEngine
 
         if ($cambiandoPaso === null) {
             // Esperando selección de campo — dynamic desde MSG_RES_CAMBIAR
-            $opts = BotMessages::parseOptions('MSG_RES_CAMBIAR');
-            $keys = array_values(array_filter(array_keys($opts), fn ($k) => $k !== '0'));
+            $opts      = BotMessages::parseOptions('MSG_RES_CAMBIAR');
+            $strKeys   = array_map('strval', array_keys($opts));
+            $nonZero   = array_values(array_filter($strKeys, fn ($k) => $k !== '0'));
             $upperText = strtoupper(trim($text));
-            if (!isset($opts[$upperText])) {
+            if (!in_array($upperText, $strKeys, true)) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_CAMBIAR')]);
             }
             $stepSequence = ['fecha', 'hora', 'numero_personas', 'sector', 'nombre_responsable', 'mail_contacto'];
-            $pos  = array_search($upperText, $keys, true);
+            $pos  = array_search($upperText, $nonZero, true);
             $paso = $pos !== false ? ($stepSequence[$pos] ?? null) : null;
             if ($paso === null) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_CAMBIAR')]);
@@ -674,9 +676,9 @@ class BotEngine
                 return true;
             case 'nombre_responsable':
                 $optsC = BotMessages::parseOptions('MSG_RES_05');
-                $keysC = array_values(array_filter(array_keys($optsC), fn ($k) => $k !== '0'));
+                $keysC = array_values(array_filter(array_map('strval', array_keys($optsC)), fn ($k) => $k !== '0'));
                 $upperC = strtoupper(trim($text));
-                if (!isset($optsC[$upperC])) return false;
+                if (!in_array($upperC, array_map('strval', array_keys($optsC)), true)) return false;
                 if ($upperC === ($keysC[0] ?? '1')) {
                     $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                     $this->saveDato($session, 'nombre_responsable', $nombre);

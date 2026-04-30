@@ -106,7 +106,7 @@ class BotMessages
         $rendered = self::render($id, $vars);
         $options  = [];
         preg_match_all(
-            '/^\*([A-Za-z0-9]+)\.?\*[ \t]*[-–—]?[ \t]*(.+)/mu',
+            '/^\*([A-Za-z0-9]+)\.?\*[ \t]*(.+)/m',
             $rendered,
             $matches,
             PREG_SET_ORDER

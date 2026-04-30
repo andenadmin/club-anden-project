@@ -12,7 +12,11 @@
       "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe -l app/Services/BotEngine.php)",
       "Bash(/c/Users/Compumar/.config/herd/bin/php84/php.exe -l app/Services/BotMessages.php)",
       "Bash(php -l app/Services/BotEngine.php)",
-      "Bash(php -l app/Services/BotMessages.php)"
+      "Bash(php -l app/Services/BotMessages.php)",
+      "Bash(npx shadcn@latest add scroll-area --yes)",
+      "Bash(npx shadcn@latest add scroll-area)",
+      "Bash(pnpm add *)",
+      "Bash(php *)"
     ]
   }
 }
