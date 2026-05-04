@@ -223,7 +223,7 @@ export default function BotMessagesPage({ messages }: Props) {
 
 BotMessagesPage.layout = {
     breadcrumbs: [
-        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Bot Simulator', href: '/bot' },
         { title: 'Mensajes del Bot', href: '/bot/messages' },
     ],
 };

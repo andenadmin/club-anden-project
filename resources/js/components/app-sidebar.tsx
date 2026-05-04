@@ -1,5 +1,5 @@
-import { Link } from '@inertiajs/react';
-import { LayoutGrid, MessageCircle, MessagesSquare } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { Inbox, MessageCircle, MessagesSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -12,26 +12,50 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarTrigger,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
-    { title: 'Dashboard',        href: '/dashboard',     icon: LayoutGrid },
-    { title: 'Bot Simulator',    href: '/bot',           icon: MessageCircle },
-    { title: 'Mensajes del Bot', href: '/bot/messages',  icon: MessagesSquare },
-];
-
 const footerNavItems: NavItem[] = [];
 
+function CollapseToggle() {
+    const { state, toggleSidebar } = useSidebar();
+    const collapsed = state === 'collapsed';
+    const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
+    const label = collapsed ? 'Expandir menú' : 'Achicar menú';
+
+    return (
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    onClick={toggleSidebar}
+                    tooltip={label}
+                    className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                >
+                    <Icon />
+                    <span>{label}</span>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    );
+}
+
 export function AppSidebar() {
+    const inboxUnread = (usePage().props as { inboxUnreadTotal?: number }).inboxUnreadTotal ?? 0;
+
+    const mainNavItems: NavItem[] = [
+        { title: 'Inbox',            href: '/inbox',         icon: Inbox,           badge: inboxUnread },
+        { title: 'Bot Simulator',    href: '/bot',           icon: MessageCircle },
+        { title: 'Mensajes del Bot', href: '/bot/messages',  icon: MessagesSquare },
+    ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
+                            <Link href="/bot" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -43,12 +67,13 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
+            <div className="px-2">
+                <CollapseToggle />
+            </div>
+
             <SidebarFooter>
                 <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
-                <div className="flex justify-center py-1">
-                    <SidebarTrigger />
-                </div>
             </SidebarFooter>
         </Sidebar>
     );

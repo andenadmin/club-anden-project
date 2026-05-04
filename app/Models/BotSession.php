@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BotSession extends Model
 {
@@ -17,17 +18,32 @@ class BotSession extends Model
         'datos_parciales',
         'id_cliente',
         'timestamp_pausa',
+        'motivo_pausa',
+        'estado_previo_pausa',
+        'next_resume_check_at',
+        'resolved_by_advisor_at',
+        'last_message_at',
+        'unread_count',
     ];
 
     protected $casts = [
-        'datos_parciales'  => 'array',
-        'timestamp_pausa'  => 'datetime',
-        'contador_invalidos' => 'integer',
+        'datos_parciales'         => 'array',
+        'timestamp_pausa'         => 'datetime',
+        'next_resume_check_at'    => 'datetime',
+        'resolved_by_advisor_at'  => 'datetime',
+        'last_message_at'         => 'datetime',
+        'contador_invalidos'      => 'integer',
+        'unread_count'            => 'integer',
     ];
 
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class, 'id_cliente');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ConversationMessage::class);
     }
 
     public function getDatos(string $key, mixed $default = null): mixed

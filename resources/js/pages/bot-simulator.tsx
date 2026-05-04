@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { Menu, Info } from 'lucide-react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useSidebar } from '@/components/ui/sidebar';
 
 interface Msg { role: 'user' | 'bot'; text: string; ts: Date }
 interface Session { estado_actual: string; rama_activa: string | null; subtipo_activo: string | null; current_step: string | null }
+
+interface HistoryMsg { role: 'user' | 'bot'; text: string; ts: string | null }
+interface Props { history?: HistoryMsg[]; sessionState?: Session | null }
 
 const fmt = (d: Date) => d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
@@ -68,14 +74,52 @@ function Typing() {
     );
 }
 
+function SessionPanel({ session, onReset }: { session: Session | null; onReset: () => void }) {
+    return (
+        <>
+            <div className="flex-1 p-4 overflow-y-auto">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Sesión</p>
+                {session ? (
+                    [
+                        ['Estado',  session.estado_actual],
+                        ['Rama',    session.rama_activa],
+                        ['Subtipo', session.subtipo_activo],
+                        ['Paso',    session.current_step],
+                    ].map(([label, val]) => val ? (
+                        <div key={label} className="mb-2">
+                            <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</p>
+                            <p className="text-xs font-medium bg-emerald-50 text-emerald-700 rounded px-2 py-1">{val}</p>
+                        </div>
+                    ) : null)
+                ) : (
+                    <p className="text-xs text-gray-400 italic">Sin sesión activa</p>
+                )}
+            </div>
+            <div className="p-3 border-t border-gray-200">
+                <button onClick={onReset}
+                    className="w-full text-xs text-red-500 border border-red-200 rounded-lg py-1.5 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
+                    <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reiniciar
+                </button>
+            </div>
+        </>
+    );
+}
+
 const FROM = '5491100000001';
 
-export default function BotSimulator() {
-    const [msgs, setMsgs]       = useState<Msg[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [session, setSession] = useState<Session | null>(null);
-    const inputRef              = useRef<HTMLInputElement>(null);
-    const bottomRef             = useRef<HTMLDivElement>(null);
+function BotChat({ history = [], sessionState = null }: Props) {
+    const [msgs, setMsgs]               = useState<Msg[]>(() =>
+        history.map(h => ({ role: h.role, text: h.text, ts: h.ts ? new Date(h.ts) : new Date() })),
+    );
+    const [loading, setLoading]         = useState(false);
+    const [session, setSession]         = useState<Session | null>(sessionState);
+    const [sessionOpen, setSessionOpen] = useState(false);
+    const inputRef                      = useRef<HTMLInputElement>(null);
+    const bottomRef                     = useRef<HTMLDivElement>(null);
+    const { toggleSidebar }             = useSidebar();
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, loading]);
     useEffect(() => { if (!loading) inputRef.current?.focus(); }, [loading]);
@@ -102,6 +146,7 @@ export default function BotSimulator() {
         try { await postJson('/bot/reset', { numero_contacto: FROM }); } catch { /* ignore */ }
         setMsgs([]);
         setSession(null);
+        setSessionOpen(false);
         if (inputRef.current) inputRef.current.value = '';
         inputRef.current?.focus();
     };
@@ -111,118 +156,122 @@ export default function BotSimulator() {
         session?.estado_actual === 'CONFIRMACION'   ? ['SI','CAMBIAR','0'] : [];
 
     return (
+        <div className="flex h-full overflow-hidden">
+
+            {/* Panel sesión (desktop) */}
+            <aside className="hidden md:flex md:w-52 shrink-0 flex-col bg-white border-r border-gray-200">
+                <SessionPanel session={session} onReset={reset} />
+            </aside>
+
+            {/* Sheet de sesión (mobile) */}
+            <Sheet open={sessionOpen} onOpenChange={setSessionOpen}>
+                <SheetContent side="right" className="w-72 p-0 flex flex-col">
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>Sesión</SheetTitle>
+                    </SheetHeader>
+                    <SessionPanel session={session} onReset={reset} />
+                </SheetContent>
+            </Sheet>
+
+            {/* Chat */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#e5ddd5] min-w-0">
+
+                {/* Header verde */}
+                <header className="bg-[#075e54] text-white px-2 sm:px-3 h-12 flex items-center justify-between shrink-0 shadow">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                        <button
+                            type="button"
+                            onClick={toggleSidebar}
+                            className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-white/10 active:bg-white/20 transition-colors shrink-0"
+                            aria-label="Abrir menú">
+                            <Menu className="size-5" />
+                        </button>
+                        <div className="size-7 rounded-full bg-[#25d366] flex items-center justify-center text-white text-xs font-bold shadow shrink-0">A</div>
+                        <div className="min-w-0">
+                            <p className="text-white text-sm font-semibold leading-tight truncate">Andy</p>
+                            <p className={`text-[10px] truncate ${loading ? 'text-yellow-200' : 'text-green-200'}`}>
+                                {loading ? 'escribiendo…' : '● en línea'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                        <span className="hidden sm:inline text-xs text-[#a8d8d1]">El Anden 🌿</span>
+                        <button
+                            type="button"
+                            onClick={() => setSessionOpen(true)}
+                            className="md:hidden p-1.5 -mr-1 rounded-md hover:bg-white/10 active:bg-white/20 transition-colors"
+                            aria-label="Ver sesión">
+                            <Info className="size-5" />
+                        </button>
+                    </div>
+                </header>
+
+                {/* Mensajes con scroll */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="px-3 sm:px-4 py-4 flex flex-col gap-3">
+                        {msgs.length === 0 && (
+                            <div className="flex flex-col items-center justify-center gap-3 select-none text-center py-16">
+                                <div className="size-16 rounded-full bg-[#075e54] flex items-center justify-center text-3xl shadow-lg">🌿</div>
+                                <div>
+                                    <p className="font-semibold text-gray-600">Bot El Anden</p>
+                                    <p className="text-sm text-gray-500 mt-0.5">Escribí cualquier mensaje para iniciar</p>
+                                </div>
+                            </div>
+                        )}
+                        {msgs.map((m, i) =>
+                            m.role === 'bot'
+                                ? <BotBubble key={i} text={m.text} ts={m.ts} />
+                                : <UserBubble key={i} text={m.text} ts={m.ts} />
+                        )}
+                        {loading && <Typing />}
+                        <div ref={bottomRef} />
+                    </div>
+                </div>
+
+                {/* Quick replies */}
+                {quickReplies.length > 0 && (
+                    <div className="flex gap-2 px-3 sm:px-4 py-2 bg-white/70 backdrop-blur border-t border-white/50 overflow-x-auto shrink-0">
+                        {quickReplies.map(r => (
+                            <button key={r} onClick={() => send(r)} disabled={loading}
+                                className="shrink-0 text-xs font-semibold text-[#075e54] border border-[#075e54] rounded-full px-4 py-1.5 hover:bg-[#075e54] hover:text-white transition-colors disabled:opacity-40">
+                                {r}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Input */}
+                <div className="flex items-center gap-2 px-2 sm:px-3 py-2.5 bg-[#f0f2f5] shrink-0">
+                    <input
+                        ref={inputRef}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                        placeholder="Escribí un mensaje…"
+                        disabled={loading}
+                        autoFocus
+                        className="flex-1 min-w-0 rounded-full bg-white border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#25d366]/40 shadow-sm disabled:opacity-60"
+                    />
+                    <button
+                        onClick={() => send()}
+                        disabled={loading}
+                        className="size-10 rounded-full bg-[#25d366] flex items-center justify-center text-white shadow hover:bg-[#1ebe5d] active:scale-95 transition-all disabled:opacity-50 shrink-0">
+                        <svg className="size-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function BotSimulator({ history = [], sessionState = null }: Props) {
+    return (
         <AppShell variant="sidebar">
             <AppSidebar />
             {/* height: 100svh + overflow: hidden fuerza una altura real en SidebarInset
                 que tiene min-h-svh, lo que permite que todos los flex-1 hijos funcionen */}
             <AppContent variant="sidebar" style={{ height: '100svh', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-
-                    {/* Panel sesión */}
-                    <aside style={{ width: '13rem', flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'white', borderRight: '1px solid #e5e7eb' }}>
-                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Sesión</p>
-                            {session ? (
-                                <>
-                                    {[
-                                        ['Estado', session.estado_actual],
-                                        ['Rama', session.rama_activa],
-                                        ['Subtipo', session.subtipo_activo],
-                                        ['Paso', session.current_step],
-                                    ].map(([label, val]) => val ? (
-                                        <div key={label} className="mb-2">
-                                            <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</p>
-                                            <p className="text-xs font-medium bg-emerald-50 text-emerald-700 rounded px-2 py-1">{val}</p>
-                                        </div>
-                                    ) : null)}
-                                </>
-                            ) : (
-                                <p className="text-xs text-gray-400 italic">Sin sesión activa</p>
-                            )}
-                        </div>
-                        <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
-                            <button onClick={reset}
-                                className="w-full text-xs text-red-500 border border-red-200 rounded-lg py-1.5 hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5">
-                                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Reiniciar
-                            </button>
-                        </div>
-                    </aside>
-
-                    {/* Chat */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e5ddd5' }}>
-
-                        {/* Header verde — fijo arriba del chat */}
-                        <header style={{ background: '#075e54', color: 'white', padding: '0 0.75rem', height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,.2)' }}>
-                            <div className="flex items-center gap-2.5">
-                                <div className="size-7 rounded-full bg-[#25d366] flex items-center justify-center text-white text-xs font-bold shadow">A</div>
-                                <div>
-                                    <p className="text-white text-sm font-semibold leading-tight">Andy</p>
-                                    <p className={`text-[10px] ${loading ? 'text-yellow-200' : 'text-green-200'}`}>
-                                        {loading ? 'escribiendo…' : '● en línea'}
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="text-xs text-[#a8d8d1]">El Anden 🌿</span>
-                        </header>
-
-                        {/* Mensajes con scroll */}
-                        <div style={{ flex: 1, overflowY: 'auto' }}>
-                            <div className="px-4 py-4 flex flex-col gap-3">
-                                {msgs.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center gap-3 select-none text-center py-16">
-                                        <div className="size-16 rounded-full bg-[#075e54] flex items-center justify-center text-3xl shadow-lg">🌿</div>
-                                        <div>
-                                            <p className="font-semibold text-gray-600">Bot El Anden</p>
-                                            <p className="text-sm text-gray-500 mt-0.5">Escribí cualquier mensaje para iniciar</p>
-                                        </div>
-                                    </div>
-                                )}
-                                {msgs.map((m, i) =>
-                                    m.role === 'bot'
-                                        ? <BotBubble key={i} text={m.text} ts={m.ts} />
-                                        : <UserBubble key={i} text={m.text} ts={m.ts} />
-                                )}
-                                {loading && <Typing />}
-                                <div ref={bottomRef} />
-                            </div>
-                        </div>
-
-                        {/* Quick replies */}
-                        {quickReplies.length > 0 && (
-                            <div className="flex gap-2 px-4 py-2 bg-white/70 backdrop-blur border-t border-white/50 overflow-x-auto shrink-0">
-                                {quickReplies.map(r => (
-                                    <button key={r} onClick={() => send(r)} disabled={loading}
-                                        className="shrink-0 text-xs font-semibold text-[#075e54] border border-[#075e54] rounded-full px-4 py-1.5 hover:bg-[#075e54] hover:text-white transition-colors disabled:opacity-40">
-                                        {r}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Input */}
-                        <div className="flex items-center gap-2 px-3 py-2.5 bg-[#f0f2f5] shrink-0">
-                            <input
-                                ref={inputRef}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                                placeholder="Escribí un mensaje…"
-                                disabled={loading}
-                                autoFocus
-                                className="flex-1 rounded-full bg-white border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#25d366]/40 shadow-sm disabled:opacity-60"
-                            />
-                            <button
-                                onClick={() => send()}
-                                disabled={loading}
-                                className="size-10 rounded-full bg-[#25d366] flex items-center justify-center text-white shadow hover:bg-[#1ebe5d] active:scale-95 transition-all disabled:opacity-50 shrink-0">
-                                <svg className="size-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <BotChat history={history} sessionState={sessionState} />
             </AppContent>
         </AppShell>
     );

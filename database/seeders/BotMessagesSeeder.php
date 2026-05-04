@@ -42,6 +42,12 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "Entendido. En breve un asesor de El Anden se va a comunicar con vos.\n\nMientras tanto, el asistente automático queda en pausa.\n¡Hasta pronto! 😊",
             ],
             [
+                'key'      => 'MSG_TIMEOUT_ASESOR',
+                'category' => 'general',
+                'label'    => 'Timeout de atención humana (12h)',
+                'content'  => "¡Disculpá la demora! 🙏\n\nPasaron varias horas desde tu última consulta sin que pudiéramos terminarla. Para asegurarnos de tener tus datos al día, vamos a empezar de nuevo.\n\n¿En qué te ayudamos?",
+            ],
+            [
                 'key'      => 'MSG_CONFIRMACION',
                 'category' => 'general',
                 'label'    => 'Confirmación de reserva (genérico)',

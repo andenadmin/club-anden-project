@@ -19,7 +19,19 @@
       "Bash(php *)",
       "WebFetch(domain:argentinadatos.com)",
       "Bash(\"C:/Users/Compumar/AppData/Roaming/herd/bin/php84.bat\" artisan *)",
-      "Bash(\"C:/Users/Compumar/AppData/Roaming/Herd/bin/php84.bat\" -l app/Services/BotEngine.php)"
+      "Bash(\"C:/Users/Compumar/AppData/Roaming/Herd/bin/php84.bat\" -l app/Services/BotEngine.php)",
+      "PowerShell(php artisan migrate:status)",
+      "PowerShell(php artisan migrate --force)",
+      "PowerShell(npm run *)",
+      "PowerShell(php artisan migrate)",
+      "PowerShell(php artisan tinker --execute=\"App\\\\Models\\\\BotSession::query\\(\\)->delete\\(\\); App\\\\Models\\\\ConversationMessage::query\\(\\)->delete\\(\\); $r = app\\(App\\\\Services\\\\BotEngine::class\\)->process\\('5491100000099', 'hola'\\); print_r\\($r\\); $s = App\\\\Models\\\\BotSession::where\\('numero_contacto','5491100000099'\\)->first\\(\\); echo PHP_EOL.'session: '.$s->estado_actual.PHP_EOL.'last_message_at: '.$s->last_message_at.PHP_EOL; foreach\\(App\\\\Models\\\\ConversationMessage::orderBy\\('id'\\)->get\\(\\) as $m\\){ echo $m->direction.'|'.$m->sender.'|'.$m->body.PHP_EOL; }\")",
+      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/test_bot.php';\")",
+      "PowerShell(php artisan route:list --path=webhook 2>&1 | Select-Object -Last 10)",
+      "PowerShell(php artisan migrate:status 2>&1 | Select-Object -Last 20)",
+      "PowerShell(php artisan route:list --path=inbox 2>&1 | Select-Object -Last 12)",
+      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4.php';\")",
+      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4_deep.php';\")",
+      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase5.php';\")"
     ]
   }
 }

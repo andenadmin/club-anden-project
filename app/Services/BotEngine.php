@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BotSession;
 use App\Models\Cliente;
+use App\Models\ConversationMessage;
 use App\Models\CrmCliente;
 use App\Models\CostoEvento;
 use App\Models\Feriado;
@@ -12,6 +13,14 @@ use Carbon\Carbon;
 
 class BotEngine
 {
+    /**
+     * Procesa un mensaje entrante y devuelve las respuestas que el bot quiere mandar.
+     * Loguea el inbound automáticamente. El logueo del outbound queda en manos del caller
+     * (`BotSimulatorController` lo loguea localmente; `WhatsAppSender` lo loguea con
+     * `wa_message_id` después de mandarlo a Meta).
+     *
+     * @return string[] Las respuestas a enviar al usuario, en orden.
+     */
     public function process(string $from, string $text): array
     {
         $text    = trim($text);
@@ -20,6 +29,32 @@ class BotEngine
             ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0]
         );
 
+        $this->logInbound($session, $text);
+
+        return $this->dispatch($session, $text);
+    }
+
+    /**
+     * Persiste un mensaje saliente y lo asocia a la sesión.
+     * Lo usan tanto el simulador (sin `$waMessageId`) como `WhatsAppSender` (con).
+     */
+    public function logOutbound(BotSession $session, string $body, ?string $waMessageId = null, string $sender = ConversationMessage::SENDER_BOT): ConversationMessage
+    {
+        $msg = ConversationMessage::create([
+            'bot_session_id' => $session->id,
+            'direction'      => ConversationMessage::DIRECTION_OUTBOUND,
+            'sender'         => $sender,
+            'body'           => $body,
+            'wa_message_id'  => $waMessageId,
+        ]);
+
+        $session->mergeEstado(['last_message_at' => Carbon::now()]);
+
+        return $msg;
+    }
+
+    private function dispatch(BotSession $session, string $text): array
+    {
         // Estado PAUSADO
         if ($session->estado_actual === 'PAUSADO') {
             if ($session->timestamp_pausa && Carbon::now()->diffInHours($session->timestamp_pausa, false) <= -12) {
@@ -53,6 +88,23 @@ class BotEngine
             default              => $this->handleInicio($session),
         };
     }
+
+    private function logInbound(BotSession $session, string $body): void
+    {
+        ConversationMessage::create([
+            'bot_session_id' => $session->id,
+            'direction'      => ConversationMessage::DIRECTION_INBOUND,
+            'sender'         => ConversationMessage::SENDER_USER,
+            'body'           => $body,
+        ]);
+
+        $attrs = ['last_message_at' => Carbon::now()];
+        if ($session->estado_actual === 'PAUSADO') {
+            $attrs['unread_count'] = ($session->unread_count ?? 0) + 1;
+        }
+        $session->mergeEstado($attrs);
+    }
+
 
     // ─── ESTADOS ──────────────────────────────────────────────────────────────
 
@@ -881,11 +933,12 @@ class BotEngine
     private function escalate(BotSession $session, string $motivo): array
     {
         $session->mergeEstado([
-            'estado_actual'   => 'PAUSADO',
-            'timestamp_pausa' => Carbon::now(),
-            'contador_invalidos' => 0,
+            'estado_previo_pausa' => $session->estado_actual,
+            'estado_actual'       => 'PAUSADO',
+            'motivo_pausa'        => $motivo,
+            'timestamp_pausa'     => Carbon::now(),
+            'contador_invalidos'  => 0,
         ]);
-        // TODO: emitir alerta interna con datos del escalado
         return [BotMessages::render('MSG_ESCALADO_HUMANO')];
     }
 

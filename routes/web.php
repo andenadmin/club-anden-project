@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BotMessagesAdminController;
 use App\Http\Controllers\BotSimulatorController;
+use App\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -10,8 +11,6 @@ Route::inertia('/', 'welcome', [
 ])->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-
     // Bot Simulator
     Route::get('/bot', [BotSimulatorController::class, 'index'])->name('bot.simulator');
     Route::post('/bot/message', [BotSimulatorController::class, 'message'])->name('bot.message');
@@ -20,6 +19,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Bot Messages Admin
     Route::get('/bot/messages', [BotMessagesAdminController::class, 'index'])->name('bot.messages');
     Route::put('/bot/messages/{botMessage}', [BotMessagesAdminController::class, 'update'])->name('bot.messages.update');
+
+    // Inbox
+    Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');
+    Route::get('/inbox/poll',          [InboxController::class, 'poll'])->name('inbox.poll');
+    Route::get('/inbox/{numero}/poll', [InboxController::class, 'pollChat'])->name('inbox.chat.poll')->where('numero', '[0-9]+');
+    Route::get('/inbox/{numero}',      [InboxController::class, 'show'])->name('inbox.show')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/pause',     [InboxController::class, 'pause'])->name('inbox.pause')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/resume',    [InboxController::class, 'resume'])->name('inbox.resume')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/snooze',    [InboxController::class, 'snooze'])->name('inbox.snooze')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/restart',   [InboxController::class, 'restart'])->name('inbox.restart')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/reply',     [InboxController::class, 'reply'])
+        ->middleware('throttle:30,1')
+        ->name('inbox.reply')
+        ->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/read',      [InboxController::class, 'markRead'])->name('inbox.read')->where('numero', '[0-9]+');
 });
 
 require __DIR__.'/settings.php';

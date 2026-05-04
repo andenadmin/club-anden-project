@@ -14,6 +14,7 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
             case name === 'bot-simulator':
+            case name === 'inbox':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

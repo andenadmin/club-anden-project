@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Meta\WhatsAppClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(WhatsAppClient::class, function () {
+            $cfg = config('services.whatsapp');
+            return new WhatsAppClient(
+                phoneNumberId: $cfg['phone_number_id'] ?? '',
+                accessToken:   $cfg['access_token']    ?? '',
+                apiVersion:    $cfg['api_version']     ?? 'v21.0',
+                appSecret:     $cfg['app_secret']      ?? '',
+            );
+        });
     }
 
     /**
