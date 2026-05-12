@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Send } from 'lucide-react';
+import { CheckCheck, Info, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ChatMessage {
@@ -72,6 +72,7 @@ export function ConversationChat({
     canReply,
     estadoActual,
     onMessageSent,
+    onInfoClick,
 }: {
     numero: string;
     nombre: string | null;
@@ -79,6 +80,7 @@ export function ConversationChat({
     canReply: boolean;
     estadoActual: string;
     onMessageSent: (msg: ChatMessage) => void;
+    onInfoClick?: () => void;
 }) {
     const [draft, setDraft]     = useState('');
     const [sending, setSending] = useState(false);
@@ -137,6 +139,15 @@ export function ConversationChat({
                         <p className="text-[10px] text-green-200 truncate">{numero}</p>
                     </div>
                 </div>
+                {onInfoClick && (
+                    <button
+                        onClick={onInfoClick}
+                        className="hidden lg:flex p-1.5 -mr-1 rounded text-white hover:bg-white/10"
+                        aria-label="Ver info del cliente"
+                    >
+                        <Info className="size-5" />
+                    </button>
+                )}
             </header>
 
             {/* Mensajes */}

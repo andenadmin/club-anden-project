@@ -71,7 +71,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_DEP_01',
                 'category' => 'deportes',
                 'label'    => 'Información de canchas',
-                'content'  => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nSi necesitás algo más por fuera de la página, escribí \"hablar con un asesor\".",
+                'content'  => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
             ],
 
             // ─── Restaurante ─────────────────────────────────────────────────
@@ -139,7 +139,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_RES_CAMBIAR',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — qué dato cambiar',
-                'content'  => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Sector\n*5.* Nombre del responsable\n*6.* Mail\n\n*0.* Hablar con un asesor",
+                'content'  => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
             ],
 
             // ─── Eventos ─────────────────────────────────────────────────────

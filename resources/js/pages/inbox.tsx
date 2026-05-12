@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Info, Menu } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -29,6 +29,7 @@ interface Props {
 
 function InboxBody({ conversations: initialConversations, selected }: Props) {
     const [summaryOpen, setSummaryOpen] = useState(false);
+    const [summaryDesktopVisible, setSummaryDesktopVisible] = useState(true);
     const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
     const [resumePromptDismissed, setResumePromptDismissed] = useState(false);
     const { toggleSidebar } = useSidebar();
@@ -38,8 +39,10 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
 
     // Polling del chat seleccionado (2s) — agrega mensajes nuevos y refresca estado de la sesión.
     const selectedNumero  = selected?.numero ?? null;
-    const initialMessages = selected?.messages ?? [];
-    const initialSession  = selected?.session ?? null;
+    // Estabilizar referencias: solo cambian cuando cambia la conversación seleccionada,
+    // no en cada re-render del inbox polling.
+    const initialMessages = useMemo(() => selected?.messages ?? [], [selectedNumero]);
+    const initialSession  = useMemo(() => selected?.session ?? null, [selectedNumero]);
     const { messages: liveMessages, session: liveSession } = useChatPolling(
         selectedNumero, initialMessages, initialSession,
     );
@@ -60,9 +63,11 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
         setOptimisticMessages([]);
     }, [selectedNumero]);
 
-    const messages = selected
-        ? [...liveMessages, ...optimisticMessages.filter(o => !liveMessages.some(m => m.id === o.id))]
-        : [];
+    const messages = useMemo(() =>
+        selected
+            ? [...liveMessages, ...optimisticMessages.filter(o => !liveMessages.some(m => m.id === o.id))]
+            : [],
+    [selected, liveMessages, optimisticMessages]);
 
     // Composer disponible cuando el bot está pausado (sea por cliente o por asesor).
     const canReply = liveSession?.estado_actual === 'PAUSADO';
@@ -124,17 +129,21 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                             canReply={canReply}
                             estadoActual={liveSession?.estado_actual ?? selected.session.estado_actual}
                             onMessageSent={msg => setOptimisticMessages(p => [...p, msg])}
+                            onInfoClick={!summaryDesktopVisible ? () => setSummaryDesktopVisible(true) : undefined}
                         />
                     </div>
 
                     {/* Summary panel — desktop fijo a la derecha */}
-                    <aside className="hidden lg:flex w-72 shrink-0 flex-col">
-                        <SessionSummary
-                            numero={selected.numero}
-                            cliente={selected.cliente}
-                            session={liveSession ?? selected.session}
-                        />
-                    </aside>
+                    {summaryDesktopVisible && (
+                        <aside className="hidden lg:flex w-72 shrink-0 flex-col">
+                            <SessionSummary
+                                numero={selected.numero}
+                                cliente={selected.cliente}
+                                session={liveSession ?? selected.session}
+                                onClose={() => setSummaryDesktopVisible(false)}
+                            />
+                        </aside>
+                    )}
 
                     {/* Summary mobile/tablet — sheet */}
                     <Sheet open={summaryOpen} onOpenChange={setSummaryOpen}>

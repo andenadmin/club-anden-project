@@ -44,8 +44,6 @@ class FeriadosSeeder extends Seeder
             ['fecha' => '2026-12-25', 'nombre' => 'Navidad'],
         ];
 
-        foreach ($feriados as $f) {
-            Feriado::updateOrCreate(['fecha' => $f['fecha']], $f);
-        }
+        Feriado::upsert($feriados, uniqueBy: ['fecha'], update: ['nombre', 'updated_at']);
     }
 }

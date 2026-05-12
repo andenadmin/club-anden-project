@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import { Pause, Play, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import {
     ESTADO_LABELS,
@@ -65,10 +65,12 @@ export function SessionSummary({
     numero,
     cliente,
     session,
+    onClose,
 }: {
     numero: string;
     cliente: ClienteData | null;
     session: SessionData;
+    onClose?: () => void;
 }) {
     const [busy, setBusy] = useState<null | 'pause' | 'resume' | 'restart'>(null);
     const isPaused = session.estado_actual === 'PAUSADO';
@@ -89,7 +91,18 @@ export function SessionSummary({
     return (
         <div className="flex flex-col h-full bg-white dark:bg-neutral-900 border-l border-sidebar-border/50">
             <div className="flex-1 overflow-y-auto p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Cliente</p>
+                <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cliente</p>
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className="p-1 -mr-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400 hover:text-gray-600 transition-colors"
+                            aria-label="Cerrar panel"
+                        >
+                            <X className="size-3.5" />
+                        </button>
+                    )}
+                </div>
                 <Row label="Nombre"   value={cliente?.nombre_cliente ?? '—'} />
                 <Row label="Teléfono" value={numero} />
                 {cliente?.mail && <Row label="Mail" value={cliente.mail} />}

@@ -153,7 +153,11 @@ class BotEngine
 
         if ($pos === 0) {
             Cliente::find($session->id_cliente)?->increment('contador_reservas_deportes');
-            $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'contador_invalidos' => 0]);
+            $session->mergeEstado([
+                'estado_actual'  => 'COMPLETADO',
+                'rama_activa'    => 'DEPORTES',
+                'contador_invalidos' => 0,
+            ]);
             return [BotMessages::render('MSG_DEP_01')];
         }
 
@@ -229,34 +233,8 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_03')]);
                 }
                 $this->saveDato($session, 'numero_personas', $personas);
-                return $this->nextStep($session, 'sector', 'MSG_RES_04');
-
-            case 'sector':
-                $sector = BotMessages::resolveOption('MSG_RES_04', $text);
-                if (!$sector) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_04')]);
-                }
-                $this->saveDato($session, 'sector', $sector);
-                return $this->nextStep($session, 'nombre_responsable', 'MSG_RES_05');
-
-            case 'nombre_responsable':
-                $opts05  = BotMessages::parseOptions('MSG_RES_05');
-                $keysRes = array_values(array_filter(array_map('strval', array_keys($opts05)), fn ($k) => $k !== '0'));
-                $upper   = strtoupper(trim($text));
-                if (!in_array($upper, array_map('strval', array_keys($opts05)), true)) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_05')]);
-                }
-                if ($upper === ($keysRes[0] ?? '1')) {
-                    $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
-                    $this->saveDato($session, 'nombre_responsable', $nombre);
-                    return $this->skipMailIfKnown($session, 'MSG_RES_06');
-                }
-                $this->pushHistory($session);
-                $session->mergeEstado(['current_step' => 'nombre_responsable_custom', 'contador_invalidos' => 0]);
-                return [BotMessages::render('MSG_RES_05_CUSTOM')];
-
-            case 'nombre_responsable_custom':
-                $this->saveDato($session, 'nombre_responsable', $text);
+                $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
+                $this->saveDato($session, 'nombre_responsable', $nombre);
                 return $this->skipMailIfKnown($session, 'MSG_RES_06');
 
             case 'mail_contacto':
@@ -713,7 +691,7 @@ class BotEngine
             if (!in_array($upperText, $strKeys, true)) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_CAMBIAR')]);
             }
-            $stepSequence = ['fecha', 'hora', 'numero_personas', 'sector', 'nombre_responsable', 'mail_contacto'];
+            $stepSequence = ['fecha', 'hora', 'numero_personas', 'nombre_responsable', 'mail_contacto'];
             $pos  = array_search($upperText, $nonZero, true);
             $paso = $pos !== false ? ($stepSequence[$pos] ?? null) : null;
             if ($paso === null) {
@@ -721,15 +699,29 @@ class BotEngine
             }
             $this->saveDato($session, 'cambiando_paso', $paso);
             $session->mergeEstado(['contador_invalidos' => 0]);
+            if ($paso === 'mail_contacto') {
+                $email = Cliente::find($session->id_cliente)?->mail_contacto;
+                if ($email) {
+                    $this->saveDato($session, '_mail_conocido', $email);
+                    return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email])];
+                }
+                return [BotMessages::render('MSG_RES_06')];
+            }
             $msgMap = [
                 'fecha'              => 'MSG_RES_01',
                 'hora'               => 'MSG_RES_02',
                 'numero_personas'    => 'MSG_RES_03',
-                'sector'             => 'MSG_RES_04',
-                'nombre_responsable' => 'MSG_RES_05',
-                'mail_contacto'      => 'MSG_RES_06',
+                'nombre_responsable' => 'MSG_RES_05_CUSTOM',
             ];
             return [BotMessages::render($msgMap[$paso])];
+        }
+
+        if ($cambiandoPaso === 'mail_contacto') {
+            return $this->handleMailStep($session, $text, function () use ($session) {
+                $this->saveDato($session, 'cambiando_paso', null);
+                $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
+                return [$this->buildConfirmacionMsg($session)];
+            });
         }
 
         $result = $this->validateAndSaveCambio($session, $cambiandoPaso, $text);
@@ -738,17 +730,10 @@ class BotEngine
                 'fecha'              => 'MSG_RES_01',
                 'hora'               => 'MSG_RES_02',
                 'numero_personas'    => 'MSG_RES_03',
-                'sector'             => 'MSG_RES_04',
-                'nombre_responsable' => 'MSG_RES_05',
-                'nombre_responsable_custom' => 'MSG_RES_05_CUSTOM',
+                'nombre_responsable' => 'MSG_RES_05_CUSTOM',
                 'mail_contacto'      => 'MSG_RES_06',
             ];
             return $this->handleInvalid($session, fn () => [BotMessages::render($msgMap[$cambiandoPaso] ?? 'MSG_RES_01')]);
-        }
-        if ($result === 'ask_custom_nombre') {
-            $this->saveDato($session, 'cambiando_paso', 'nombre_responsable_custom');
-            $session->mergeEstado(['contador_invalidos' => 0]);
-            return [BotMessages::render('MSG_RES_05_CUSTOM')];
         }
 
         $this->saveDato($session, 'cambiando_paso', null);
@@ -781,14 +766,29 @@ class BotEngine
             }
             $this->saveDato($session, 'cambiando_paso', $paso);
             $session->mergeEstado(['contador_invalidos' => 0]);
+            if ($paso === 'mail_contacto') {
+                $email = Cliente::find($session->id_cliente)?->mail_contacto;
+                if ($email) {
+                    $this->saveDato($session, '_mail_conocido', $email);
+                    return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email])];
+                }
+                return [BotMessages::render('MSG_EVT_MAIL')];
+            }
             $msgMap = [
                 'fecha'              => 'MSG_EVT_02',
                 'hora_inicio'        => $subtipo === 'NINOS' ? 'MSG_EVT_03_ENTERO' : 'MSG_EVT_03_HHMM',
                 'numero_personas'    => 'MSG_EVT_PERSONAS',
                 'nombre_responsable' => 'MSG_EVT_07',
-                'mail_contacto'      => 'MSG_EVT_MAIL',
             ];
             return [BotMessages::render($msgMap[$paso])];
+        }
+
+        if ($cambiandoPaso === 'mail_contacto') {
+            return $this->handleMailStep($session, $text, function () use ($session) {
+                $this->saveDato($session, 'cambiando_paso', null);
+                $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
+                return [$this->buildConfirmacionMsg($session)];
+            }, noAllowed: true);
         }
 
         $result = $this->validateAndSaveCambioEvento($session, $cambiandoPaso, $text);
@@ -900,24 +900,9 @@ class BotEngine
                 if (!$personas) return false;
                 $this->saveDato($session, 'numero_personas', $personas);
                 return true;
-            case 'sector':
-                $sector = BotMessages::resolveOption('MSG_RES_04', $text);
-                if (!$sector) return false;
-                $this->saveDato($session, 'sector', $sector);
-                return true;
             case 'nombre_responsable':
-                $optsC = BotMessages::parseOptions('MSG_RES_05');
-                $keysC = array_values(array_filter(array_map('strval', array_keys($optsC)), fn ($k) => $k !== '0'));
-                $upperC = strtoupper(trim($text));
-                if (!in_array($upperC, array_map('strval', array_keys($optsC)), true)) return false;
-                if ($upperC === ($keysC[0] ?? '1')) {
-                    $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
-                    $this->saveDato($session, 'nombre_responsable', $nombre);
-                    return true;
-                }
-                return 'ask_custom_nombre';
-            case 'nombre_responsable_custom':
-                $this->saveDato($session, 'nombre_responsable', $text);
+                if (trim($text) === '') return false;
+                $this->saveDato($session, 'nombre_responsable', trim($text));
                 return true;
             case 'mail_contacto':
                 if (!$this->isValidEmail($text)) return false;
@@ -1004,7 +989,6 @@ class BotEngine
             if (!empty($datos['fecha']))             $lines[] = "📅 Fecha: {$datos['fecha']}";
             if (!empty($datos['hora']))              $lines[] = "🕐 Horario: {$datos['hora']}";
             if (!empty($datos['numero_personas']))   $lines[] = "👥 Personas: {$datos['numero_personas']}";
-            if (!empty($datos['sector']))            $lines[] = "📍 Sector: {$datos['sector']}";
             if (!empty($datos['nombre_responsable']))$lines[] = "👤 Responsable: {$datos['nombre_responsable']}";
             if (!empty($datos['mail_contacto']))     $lines[] = "📧 Mail: {$datos['mail_contacto']}";
         } elseif ($rama === 'EVENTOS') {
@@ -1220,6 +1204,17 @@ class BotEngine
         $estado = $session->estado_actual;
 
         if ($estado === 'COMPLETADO') {
+            // Deportes no genera reserva — volver al menú directamente
+            if ($session->rama_activa === 'DEPORTES') {
+                $session->mergeEstado([
+                    'estado_actual'      => 'MENU_PRINCIPAL',
+                    'rama_activa'        => null,
+                    'datos_parciales'    => [],
+                    'contador_invalidos' => 0,
+                ]);
+                $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
+                return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+            }
             return [BotMessages::render('MSG_VOLVER_CONFIRMADA')];
         }
 
@@ -1274,13 +1269,10 @@ class BotEngine
 
         if ($rama === 'RESTAURANTE') {
             $msgMap = [
-                'fecha'                     => fn() => [BotMessages::render('MSG_RES_01')],
-                'hora'                      => fn() => [BotMessages::render('MSG_RES_02')],
-                'numero_personas'           => fn() => [BotMessages::render('MSG_RES_03')],
-                'sector'                    => fn() => [BotMessages::render('MSG_RES_04')],
-                'nombre_responsable'        => fn() => [BotMessages::render('MSG_RES_05')],
-                'nombre_responsable_custom' => fn() => [BotMessages::render('MSG_RES_05_CUSTOM')],
-                'mail_contacto'             => fn() => $this->getMailMessages($session, 'MSG_RES_06'),
+                'fecha'          => fn() => [BotMessages::render('MSG_RES_01')],
+                'hora'           => fn() => [BotMessages::render('MSG_RES_02')],
+                'numero_personas'=> fn() => [BotMessages::render('MSG_RES_03')],
+                'mail_contacto'  => fn() => $this->getMailMessages($session, 'MSG_RES_06'),
             ];
             return ($msgMap[$step] ?? fn() => $this->escalate($session, 'SOLICITUD_CLIENTE'))();
         }
