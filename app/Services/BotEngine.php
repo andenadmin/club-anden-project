@@ -300,11 +300,21 @@ class BotEngine
             $session->mergeEstado(['subtipo_activo' => $nuevoSubtipo, 'contador_invalidos' => 0]);
             if ($nuevoSubtipo === 'NINOS') {
                 $session->mergeEstado(['current_step' => 'pack_seleccionado']);
-                return [BotMessages::render('MSG_EVT_NINOS_PACK')];
+                return [
+                    '[IMG]' . rtrim(config('app.url'), '/') . '/storage/anden_cumple_ninos.png',
+                    'o podés verlo acá: https://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link',
+                    BotMessages::render('MSG_EVT_NINOS_PACK'),
+                ];
             }
             // GENERAL_EVT
             $session->mergeEstado(['current_step' => 'fecha']);
-            return [BotMessages::render('MSG_EVT_02')];
+            $responses = [];
+            if ($upper === ($keysEvt[2] ?? '3')) {
+                $responses[] = '[IMG]' . rtrim(config('app.url'), '/') . '/storage/anden_cumples_adolescentes.png';
+                $responses[] = 'o podés verlo acá: https://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing';
+            }
+            $responses[] = BotMessages::render('MSG_EVT_02');
+            return $responses;
         }
 
         return $subtipo === 'NINOS'
@@ -1021,7 +1031,11 @@ class BotEngine
     {
         $this->pushHistory($session);
         $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
-        return [$this->buildConfirmacionMsg($session)];
+        return [
+            '[IMG]' . rtrim(config('app.url'), '/') . '/storage/terminos_condiciones.png',
+            'o podés verlo acá: https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing',
+            $this->buildConfirmacionMsg($session),
+        ];
     }
 
     private function buildConfirmacionMsg(BotSession $session): string

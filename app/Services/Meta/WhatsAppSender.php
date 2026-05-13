@@ -42,8 +42,13 @@ class WhatsAppSender
         // Defensa en profundidad — el numero ya debería venir normalizado pero por las dudas.
         $to = PhoneNumber::normalize($session->numero_contacto);
 
+        $isImage  = str_starts_with($body, '[IMG]');
+        $imageUrl = $isImage ? substr($body, 5) : null;
+
         try {
-            $waId = $this->client->sendText($to, $body);
+            $waId = $isImage
+                ? $this->client->sendImage($to, $imageUrl)
+                : $this->client->sendText($to, $body);
             $msg = $this->engine->logOutbound($session, $body, $waId, $sender);
             $msg->update(['wa_status' => 'sent']);
             return $msg;
@@ -53,7 +58,6 @@ class WhatsAppSender
             report($e);
             return $msg;
         } catch (Throwable $e) {
-            // Cualquier otra cosa (timeout, DNS, etc.) — fallback genérico.
             $msg = $this->engine->logOutbound($session, $body, null, $sender);
             $msg->update(['wa_status' => 'failed']);
             report($e);

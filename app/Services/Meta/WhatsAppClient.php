@@ -44,6 +44,39 @@ class WhatsAppClient
     }
 
     /**
+     * Manda un mensaje con imagen al número indicado.
+     * La imagen debe ser una URL pública accesible por Meta.
+     *
+     * @throws MetaApiException
+     */
+    public function sendImage(string $to, string $imageUrl, string $caption = ''): string
+    {
+        $image = ['link' => $imageUrl];
+        if ($caption !== '') {
+            $image['caption'] = $caption;
+        }
+
+        $response = $this->request('POST', "{$this->phoneNumberId}/messages", [
+            'messaging_product' => 'whatsapp',
+            'to'                => $to,
+            'type'              => 'image',
+            'image'             => $image,
+        ]);
+
+        $waId = data_get($response, 'messages.0.id');
+
+        if (!$waId) {
+            throw new MetaApiException(
+                'Meta no devolvió wa_message_id: ' . json_encode($response),
+                MetaApiException::KIND_UNKNOWN,
+                rawResponse: $response,
+            );
+        }
+
+        return $waId;
+    }
+
+    /**
      * Verifica la firma X-Hub-Signature-256 del webhook contra el app secret.
      * Meta firma el body crudo con HMAC-SHA256.
      */

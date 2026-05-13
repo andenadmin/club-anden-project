@@ -27,6 +27,9 @@ function csrf(): string {
 }
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
+    const isImage = msg.body.startsWith('[IMG]');
+    const imageUrl = isImage ? msg.body.slice(5) : null;
+
     if (msg.sender === 'user') {
         return (
             <div className="flex items-end gap-2 max-w-[78%]">
@@ -48,10 +51,18 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
         <div className="flex items-end gap-2 max-w-[78%] self-end flex-row-reverse">
             {avatar}
-            <div className={cn('rounded-2xl rounded-br-sm px-3.5 py-2 shadow-sm', bg)}>
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed break-words"
-                    dangerouslySetInnerHTML={{ __html: waMd(msg.body) }} />
-                <div className="flex items-center justify-end gap-1 mt-0.5">
+            <div className={cn('rounded-2xl rounded-br-sm shadow-sm overflow-hidden', isImage ? 'p-0' : 'px-3.5 py-2', bg)}>
+                {isImage ? (
+                    <img
+                        src={imageUrl!}
+                        alt="Imagen del bot"
+                        className="max-w-[260px] rounded-2xl rounded-br-sm block"
+                    />
+                ) : (
+                    <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed break-words"
+                        dangerouslySetInnerHTML={{ __html: waMd(msg.body) }} />
+                )}
+                <div className={cn('flex items-center justify-end gap-1 mt-0.5', isImage && 'px-2 pb-1')}>
                     <p className="text-[10px] text-gray-400">{fmtTime(msg.created_at)}</p>
                     {msg.wa_status === 'failed' && (
                         <span className="text-[10px] text-red-500 font-semibold">⚠ no enviado</span>
