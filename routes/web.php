@@ -6,11 +6,8 @@ use App\Http\Controllers\BotSimulatorController;
 use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::redirect('/', '/login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Bot Simulator

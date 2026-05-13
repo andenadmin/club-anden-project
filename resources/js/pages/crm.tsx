@@ -1,8 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Download, Search, Users } from 'lucide-react';
 import { useRef, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 
 interface CrmEntry {
     valor_lifetime: string;
@@ -39,8 +37,6 @@ interface Props {
     search: string;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'CRM Clientes', href: '/crm' }];
-
 const ETIQUETA_COLORS: Record<string, string> = {
     VIP:          'bg-yellow-100 text-yellow-800',
     Frecuente:    'bg-blue-100 text-blue-800',
@@ -70,10 +66,10 @@ export default function Crm({ clientes, search }: Props) {
     }
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <>
             <Head title="CRM Clientes" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-y-auto p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -230,9 +226,13 @@ export default function Crm({ clientes, search }: Props) {
                     </div>
                 )}
             </div>
-        </AppLayout>
+        </>
     );
 }
+
+Crm.layout = {
+    breadcrumbs: [{ title: 'CRM Clientes', href: '/crm' }],
+};
 
 function ReservaBadge({ count }: { count: number }) {
     if (count === 0) return <span className="text-muted-foreground">—</span>;

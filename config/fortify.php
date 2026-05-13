@@ -144,7 +144,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Features::registration(), // registro deshabilitado — usuarios solo por tinker
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
