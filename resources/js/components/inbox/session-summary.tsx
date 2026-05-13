@@ -61,6 +61,14 @@ function Pill({ children }: { children: React.ReactNode }) {
     );
 }
 
+function formatDato(v: unknown): string {
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'boolean') return v ? 'Sí' : 'No';
+    if (Array.isArray(v)) return v.length === 0 ? '—' : v.map(x => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ');
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+}
+
 export function SessionSummary({
     numero,
     cliente,
@@ -129,19 +137,21 @@ export function SessionSummary({
                     <Row label="Paso pendiente" value={labelizeStep(session.current_step)} />
                 )}
 
-                {Object.keys(session.datos_parciales).length > 0 && (
+                {Object.keys(session.datos_parciales).some(k => !k.startsWith('_')) && (
                     <>
                         <div className="border-t border-sidebar-border/50 my-4" />
                         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
                             Datos recolectados
                         </p>
-                        {Object.entries(session.datos_parciales).map(([k, v]) => (
-                            <Row
-                                key={k}
-                                label={labelizeStep(k)}
-                                value={String(v ?? '—')}
-                            />
-                        ))}
+                        {Object.entries(session.datos_parciales)
+                            .filter(([k]) => !k.startsWith('_'))
+                            .map(([k, v]) => (
+                                <Row
+                                    key={k}
+                                    label={labelizeStep(k)}
+                                    value={formatDato(v)}
+                                />
+                            ))}
                     </>
                 )}
 

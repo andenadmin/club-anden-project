@@ -246,7 +246,7 @@ class BotEngine
                 return $this->nextStep($session, 'hora', 'MSG_RES_02');
 
             case 'hora':
-                $hora = BotMessages::resolveOption('MSG_RES_02', $text);
+                $hora = $this->resolveHoraRestaurante($text);
                 if (!$hora) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_02')]);
                 }
@@ -611,8 +611,11 @@ class BotEngine
         $keys    = array_values(array_filter(array_keys($opts), fn ($k) => $k !== '0'));
         $upper   = strtoupper(trim($text));
 
-        // 1ra opción = confirmar
-        if ($upper === ($keys[0] ?? 'SI')) {
+        // 1ra opción = confirmar (acepta SI, SÍ, CONFIRMAR, CONFIRMO, CONFIRMAMOS)
+        $lower = strtolower(trim($text));
+        $esConfirmar = $upper === ($keys[0] ?? 'SI')
+            || in_array($lower, ['si', 'sí', 'confirmar', 'confirmo', 'confirmamos'], true);
+        if ($esConfirmar) {
             return $this->confirmarReserva($session);
         }
 
@@ -939,7 +942,7 @@ class BotEngine
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
                 return true;
             case 'hora':
-                $hora = BotMessages::resolveOption('MSG_RES_02', $text);
+                $hora = $this->resolveHoraRestaurante($text);
                 if (!$hora) return false;
                 $this->saveDato($session, 'hora', $hora);
                 return true;
@@ -1455,6 +1458,33 @@ class BotEngine
         return null;
     }
 
+    /**
+     * Resuelve la opción de hora para restaurante.
+     * Acepta clave directa (1-4) o texto libre con hora ("20hs", "20", "20:00").
+     */
+    private function resolveHoraRestaurante(string $text): ?string
+    {
+        $direct = BotMessages::resolveOption('MSG_RES_02', $text);
+        if ($direct) return $direct;
+
+        $parsed = $this->parseEventTime($text);
+        if (!$parsed) return null;
+
+        [$inputH, $inputM] = array_map('intval', explode(':', $parsed));
+
+        $opts = BotMessages::parseOptions('MSG_RES_02');
+        foreach ($opts as $key => $label) {
+            if ($key === '0') continue;
+            if (preg_match('/(\d{1,2})[.,](\d{2})\s*hs/i', $label, $m)) {
+                if ((int)$m[1] === $inputH && (int)$m[2] === $inputM) return $label;
+            } elseif (preg_match('/(\d{1,2})\s*hs/i', $label, $m)) {
+                if ((int)$m[1] === $inputH && $inputM === 0) return $label;
+            }
+        }
+
+        return null;
+    }
+
     private function isCancelOrModifyText(string $text): bool
     {
         $lower = strtr(strtolower(trim($text)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
@@ -1583,6 +1613,24 @@ class BotEngine
                 if (!$date->isAfter(Carbon::today())) {
                     $date->addYear();
                 }
+                return $date;
+            } catch (\Throwable) { return null; }
+        }
+
+        // "15 de julio" / "15 de julio de 2026"
+        $lower = strtr(strtolower(trim($raw)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+        $monthMap = [
+            'enero'=>1,'febrero'=>2,'marzo'=>3,'abril'=>4,'mayo'=>5,'junio'=>6,
+            'julio'=>7,'agosto'=>8,'septiembre'=>9,'octubre'=>10,'noviembre'=>11,'diciembre'=>12,
+        ];
+        $pattern = '/^(\d{1,2})\s+de\s+(' . implode('|', array_keys($monthMap)) . ')(?:\s+(?:de\s+)?(\d{4}))?$/';
+        if (preg_match($pattern, $lower, $m)) {
+            try {
+                $day   = (int)$m[1];
+                $month = $monthMap[$m[2]];
+                $year  = isset($m[3]) && $m[3] ? (int)$m[3] : now()->year;
+                $date  = Carbon::createFromDate($year, $month, $day)->startOfDay();
+                if (!$date->isAfter(Carbon::today())) $date->addYear();
                 return $date;
             } catch (\Throwable) { return null; }
         }

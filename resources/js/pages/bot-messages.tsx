@@ -123,7 +123,7 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                         >
                             Editar
                         </button>
-                        {msg.default_content !== null && msg.content !== msg.default_content && (
+                        {msg.default_content !== null && (
                             <button
                                 onClick={resetDefault}
                                 className="text-xs text-amber-600 border border-amber-300 rounded-lg px-3 py-1 hover:bg-amber-50 transition-colors"
