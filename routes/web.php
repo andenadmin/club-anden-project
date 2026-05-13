@@ -7,7 +7,9 @@ use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/login')->name('home');
+Route::get('/', function () {
+    return auth()->check() ? redirect('/inbox') : redirect('/login');
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Bot Simulator
