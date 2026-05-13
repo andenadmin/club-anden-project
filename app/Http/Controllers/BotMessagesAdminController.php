@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BotMessage;
+use App\Services\BotMessages;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -10,9 +11,13 @@ class BotMessagesAdminController extends Controller
 {
     public function index()
     {
+        $decorate = fn ($msg) => array_merge($msg->toArray(), [
+            'default_content' => BotMessages::hardcodedDefault($msg->key),
+        ]);
+
         return Inertia::render('bot-messages', [
-            'messages' => BotMessage::where('is_archived', false)->orderBy('category')->orderBy('id')->get(),
-            'archived' => BotMessage::where('is_archived', true)->orderBy('category')->orderBy('id')->get(),
+            'messages' => BotMessage::where('is_archived', false)->orderBy('category')->orderBy('id')->get()->map($decorate),
+            'archived' => BotMessage::where('is_archived', true)->orderBy('category')->orderBy('id')->get()->map($decorate),
         ]);
     }
 
@@ -37,5 +42,17 @@ class BotMessagesAdminController extends Controller
     {
         $botMessage->update(['is_archived' => false]);
         return back()->with('success', 'Mensaje restaurado.');
+    }
+
+    public function resetDefault(BotMessage $botMessage)
+    {
+        $default = BotMessages::hardcodedDefault($botMessage->key);
+
+        if ($default === null) {
+            return back()->with('error', 'Este mensaje es dinámico y no tiene un valor por defecto fijo.');
+        }
+
+        $botMessage->update(['content' => $default]);
+        return back()->with('success', 'Mensaje restaurado al valor por defecto.');
     }
 }

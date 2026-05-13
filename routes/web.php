@@ -3,6 +3,7 @@
 use App\Http\Controllers\BotMessagesAdminController;
 use App\Http\Controllers\BotPreciosController;
 use App\Http\Controllers\BotSimulatorController;
+use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
@@ -28,6 +29,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/bot/messages/{botMessage}', [BotMessagesAdminController::class, 'update'])->name('bot.messages.update');
     Route::patch('/bot/messages/{botMessage}/archive', [BotMessagesAdminController::class, 'archive'])->name('bot.messages.archive');
     Route::patch('/bot/messages/{botMessage}/restore', [BotMessagesAdminController::class, 'restore'])->name('bot.messages.restore');
+    Route::patch('/bot/messages/{botMessage}/reset-default', [BotMessagesAdminController::class, 'resetDefault'])->name('bot.messages.reset-default');
+
+    // CRM — solo super admins
+    Route::middleware('super_admin')->group(function () {
+        Route::get('/crm', [CrmController::class, 'index'])->name('crm.index');
+        Route::get('/crm/export', [CrmController::class, 'export'])->name('crm.export');
+    });
 
     // Inbox
     Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');

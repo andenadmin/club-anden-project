@@ -21,7 +21,6 @@ class BotMessages
 
     private static function template(string $id): string
     {
-        // Try DB first (with per-request cache)
         if (!isset(self::$cache[$id])) {
             $row = BotMessage::findByKey($id);
             self::$cache[$id] = $row?->content;
@@ -30,7 +29,17 @@ class BotMessages
             return self::$cache[$id];
         }
 
-        // Fallback to hardcoded defaults
+        if ($id === 'MSG_RES_01') return self::buildFechaRestaurante();
+
+        return self::hardcodedDefault($id) ?? "Lo siento, ocurrió un error interno. Por favor contactá a un asesor.";
+    }
+
+    /**
+     * Devuelve el contenido hardcodeado del mensaje, sin consultar la DB.
+     * Retorna null si el mensaje es dinámico (como MSG_RES_01) o si no existe.
+     */
+    public static function hardcodedDefault(string $id): ?string
+    {
         return match($id) {
             'MSG_BIENVENIDA_CONOCIDO' => "¡Hola, {{nombre}}! Bienvenido de nuevo a El Anden 🌿\n\nSoy Andy. ¿En qué puedo ayudarte hoy?\n\n*A.* Reserva tu cancha 🏅\n*B.* Reserva tu mesa 🍽️\n*C.* Eventos / Cumpleaños 🎉\n\n*0.* Hablar con un asesor\n\nRespondé con la letra de tu elección.",
             'MSG_REGISTRO_PEDIR_NOMBRE' => "¡Hola! Bienvenido a El Anden 🌿\nSoy Andy, el asistente de reservas.\n\nPara empezar, ¿cómo te llamás?",
@@ -42,10 +51,10 @@ class BotMessages
             // Deportes
             'MSG_DEP_01' => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
 
-            // Restaurante
-            'MSG_RES_01' => self::buildFechaRestaurante(),
+            // Restaurante — MSG_RES_01 es dinámico (fechas), no tiene default fijo
+            'MSG_RES_01' => null,
             'MSG_RES_02' => "¿A qué hora querés llegar?\n\n*1.* Turno 1: 12.30 hs\n*2.* Turno 2: 14 hs\n*3.* Turno 3: 20 hs\n*4.* Turno 4: 22 hs\n\n*0.* Hablar con un asesor",
-            'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*1.* 1 a 2 personas\n*2.* 3 a 4 personas\n*3.* 5 a 6 personas\n*4.* 7 a 8 personas\n*5.* Más de 8 personas\n\n*0.* Hablar con un asesor",
+            'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* Más de 8 personas\n\n*0.* Hablar con un asesor",
             'MSG_RES_04' => "¿Tenés preferencia de sector?\n\n*1.* Interior\n*2.* Exterior\n*3.* Sin preferencia\n\n*0.* Hablar con un asesor",
             'MSG_RES_05' => "¿A nombre de quién reservamos la mesa?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
             'MSG_RES_05_CUSTOM' => "Por favor ingresá el nombre del responsable de la reserva:",
@@ -81,7 +90,7 @@ class BotMessages
             'MSG_RESERVA_EXITOSA' => "✅ ¡Tu reserva está confirmada!\n\nGuardamos todos los datos. Si necesitás hacer algún cambio o tenés alguna consulta, no dudes en escribirnos.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto en El Anden! 🌿",
             'MSG_RESERVA_PRECONFIRMADA' => "✅ ¡Tu pre-reserva fue registrada!\n\nUn asesor de El Anden se va a comunicar con vos para confirmarla.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto! 🌿",
             'MSG_VOLVER_CONFIRMADA' => "Tu reserva ya fue confirmada, por lo que no es posible modificarla desde acá.\n\nSi necesitás hacer un cambio o cancelación, un asesor de El Anden puede ayudarte.\n\nEscribí *0* para hablar con un asesor.",
-            default => "Lo siento, ocurrió un error interno. Por favor contactá a un asesor.",
+            default => null,
         };
     }
 

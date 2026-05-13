@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
             'inboxUnreadTotal' => fn () => $request->user()
                 ? (int) BotSession::where('estado_actual', 'PAUSADO')->sum('unread_count')
                 : 0,
+            'isSuperAdmin' => fn () => (bool) $request->user()?->isSuperAdmin(),
         ];
     }
 }

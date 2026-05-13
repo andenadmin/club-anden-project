@@ -9,6 +9,7 @@ interface BotMessage {
     label: string;
     content: string;
     is_archived: boolean;
+    default_content: string | null;
 }
 
 interface Props {
@@ -83,6 +84,11 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
         router.patch(`/bot/messages/${msg.id}/archive`, {}, { preserveScroll: true });
     };
 
+    const resetDefault = () => {
+        if (!window.confirm('¿Restaurar este mensaje al texto por defecto del sistema? Se perderán los cambios actuales.')) return;
+        router.patch(`/bot/messages/${msg.id}/reset-default`, {}, { preserveScroll: true });
+    };
+
     const hints = VARS_HINT[msg.key] ?? [];
 
     return (
@@ -117,6 +123,15 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                         >
                             Editar
                         </button>
+                        {msg.default_content !== null && msg.content !== msg.default_content && (
+                            <button
+                                onClick={resetDefault}
+                                className="text-xs text-amber-600 border border-amber-300 rounded-lg px-3 py-1 hover:bg-amber-50 transition-colors"
+                                title="Restaurar al texto original del sistema"
+                            >
+                                ↩ Default
+                            </button>
+                        )}
                         <button
                             onClick={archive}
                             className="text-xs text-gray-400 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 hover:text-gray-600 transition-colors dark:border-neutral-600 dark:hover:bg-neutral-700"

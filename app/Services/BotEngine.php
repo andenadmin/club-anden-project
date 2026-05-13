@@ -80,7 +80,8 @@ class BotEngine
         }
 
         // Trigger global de escalado (prioridad absoluta)
-        if ($text === '0' || strtolower($text) === 'atencion') {
+        $lower = strtolower(trim($text));
+        if ($text === '0' || in_array($lower, ['atencion', 'asesor', 'quiero un asesor', 'necesito un asesor', 'hablar con asesor'], true)) {
             return $this->escalate($session, 'SOLICITUD_CLIENTE');
         }
 
@@ -230,10 +231,15 @@ class BotEngine
             case 'fecha':
                 $optsFecha = BotMessages::parseOptions('MSG_RES_01');
                 unset($optsFecha['0']);
-                if (!isset($optsFecha[strtoupper(trim($text))])) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_01')]);
+                if (isset($optsFecha[strtoupper(trim($text))])) {
+                    $fecha = BotMessages::resolveFechaRestaurante($text);
+                } else {
+                    $parsed = $this->parseRestauranteDate($text);
+                    if (!$parsed) {
+                        return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_01')]);
+                    }
+                    $fecha = $parsed->format('d/m/y');
                 }
-                $fecha = BotMessages::resolveFechaRestaurante($text);
                 $esFutura = Carbon::createFromFormat('d/m/y', $fecha)->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
@@ -248,7 +254,7 @@ class BotEngine
                 return $this->nextStep($session, 'numero_personas', 'MSG_RES_03');
 
             case 'numero_personas':
-                $personas = BotMessages::resolveOption('MSG_RES_03', $text);
+                $personas = $this->resolvePersonasRestaurante($text);
                 if (!$personas) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_03')]);
                 }
@@ -680,6 +686,11 @@ class BotEngine
 
     private function handleCompletado(BotSession $session, string $text): array
     {
+        // Si está en el flujo de deportes y escribe intención de cancelar/modificar → asesor
+        if ($session->rama_activa === 'DEPORTES' && $this->isCancelOrModifyText($text)) {
+            return $this->escalate($session, 'SOLICITUD_CLIENTE');
+        }
+
         // Cualquier mensaje reinicia desde MENU_PRINCIPAL
         $session->mergeEstado([
             'estado_actual'   => 'MENU_PRINCIPAL',
@@ -916,8 +927,13 @@ class BotEngine
     {
         switch ($campo) {
             case 'fecha':
-                if (!in_array($text, ['1','2','3','4','5','6','7'])) return false;
-                $fecha = BotMessages::resolveFechaRestaurante($text);
+                if (in_array($text, ['1','2','3','4','5','6','7'])) {
+                    $fecha = BotMessages::resolveFechaRestaurante($text);
+                } else {
+                    $parsed = $this->parseRestauranteDate($text);
+                    if (!$parsed) return false;
+                    $fecha = $parsed->format('d/m/y');
+                }
                 $esFutura = Carbon::createFromFormat('d/m/y', $fecha)->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
@@ -928,7 +944,7 @@ class BotEngine
                 $this->saveDato($session, 'hora', $hora);
                 return true;
             case 'numero_personas':
-                $personas = BotMessages::resolveOption('MSG_RES_03', $text);
+                $personas = $this->resolvePersonasRestaurante($text);
                 if (!$personas) return false;
                 $this->saveDato($session, 'numero_personas', $personas);
                 return true;
@@ -1412,6 +1428,118 @@ class BotEngine
             } catch (\Throwable) {}
         }
         return '12 a 22 hs';
+    }
+
+    /**
+     * Resuelve la opción de personas para restaurante.
+     * Acepta letra directa (A-E), número suelto (2), o texto libre ("2 personas").
+     */
+    private function resolvePersonasRestaurante(string $text): ?string
+    {
+        $direct = BotMessages::resolveOption('MSG_RES_03', $text);
+        if ($direct) return $direct;
+
+        if (preg_match('/^(\d+)/', trim($text), $m)) {
+            $n = (int)$m[1];
+            $key = match(true) {
+                $n >= 1 && $n <= 2 => 'A',
+                $n >= 3 && $n <= 4 => 'B',
+                $n >= 5 && $n <= 6 => 'C',
+                $n >= 7 && $n <= 8 => 'D',
+                $n >= 9            => 'E',
+                default            => null,
+            };
+            if ($key) return BotMessages::resolveOption('MSG_RES_03', $key);
+        }
+
+        return null;
+    }
+
+    private function isCancelOrModifyText(string $text): bool
+    {
+        $lower = strtr(strtolower(trim($text)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
+        $keywords = ['cancelar','cancelacion','cancel','modificar','modificacion','cambiar','cambio','cambios','anular','anulacion','baja','asesor','persona'];
+        foreach ($keywords as $kw) {
+            if ($lower === $kw || str_contains($lower, $kw)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Parsea lenguaje natural de fecha para el restaurante.
+     * Acepta: hoy, mañana, lunes, el jueves, jueves 14, jueves 14/05, jueves 14-05, 14/05, 14/05/26, etc.
+     */
+    private function parseRestauranteDate(string $text): ?Carbon
+    {
+        $lower = strtr(strtolower(trim($text)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
+
+        if ($lower === 'hoy')    return Carbon::today();
+        if (in_array($lower, ['manana', 'mañana'], true)) return Carbon::tomorrow();
+        if (in_array($lower, ['pasado manana', 'pasado mañana'], true)) return Carbon::today()->addDays(2);
+
+        $dayMap = [
+            'lunes'     => Carbon::MONDAY,
+            'martes'    => Carbon::TUESDAY,
+            'miercoles' => Carbon::WEDNESDAY,
+            'jueves'    => Carbon::THURSDAY,
+            'viernes'   => Carbon::FRIDAY,
+            'sabado'    => Carbon::SATURDAY,
+            'domingo'   => Carbon::SUNDAY,
+        ];
+
+        $normalized = preg_replace('/[-.]/', '/', $lower);
+        $normalized = preg_replace('/^(el|los|la|las|este|esta|proximo|próximo)\s+/', '', $normalized);
+
+        $dayOfWeek = null;
+        foreach ($dayMap as $name => $dow) {
+            if ($normalized === $name || str_starts_with($normalized, $name . ' ')) {
+                $dayOfWeek = $dow;
+                $normalized = trim(substr($normalized, strlen($name)));
+                break;
+            }
+        }
+
+        if ($normalized !== '') {
+            // dd/mm/yy
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $normalized, $m)) {
+                try {
+                    $date = Carbon::createFromFormat('d/m/y',
+                        str_pad($m[1],2,'0',STR_PAD_LEFT).'/'.str_pad($m[2],2,'0',STR_PAD_LEFT).'/'.$m[3]
+                    )->startOfDay();
+                    return $date->lt(Carbon::today()) ? null : $date;
+                } catch (\Throwable) { return null; }
+            }
+            // dd/mm
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $normalized, $m)) {
+                try {
+                    $date = Carbon::createFromDate(now()->year, (int)$m[2], (int)$m[1])->startOfDay();
+                    if ($date->lt(Carbon::today())) $date->addYear();
+                    return $date;
+                } catch (\Throwable) { return null; }
+            }
+            // "jueves 14" — día del mes con nombre de día conocido
+            if ($dayOfWeek !== null && preg_match('/^(\d{1,2})$/', $normalized, $m)) {
+                $day = (int)$m[1];
+                if ($day < 1 || $day > 31) return null;
+                $date = Carbon::today()->copy();
+                for ($i = 0; $i < 400; $i++, $date->addDay()) {
+                    if ($date->dayOfWeek === $dayOfWeek && $date->day === $day) {
+                        return $date->gte(Carbon::today()) ? $date->copy() : null;
+                    }
+                }
+                return null;
+            }
+            return null;
+        }
+
+        // Solo nombre de día: próxima ocurrencia (incluyendo hoy)
+        if ($dayOfWeek !== null) {
+            $today = Carbon::today();
+            if ($today->dayOfWeek === $dayOfWeek) return $today;
+            return $today->next($dayOfWeek)->startOfDay();
+        }
+
+        return null;
     }
 
     private function validarHoraNinos(int $hora, BotSession $session): bool

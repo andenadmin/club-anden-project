@@ -85,7 +85,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_RES_03',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — cantidad de personas',
-                'content'  => "¿Para cuántas personas es la reserva?\n\n*1.* 1 a 2 personas\n*2.* 3 a 4 personas\n*3.* 5 a 6 personas\n*4.* 7 a 8 personas\n*5.* Más de 8 personas\n\n*0.* Hablar con un asesor",
+                'content'  => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* Más de 8 personas\n\n*0.* Hablar con un asesor",
             ],
             [
                 'key'      => 'MSG_RES_04',

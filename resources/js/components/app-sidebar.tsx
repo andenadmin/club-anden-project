@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Inbox, MessageCircle, MessagesSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Inbox, MessageCircle, MessagesSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -41,12 +41,17 @@ function CollapseToggle() {
 }
 
 export function AppSidebar() {
-    const inboxUnread = (usePage().props as { inboxUnreadTotal?: number }).inboxUnreadTotal ?? 0;
+    const { inboxUnreadTotal, isSuperAdmin } = usePage().props as {
+        inboxUnreadTotal?: number;
+        isSuperAdmin?: boolean;
+    };
+    const inboxUnread = inboxUnreadTotal ?? 0;
 
     const mainNavItems: NavItem[] = [
         { title: 'Inbox',            href: '/inbox',         icon: Inbox,           badge: inboxUnread },
         { title: 'Bot Simulator',    href: '/bot',           icon: MessageCircle },
         { title: 'Mensajes del Bot', href: '/bot/messages',  icon: MessagesSquare },
+        ...(isSuperAdmin ? [{ title: 'CRM Clientes', href: '/crm', icon: Users }] : []),
     ];
 
     return (
