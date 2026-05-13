@@ -36,7 +36,7 @@ class BotMessages
             'MSG_REGISTRO_PEDIR_NOMBRE' => "¡Hola! Bienvenido a El Anden 🌿\nSoy Andy, el asistente de reservas.\n\nPara empezar, ¿cómo te llamás?",
             'MSG_REGISTRO_BIENVENIDA' => "¡Mucho gusto, {{nombre}}! Ya te registré en nuestro sistema.\n\n¿En qué puedo ayudarte hoy?\n\n*A.* Reserva tu cancha 🏅\n*B.* Reserva tu mesa 🍽️\n*C.* Eventos / Cumpleaños 🎉\n\n*0.* Hablar con un asesor\n\nRespondé con la letra de tu elección.",
             'MSG_OPCION_INVALIDA' => "No reconocí esa opción. Por favor elegí una de las opciones disponibles e intentá nuevamente.",
-            'MSG_ESCALADO_HUMANO' => "Entendido. En breve un asesor de El Anden se va a comunicar con vos.\n\nMientras tanto, el asistente automático queda en pausa.\n¡Hasta pronto! 😊",
+            'MSG_ESCALADO_HUMANO' => "Entendido. En breve un asesor de El Anden se va a comunicar con vos. 🙌\n\nMientras tanto, el asistente automático queda en pausa.\n\nSi preferís continuar sin esperar, escribí *reactivar bot* en cualquier momento.\n¡Hasta pronto! 😊",
             'MSG_TIMEOUT_ASESOR' => "¡Disculpá la demora! 🙏\n\nPasaron varias horas desde tu última consulta sin que pudiéramos terminarla. Para asegurarnos de tener tus datos al día, vamos a empezar de nuevo.\n\n¿En qué te ayudamos?",
 
             // Deportes
@@ -61,7 +61,7 @@ class BotMessages
             'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\nPara ver el detalle de las opciones con precios estimados: [LINK_MENU_PACKS]\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
             'MSG_EVT_02' => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_FERIADO_AVISO' => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
-            'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio entre las 8 y las 23 hs.\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
+            'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_03_HHMM' => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio.\nFormatos válidos: *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
             'MSG_EVT_NINOS_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del responsable\n*4.* Mail\n\n*0.* Hablar con un asesor",

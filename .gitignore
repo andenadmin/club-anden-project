@@ -5,7 +5,9 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/docs/
 /storage/*.key
+/storage/app/google/
 /storage/pail
 /resources/js/actions
 /resources/js/routes

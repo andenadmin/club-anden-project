@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Jobs\CreateCalendarEvent;
+use App\Mail\AdvisorAlertMail;
 use App\Models\BotSession;
 use App\Models\Cliente;
 use App\Models\ConversationMessage;
@@ -10,6 +12,7 @@ use App\Models\CostoEvento;
 use App\Models\Feriado;
 use App\Models\Reserva;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 class BotEngine
 {
@@ -61,6 +64,15 @@ class BotEngine
                 $session->mergeEstado([
                     'estado_actual'    => 'INICIO',
                     'timestamp_pausa'  => null,
+                ]);
+                return $this->handleInicio($session);
+            }
+            $normalized = strtolower(trim($text));
+            if (in_array($normalized, ['reactivar bot', 'reactivar', 'reactivar andy', 'continuar'], true)) {
+                $session->mergeEstado([
+                    'estado_actual'   => 'INICIO',
+                    'timestamp_pausa' => null,
+                    'unread_count'    => 0,
                 ]);
                 return $this->handleInicio($session);
             }
@@ -140,6 +152,14 @@ class BotEngine
         // Excluir opción 0 (escalado global)
         $keys    = array_values(array_filter(array_keys($opts), fn ($k) => $k !== '0'));
         $choice  = strtoupper(trim($text));
+
+        // Intentar resolver texto libre ("restaurante", "eventos", "deportes", etc.)
+        if (!isset($opts[$choice])) {
+            $aliasPos = $this->resolveMenuAlias($text);
+            if ($aliasPos !== null && isset($keys[$aliasPos])) {
+                $choice = $keys[$aliasPos];
+            }
+        }
 
         if (!isset($opts[$choice])) {
             return $this->handleInvalid(
@@ -311,17 +331,17 @@ class BotEngine
                 $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
                 $msgs = [];
                 if ($esFeriadoNinos) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
-                $msgs[] = BotMessages::render('MSG_EVT_03_ENTERO');
+                $msgs[] = BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)]);
                 return $msgs;
 
             case 'hora_inicio':
                 $horaNinos = $this->parseEventTime($text);
                 if (!$horaNinos) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO')]);
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
                 }
                 $horaIntNinos = (int) explode(':', $horaNinos)[0];
-                if ($horaIntNinos < 8 || $horaIntNinos > 23) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO')]);
+                if (!$this->validarHoraNinos($horaIntNinos, $session)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
                 }
                 $this->saveDato($session, 'hora_inicio', $horaIntNinos);
                 return $this->nextStep($session, 'numero_ninos', 'MSG_EVT_05');
@@ -647,6 +667,10 @@ class BotEngine
 
         $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'contador_invalidos' => 0]);
 
+        if (config('services.google.calendar_id')) {
+            CreateCalendarEvent::dispatch($reserva);
+        }
+
         return [$estado === 'PENDIENTE_CONFIRMACION'
             ? BotMessages::render('MSG_RESERVA_PRECONFIRMADA')
             : BotMessages::render('MSG_RESERVA_EXITOSA')];
@@ -774,9 +798,12 @@ class BotEngine
                 }
                 return [BotMessages::render('MSG_EVT_MAIL')];
             }
+            if ($paso === 'hora_inicio' && $subtipo === 'NINOS') {
+                return [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])];
+            }
             $msgMap = [
                 'fecha'              => 'MSG_EVT_02',
-                'hora_inicio'        => $subtipo === 'NINOS' ? 'MSG_EVT_03_ENTERO' : 'MSG_EVT_03_HHMM',
+                'hora_inicio'        => 'MSG_EVT_03_HHMM',
                 'numero_personas'    => 'MSG_EVT_PERSONAS',
                 'nombre_responsable' => 'MSG_EVT_07',
             ];
@@ -793,9 +820,14 @@ class BotEngine
 
         $result = $this->validateAndSaveCambioEvento($session, $cambiandoPaso, $text);
         if ($result === false) {
+            if ($cambiandoPaso === 'hora_inicio' && $subtipo === 'NINOS') {
+                return $this->handleInvalid($session, fn () => [
+                    BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])
+                ]);
+            }
             $msgMap = [
                 'fecha'                     => 'MSG_EVT_02',
-                'hora_inicio'               => $subtipo === 'NINOS' ? 'MSG_EVT_03_ENTERO' : 'MSG_EVT_03_HHMM',
+                'hora_inicio'               => 'MSG_EVT_03_HHMM',
                 'numero_personas'           => 'MSG_EVT_PERSONAS',
                 'nombre_responsable'        => 'MSG_EVT_07',
                 'nombre_responsable_custom' => 'MSG_EVT_07_CUSTOM',
@@ -841,7 +873,7 @@ class BotEngine
                 if (!$hora) return false;
                 if ($subtipo === 'NINOS') {
                     $h = (int) explode(':', $hora)[0];
-                    if ($h < 8 || $h > 23) return false;
+                    if (!$this->validarHoraNinos($h, $session)) return false;
                     $this->saveDato($session, 'hora_inicio', $h);
                 } else {
                     $this->saveDato($session, 'hora_inicio', $hora);
@@ -924,6 +956,16 @@ class BotEngine
             'timestamp_pausa'     => Carbon::now(),
             'contador_invalidos'  => 0,
         ]);
+
+        $recipient = config('services.advisor.alert_email');
+        if ($recipient) {
+            try {
+                Mail::to($recipient)->queue(new AdvisorAlertMail($session, $motivo));
+            } catch (\Throwable) {
+                // No bloquear el bot si el mail falla
+            }
+        }
+
         return [BotMessages::render('MSG_ESCALADO_HUMANO')];
     }
 
@@ -1286,7 +1328,7 @@ class BotEngine
                 $msgMap = [
                     'pack_seleccionado'         => fn() => [BotMessages::render('MSG_EVT_NINOS_PACK')],
                     'fecha'                     => fn() => [BotMessages::render('MSG_EVT_02')],
-                    'hora_inicio'               => fn() => [BotMessages::render('MSG_EVT_03_ENTERO')],
+                    'hora_inicio'               => fn() => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])],
                     'numero_ninos'              => fn() => [BotMessages::render('MSG_EVT_05')],
                     'menu_preferido'            => fn() => [BotMessages::render('MSG_EVT_MENU')],
                     'numero_adultos'            => fn() => [BotMessages::render('MSG_EVT_ADULTOS', [
@@ -1333,6 +1375,57 @@ class BotEngine
             return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $mailConocido])];
         }
         return [BotMessages::render($fallbackMsgId)];
+    }
+
+    /**
+     * Mapea texto libre a posición del menú principal (0=deportes, 1=restaurante, 2=eventos).
+     * Devuelve null si no hay coincidencia.
+     */
+    private function resolveMenuAlias(string $text): ?int
+    {
+        $lower = strtolower(trim($text));
+
+        $aliases = [
+            0 => ['deporte', 'deportes', 'cancha', 'canchas', 'futbol', 'fútbol', 'padel', 'pádel', 'tenis', 'sport', 'sports'],
+            1 => ['restaurante', 'restaurantes', 'mesa', 'comer', 'almorzar', 'cenar', 'comida'],
+            2 => ['evento', 'eventos', 'cumpleaños', 'cumpleanos', 'fiesta', 'fiestas', 'cumple', 'birthday'],
+        ];
+
+        foreach ($aliases as $pos => $words) {
+            foreach ($words as $word) {
+                if ($lower === $word || str_contains($lower, $word)) {
+                    return $pos;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function getRangoHorarioNinos(BotSession $session): string
+    {
+        $fecha = $session->getDatos('fecha');
+        if ($fecha) {
+            try {
+                $carbon = Carbon::createFromFormat('d/m/y', $fecha);
+                return $carbon->isWeekend() ? '17 a 22 hs' : '12 a 17 hs';
+            } catch (\Throwable) {}
+        }
+        return '12 a 22 hs';
+    }
+
+    private function validarHoraNinos(int $hora, BotSession $session): bool
+    {
+        $fecha = $session->getDatos('fecha');
+        if ($fecha) {
+            try {
+                $carbon = Carbon::createFromFormat('d/m/y', $fecha);
+                return $carbon->isWeekend()
+                    ? ($hora >= 17 && $hora <= 22)
+                    : ($hora >= 12 && $hora <= 17);
+            } catch (\Throwable) {}
+        }
+        return $hora >= 8 && $hora <= 23;
     }
 
     /**

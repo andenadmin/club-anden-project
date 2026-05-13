@@ -35,6 +35,15 @@ return [
         ],
     ],
 
+    'advisor' => [
+        'alert_email' => env('ADVISOR_ALERT_EMAIL'),
+    ],
+
+    'google' => [
+        'service_account_path' => env('GOOGLE_SERVICE_ACCOUNT_PATH', storage_path('app/google/service-account.json')),
+        'calendar_id'          => env('GOOGLE_CALENDAR_ID'),
+    ],
+
     'whatsapp' => [
         'phone_number_id'      => env('WHATSAPP_PHONE_NUMBER_ID'),
         'business_account_id'  => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),

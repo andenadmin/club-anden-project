@@ -39,7 +39,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_ESCALADO_HUMANO',
                 'category' => 'general',
                 'label'    => 'Escalado a asesor humano',
-                'content'  => "Entendido. En breve un asesor de El Anden se va a comunicar con vos.\n\nMientras tanto, el asistente automático queda en pausa.\n¡Hasta pronto! 😊",
+                'content'  => "Entendido. En breve un asesor de El Anden se va a comunicar con vos. 🙌\n\nMientras tanto, el asistente automático queda en pausa.\n\nSi preferís continuar sin esperar, escribí *reactivar bot* en cualquier momento.\n¡Hasta pronto! 😊",
             ],
             [
                 'key'      => 'MSG_TIMEOUT_ASESOR',
@@ -171,7 +171,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_EVT_03_ENTERO',
                 'category' => 'eventos',
                 'label'    => 'Eventos — hora (número entero)',
-                'content'  => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio entre las 8 y las 23 hs.\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
+                'content'  => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             ],
             [
                 'key'      => 'MSG_EVT_03_HHMM',

@@ -10,10 +10,9 @@ class BotMessagesAdminController extends Controller
 {
     public function index()
     {
-        $messages = BotMessage::orderBy('category')->orderBy('id')->get();
-
         return Inertia::render('bot-messages', [
-            'messages' => $messages,
+            'messages' => BotMessage::where('is_archived', false)->orderBy('category')->orderBy('id')->get(),
+            'archived' => BotMessage::where('is_archived', true)->orderBy('category')->orderBy('id')->get(),
         ]);
     }
 
@@ -26,5 +25,17 @@ class BotMessagesAdminController extends Controller
         $botMessage->update(['content' => $request->content]);
 
         return back()->with('success', 'Mensaje guardado.');
+    }
+
+    public function archive(BotMessage $botMessage)
+    {
+        $botMessage->update(['is_archived' => true]);
+        return back()->with('success', 'Mensaje archivado.');
+    }
+
+    public function restore(BotMessage $botMessage)
+    {
+        $botMessage->update(['is_archived' => false]);
+        return back()->with('success', 'Mensaje restaurado.');
     }
 }
