@@ -1423,14 +1423,7 @@ class BotEngine
 
     private function getRangoHorarioNinos(BotSession $session): string
     {
-        $fecha = $session->getDatos('fecha');
-        if ($fecha) {
-            try {
-                $carbon = Carbon::createFromFormat('d/m/y', $fecha);
-                return $carbon->isWeekend() ? '17 a 22 hs' : '12 a 17 hs';
-            } catch (\Throwable) {}
-        }
-        return '12 a 22 hs';
+        return '8 a 23 hs';
     }
 
     /**
@@ -1574,15 +1567,6 @@ class BotEngine
 
     private function validarHoraNinos(int $hora, BotSession $session): bool
     {
-        $fecha = $session->getDatos('fecha');
-        if ($fecha) {
-            try {
-                $carbon = Carbon::createFromFormat('d/m/y', $fecha);
-                return $carbon->isWeekend()
-                    ? ($hora >= 17 && $hora <= 22)
-                    : ($hora >= 12 && $hora <= 17);
-            } catch (\Throwable) {}
-        }
         return $hora >= 8 && $hora <= 23;
     }
 
