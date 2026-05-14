@@ -31,7 +31,8 @@
       "PowerShell(php artisan route:list --path=inbox 2>&1 | Select-Object -Last 12)",
       "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4.php';\")",
       "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4_deep.php';\")",
-      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase5.php';\")"
+      "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase5.php';\")",
+      "Bash(npx tsc *)"
     ]
   }
 }

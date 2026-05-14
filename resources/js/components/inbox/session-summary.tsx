@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Pause, Play, RotateCcw, X } from 'lucide-react';
+import { Pause, Pencil, Play, RotateCcw, X } from 'lucide-react';
 import { useState } from 'react';
 import {
     ESTADO_LABELS,
@@ -80,8 +80,21 @@ export function SessionSummary({
     session: SessionData;
     onClose?: () => void;
 }) {
-    const [busy, setBusy] = useState<null | 'pause' | 'resume' | 'restart'>(null);
+    const [busy, setBusy]           = useState<null | 'pause' | 'resume' | 'restart'>(null);
+    const [editingName, setEditing] = useState(false);
+    const [nameDraft, setNameDraft] = useState('');
+    const [savingName, setSaving]   = useState(false);
     const isPaused = session.estado_actual === 'PAUSADO';
+
+    const saveName = () => {
+        const nombre = nameDraft.trim();
+        if (!nombre || savingName) return;
+        setSaving(true);
+        router.patch(`/inbox/${numero}/cliente`, { nombre }, {
+            preserveScroll: true,
+            onFinish: () => { setSaving(false); setEditing(false); },
+        });
+    };
 
     const post = (action: 'pause' | 'resume' | 'restart') => {
         if (busy) return;
@@ -111,7 +124,56 @@ export function SessionSummary({
                         </button>
                     )}
                 </div>
-                <Row label="Nombre"   value={cliente?.nombre_cliente ?? '—'} />
+                {editingName ? (
+                    <div className="mb-2.5">
+                        <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-1">Nombre</p>
+                        <div className="flex items-center gap-1">
+                            <input
+                                autoFocus
+                                value={nameDraft}
+                                onChange={e => setNameDraft(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') saveName();
+                                    if (e.key === 'Escape') setEditing(false);
+                                }}
+                                disabled={savingName}
+                                className="flex-1 min-w-0 text-xs border border-gray-300 dark:border-neutral-600 rounded px-2 py-1 bg-white dark:bg-neutral-800 outline-none focus:ring-1 focus:ring-emerald-600 disabled:opacity-60"
+                            />
+                            <button
+                                onClick={saveName}
+                                disabled={savingName || !nameDraft.trim()}
+                                className="text-[10px] font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded px-2 py-1 disabled:opacity-50 shrink-0"
+                            >
+                                {savingName ? '…' : 'Guardar'}
+                            </button>
+                            <button
+                                onClick={() => setEditing(false)}
+                                disabled={savingName}
+                                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                            >
+                                <X className="size-3" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mb-2.5">
+                        <p className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">Nombre</p>
+                        <div className="flex items-center gap-1">
+                            <p className="text-xs font-medium text-gray-700 dark:text-neutral-200">
+                                {cliente?.nombre_cliente ?? '—'}
+                            </p>
+                            {cliente && (
+                                <button
+                                    onClick={() => { setNameDraft(cliente.nombre_cliente ?? ''); setEditing(true); }}
+                                    className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400 hover:text-gray-600 transition-colors"
+                                    aria-label="Editar nombre"
+                                >
+                                    <Pencil className="size-3" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
                 <Row label="Teléfono" value={numero} />
                 {cliente?.mail && <Row label="Mail" value={cliente.mail} />}
                 <Row

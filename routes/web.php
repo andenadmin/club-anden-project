@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('inbox.reply')
         ->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/read',      [InboxController::class, 'markRead'])->name('inbox.read')->where('numero', '[0-9]+');
+    Route::patch('/inbox/{numero}/cliente',  [InboxController::class, 'updateCliente'])->name('inbox.cliente.update')->where('numero', '[0-9]+');
 });
 
 require __DIR__.'/settings.php';

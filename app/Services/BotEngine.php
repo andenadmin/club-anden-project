@@ -91,14 +91,15 @@ class BotEngine
         }
 
         return match ($session->estado_actual) {
-            'INICIO'             => $this->handleInicio($session),
-            'REGISTRO_CLIENTE'   => $this->handleRegistroCliente($session, $text),
-            'MENU_PRINCIPAL'     => $this->handleMenuPrincipal($session, $text),
-            'RECOLECTANDO_DATOS' => $this->handleRecolectandoDatos($session, $text),
-            'CONFIRMACION'       => $this->handleConfirmacion($session, $text),
-            'COMPLETADO'         => $this->handleCompletado($session, $text),
-            'CAMBIANDO_DATO'     => $this->handleCambiandoDato($session, $text),
-            default              => $this->handleInicio($session),
+            'INICIO'               => $this->handleInicio($session),
+            'REGISTRO_CLIENTE'     => $this->handleRegistroCliente($session, $text),
+            'CONFIRMANDO_NOMBRE'   => $this->handleConfirmandoNombre($session, $text),
+            'MENU_PRINCIPAL'       => $this->handleMenuPrincipal($session, $text),
+            'RECOLECTANDO_DATOS'   => $this->handleRecolectandoDatos($session, $text),
+            'CONFIRMACION'         => $this->handleConfirmacion($session, $text),
+            'COMPLETADO'           => $this->handleCompletado($session, $text),
+            'CAMBIANDO_DATO'       => $this->handleCambiandoDato($session, $text),
+            default                => $this->handleInicio($session),
         };
     }
 
@@ -138,11 +139,42 @@ class BotEngine
 
     private function handleRegistroCliente(BotSession $session, string $text): array
     {
-        $nombre  = $text;
+        $nombre = trim($text);
+        $datos  = array_merge($session->datos_parciales ?? [], ['_nombre_pendiente' => $nombre]);
+        $session->mergeEstado([
+            'datos_parciales'   => $datos,
+            'estado_actual'     => 'CONFIRMANDO_NOMBRE',
+            'contador_invalidos' => 0,
+        ]);
+        return [BotMessages::render('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre])];
+    }
+
+    private function handleConfirmandoNombre(BotSession $session, string $text): array
+    {
+        $upper = strtoupper(trim($text));
+        $lower = strtolower(trim($text));
+        $esSi  = in_array($upper, ['SI', 'SÍ', 'S'], true)
+              || in_array($lower, ['sí', 'si', 'confirmar', 'confirmo', 'yes'], true);
+
+        if (!$esSi) {
+            // El usuario escribió su nombre correcto → preguntar de nuevo
+            $nombre = trim($text);
+            $datos  = array_merge($session->datos_parciales ?? [], ['_nombre_pendiente' => $nombre]);
+            $session->mergeEstado(['datos_parciales' => $datos, 'contador_invalidos' => 0]);
+            return [BotMessages::render('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre])];
+        }
+
+        $nombre  = $session->datos_parciales['_nombre_pendiente'] ?? trim($text);
         $cliente = Cliente::find($session->id_cliente);
         $cliente?->update(['nombre_cliente' => $nombre]);
 
-        $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'contador_invalidos' => 0]);
+        $datos = $session->datos_parciales ?? [];
+        unset($datos['_nombre_pendiente']);
+        $session->mergeEstado([
+            'datos_parciales'   => $datos,
+            'estado_actual'     => 'MENU_PRINCIPAL',
+            'contador_invalidos' => 0,
+        ]);
         return [BotMessages::render('MSG_REGISTRO_BIENVENIDA', ['nombre' => $nombre])];
     }
 
@@ -301,7 +333,7 @@ class BotEngine
             if ($nuevoSubtipo === 'NINOS') {
                 $session->mergeEstado(['current_step' => 'pack_seleccionado']);
                 return [
-                    '[IMG]' . rtrim(config('app.url'), '/') . '/storage/anden_cumple_ninos.png',
+                    '[IMG]' . rtrim(config('app.url'), '/') . '/images/anden_cumple_ninos.png',
                     'o podés verlo acá: https://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link',
                     BotMessages::render('MSG_EVT_NINOS_PACK'),
                 ];
@@ -310,7 +342,7 @@ class BotEngine
             $session->mergeEstado(['current_step' => 'fecha']);
             $responses = [];
             if ($upper === ($keysEvt[2] ?? '3')) {
-                $responses[] = '[IMG]' . rtrim(config('app.url'), '/') . '/storage/anden_cumples_adolescentes.png';
+                $responses[] = '[IMG]' . rtrim(config('app.url'), '/') . '/images/anden_cumples_adolescentes.png';
                 $responses[] = 'o podés verlo acá: https://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing';
             }
             $responses[] = BotMessages::render('MSG_EVT_02');
@@ -1032,7 +1064,7 @@ class BotEngine
         $this->pushHistory($session);
         $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
         return [
-            '[IMG]' . rtrim(config('app.url'), '/') . '/storage/terminos_condiciones.png',
+            '[IMG]' . rtrim(config('app.url'), '/') . '/images/terminos_condiciones.png',
             'o podés verlo acá: https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing',
             $this->buildConfirmacionMsg($session),
         ];

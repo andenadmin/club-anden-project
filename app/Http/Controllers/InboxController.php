@@ -148,6 +148,20 @@ class InboxController extends Controller
     }
 
     /**
+     * El asesor edita el nombre del cliente desde el panel.
+     */
+    public function updateCliente(Request $request, string $numero): RedirectResponse
+    {
+        $request->validate(['nombre' => 'required|string|max:255']);
+
+        $session = $this->findSessionOrFail($numero);
+        $cliente = Cliente::find($session->id_cliente);
+        $cliente?->update(['nombre_cliente' => trim($request->input('nombre'))]);
+
+        return back();
+    }
+
+    /**
      * Marca como leído (resetea unread_count). Lo llama el frontend al abrir la conversación.
      */
     public function markRead(string $numero): JsonResponse
