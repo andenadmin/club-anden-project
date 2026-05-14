@@ -49,9 +49,8 @@ class GoogleCalendarService
         $end->setTimeZone(config('app.timezone', 'America/Argentina/Buenos_Aires'));
         $event->setEnd($end);
 
-        if ($attendeeEmail) {
-            $event->setAttendees([['email' => $attendeeEmail]]);
-        }
+        // Service accounts with regular Gmail can't add attendees (requires Google Workspace + Domain-Wide Delegation)
+        // Client email is included in the event description instead
 
         $created = $this->calendar->events->insert($this->calendarId, $event);
 
