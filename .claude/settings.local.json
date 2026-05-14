@@ -32,7 +32,14 @@
       "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4.php';\")",
       "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase4_deep.php';\")",
       "PowerShell(php artisan tinker --execute=\"require 'storage/framework/verify_phase5.php';\")",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(ssh *)",
+      "Read(//c/Users/Compumar/.ssh/**)",
+      "Bash(chmod 600 ~/.ssh/id_rsa)",
+      "Bash(chmod 600 ~/.ssh/forge_key)",
+      "Bash(scp *)",
+      "Bash(composer require *)",
+      "Bash(git add *)"
     ]
   }
 }
