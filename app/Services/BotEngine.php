@@ -318,6 +318,24 @@ class BotEngine
             $optsEvt = BotMessages::parseOptions('MSG_EVT_01');
             $keysEvt = array_values(array_filter(array_keys($optsEvt), fn ($k) => $k !== '0'));
             $upper   = strtoupper(trim($text));
+
+            // Resolver aliases de texto para tipo de evento
+            $tipoAliases = [
+                '1' => ['privado', 'evento privado', 'asesor'],
+                '2' => ['niños', 'ninos', 'chicos', 'kids', 'infantil', 'niño', 'nino', 'pequeños', 'pequeños'],
+                '3' => ['adolescentes', 'adolescente', 'jovenes', 'jóvenes', 'teen', 'teens'],
+                '4' => ['adultos', 'adulto', 'grande', 'grandes', 'mayores'],
+            ];
+            $lower = strtolower(trim($text));
+            foreach ($tipoAliases as $key => $words) {
+                foreach ($words as $word) {
+                    if ($lower === $word || str_contains($lower, $word)) {
+                        $upper = $key;
+                        break 2;
+                    }
+                }
+            }
+
             if (!isset($optsEvt[$upper])) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_01')]);
             }
