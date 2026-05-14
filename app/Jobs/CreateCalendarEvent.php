@@ -21,13 +21,14 @@ class CreateCalendarEvent implements ShouldQueue
 
     public function handle(GoogleCalendarService $calendar): void
     {
-        $datos  = $this->reserva->datos ?? [];
-        $rama   = $this->reserva->rama_servicio;
-        $estado = $this->reserva->estado_reserva;
+        $datos   = $this->reserva->datos ?? [];
+        $rama    = $this->reserva->rama_servicio;
+        $estado  = $this->reserva->estado_reserva;
+        $telefono = $this->reserva->cliente?->numero_contacto;
 
         [$titulo, $descripcion, $start, $end, $mail] = match ($rama) {
-            'RESTAURANTE' => $this->buildRestaurante($datos, $estado),
-            'EVENTOS'     => $this->buildEvento($datos, $estado, $this->reserva->subtipo),
+            'RESTAURANTE' => $this->buildRestaurante($datos, $estado, $telefono),
+            'EVENTOS'     => $this->buildEvento($datos, $estado, $this->reserva->subtipo, $telefono),
             default       => [null, null, null, null, null],
         };
 
@@ -38,7 +39,7 @@ class CreateCalendarEvent implements ShouldQueue
 
     // ─── Builders ─────────────────────────────────────────────────────────────
 
-    private function buildRestaurante(array $datos, string $estado): array
+    private function buildRestaurante(array $datos, string $estado, ?string $telefono = null): array
     {
         $nombre   = $datos['nombre_responsable'] ?? 'Sin nombre';
         $personas = $datos['numero_personas']    ?? '?';
@@ -54,6 +55,7 @@ class CreateCalendarEvent implements ShouldQueue
         $descripcion = implode("\n", array_filter([
             "Cliente: {$nombre}",
             "Personas: {$personas}",
+            $telefono ? "Teléfono: {$telefono}" : null,
             $mail ? "Mail: {$mail}" : null,
         ]));
 
@@ -63,7 +65,7 @@ class CreateCalendarEvent implements ShouldQueue
         return [$titulo, $descripcion, $carbon->toIso8601String(), $carbon->copy()->addHours(2)->toIso8601String(), $mail];
     }
 
-    private function buildEvento(array $datos, string $estado, ?string $subtipo): array
+    private function buildEvento(array $datos, string $estado, ?string $subtipo, ?string $telefono = null): array
     {
         $nombre     = $datos['nombre_responsable'] ?? 'Sin nombre';
         $tipo       = $datos['tipo_evento']        ?? 'Evento';
@@ -84,6 +86,7 @@ class CreateCalendarEvent implements ShouldQueue
                 "Niños: {$ninos}",
                 "Pack: " . ($datos['pack_seleccionado'] ?? '?'),
                 isset($datos['numero_adultos']) ? "Adultos: {$datos['numero_adultos']}" : null,
+                $telefono ? "Teléfono: {$telefono}" : null,
                 $mail ? "Mail: {$mail}" : null,
             ]));
 
@@ -102,6 +105,7 @@ class CreateCalendarEvent implements ShouldQueue
         $descripcion = implode("\n", array_filter([
             "Responsable: {$nombre}",
             "Personas: {$personas}",
+            $telefono ? "Teléfono: {$telefono}" : null,
             $mail ? "Mail: {$mail}" : null,
         ]));
 
