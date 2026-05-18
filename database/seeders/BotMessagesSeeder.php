@@ -71,7 +71,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_DEP_01',
                 'category' => 'deportes',
                 'label'    => 'Información de canchas',
-                'content'  => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
+                'content'  => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n🏢 Oficina deportiva (atención al público): *8 a 23.30 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
             ],
 
             // ─── Restaurante ─────────────────────────────────────────────────
@@ -79,13 +79,19 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_RES_02',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — elegir horario',
-                'content'  => "¿A qué hora querés llegar?\n\n*1.* Turno 1: 12.30 hs\n*2.* Turno 2: 14 hs\n*3.* Turno 3: 20 hs\n*4.* Turno 4: 22 hs\n\n*0.* Hablar con un asesor",
+                'content'  => "¿A qué hora querés llegar?\n\n*1.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*2.* Turno mediodía 2: 14 hs\n*3.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*4.* Turno noche 1: 20 hs\n*5.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
             ],
             [
                 'key'      => 'MSG_RES_03',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — cantidad de personas',
-                'content'  => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* Más de 8 personas\n\n*0.* Hablar con un asesor",
+                'content'  => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
+            ],
+            [
+                'key'      => 'MSG_RES_15PLUS',
+                'category' => 'restaurante',
+                'label'    => 'Restaurante — grupos de 15 o más personas',
+                'content'  => "ℹ️ Para grupos de *15 o más personas*, la reserva requiere coordinación previa con nuestro equipo.\n\n⚠️ Los sábados y domingos al mediodía, grupos de 15 o más personas tienen *menú fijo completo obligatorio*.\n\nUn asesor se va a comunicar con vos para coordinar todos los detalles.",
             ],
             [
                 'key'      => 'MSG_RES_04',
@@ -115,7 +121,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_CONFIRMAR_MAIL',
                 'category' => 'general',
                 'label'    => 'Confirmación de mail conocido',
-                'content'  => "Tu mail registrado es *{{mail}}*.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
+                'content'  => "Tu mail registrado es {{mail}}.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
             ],
             [
                 'key'      => 'MSG_RES_MAIL_INVALIDO',
@@ -263,12 +269,24 @@ class BotMessagesSeeder extends Seeder
                 'label'    => 'Eventos — cantidad de personas',
                 'content'  => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
             ],
+            [
+                'key'      => 'MSG_EVT_PERSONAS_AVISO_MENU',
+                'category' => 'eventos',
+                'label'    => 'Eventos — aviso menú para más de 15 personas',
+                'content'  => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
+            ],
             // ─── Navegación ──────────────────────────────────────────────────
             [
                 'key'      => 'MSG_VOLVER_CONFIRMADA',
                 'category' => 'general',
                 'label'    => 'Volver — reserva ya confirmada',
                 'content'  => "Tu reserva ya fue confirmada, por lo que no es posible modificarla desde acá.\n\nSi necesitás hacer un cambio o cancelación, un asesor de El Anden puede ayudarte.\n\nEscribí *0* para hablar con un asesor.",
+            ],
+            [
+                'key'      => 'MSG_DESPEDIDA',
+                'category' => 'general',
+                'label'    => 'Despedida',
+                'content'  => "¡Hasta pronto! 👋\n\nSi necesitás algo, escribinos cuando quieras. En El Anden siempre vas a tener un lugar 🌿",
             ],
         ];
 
