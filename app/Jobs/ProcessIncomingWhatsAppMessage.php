@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\BotSession;
 use App\Models\ConversationMessage;
 use App\Services\BotEngine;
+use App\Services\Meta\WhatsAppClient;
 use App\Services\Meta\WhatsAppSender;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,12 +26,15 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         public readonly string $waMessageId,
     ) {}
 
-    public function handle(BotEngine $engine, WhatsAppSender $sender): void
+    public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClient $client): void
     {
         // Idempotencia: si ya procesamos este wa_message_id, salir.
         if (ConversationMessage::where('wa_message_id', $this->waMessageId)->exists()) {
             return;
         }
+
+        // Marcar como leído (doble tilde azul en el lado del usuario)
+        $client->markAsRead($this->waMessageId);
 
         $responses = $engine->process($this->from, $this->body);
 

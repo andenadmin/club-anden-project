@@ -68,7 +68,7 @@ class BotEngine
                 return $this->handleInicio($session);
             }
             $normalized = strtolower(trim($text));
-            if (in_array($normalized, ['reactivar bot', 'reactivar', 'reactivar andy', 'continuar'], true)) {
+            if (str_contains($normalized, 'reactivar') || $normalized === 'continuar') {
                 $session->mergeEstado([
                     'estado_actual'   => 'INICIO',
                     'timestamp_pausa' => null,
@@ -88,6 +88,11 @@ class BotEngine
         // Navegación hacia atrás
         if (in_array(strtolower($text), ['atras', 'atrás', 'volver', 'back'], true)) {
             return $this->handleBack($session);
+        }
+
+        // Salir / despedida global
+        if (in_array(strtolower($text), ['salir', 'exit', 'chau', 'hasta luego', 'bye'], true)) {
+            return $this->handleSalir($session);
         }
 
         return match ($session->estado_actual) {
@@ -289,6 +294,15 @@ class BotEngine
                 $personas = $this->resolvePersonasRestaurante($text);
                 if (!$personas) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_03')]);
+                }
+                // 15 o más personas (opción F o número ≥ 15) → aviso + asesor
+                $upper15 = strtoupper(trim($text));
+                $num15   = preg_match('/^(\d+)/', trim($text), $m15) ? (int)$m15[1] : 0;
+                if ($upper15 === 'F' || $num15 >= 15) {
+                    return array_merge(
+                        [BotMessages::render('MSG_RES_15PLUS')],
+                        $this->escalate($session, 'SOLICITUD_CLIENTE')
+                    );
                 }
                 $this->saveDato($session, 'numero_personas', $personas);
                 $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
@@ -625,7 +639,11 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_PERSONAS')]);
                 }
                 $this->saveDato($session, 'numero_personas', (int)$text);
-                return $this->nextStep($session, 'nombre_responsable', 'MSG_EVT_07');
+                $msgs = [];
+                if ((int)$text > 15) {
+                    $msgs[] = BotMessages::render('MSG_EVT_PERSONAS_AVISO_MENU');
+                }
+                return array_merge($msgs, $this->nextStep($session, 'nombre_responsable', 'MSG_EVT_07'));
 
             case 'nombre_responsable':
                 $optsG07  = BotMessages::parseOptions('MSG_EVT_07');
@@ -820,6 +838,18 @@ class BotEngine
                 $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
                 return [$this->buildConfirmacionMsg($session)];
             });
+        }
+
+        // Si está cambiando número de personas a 15+, escalamos igual que en el flujo normal
+        if ($cambiandoPaso === 'numero_personas') {
+            $upperC = strtoupper(trim($text));
+            $numC   = preg_match('/^(\d+)/', trim($text), $mC) ? (int)$mC[1] : 0;
+            if ($upperC === 'F' || $numC >= 15) {
+                return array_merge(
+                    [BotMessages::render('MSG_RES_15PLUS')],
+                    $this->escalate($session, 'SOLICITUD_CLIENTE')
+                );
+            }
         }
 
         $result = $this->validateAndSaveCambio($session, $cambiandoPaso, $text);
@@ -1381,6 +1411,19 @@ class BotEngine
         return $this->getMessageForStep($session);
     }
 
+    private function handleSalir(BotSession $session): array
+    {
+        $session->mergeEstado([
+            'estado_actual'      => 'INICIO',
+            'rama_activa'        => null,
+            'subtipo_activo'     => null,
+            'current_step'       => null,
+            'datos_parciales'    => [],
+            'contador_invalidos' => 0,
+        ]);
+        return [BotMessages::render('MSG_DESPEDIDA')];
+    }
+
     private function getMessageForStep(BotSession $session): array
     {
         $rama    = $session->rama_activa;
@@ -1502,12 +1545,13 @@ class BotEngine
         if (preg_match('/^(\d+)/', trim($text), $m)) {
             $n = (int)$m[1];
             $key = match(true) {
-                $n >= 1 && $n <= 2 => 'A',
-                $n >= 3 && $n <= 4 => 'B',
-                $n >= 5 && $n <= 6 => 'C',
-                $n >= 7 && $n <= 8 => 'D',
-                $n >= 9            => 'E',
-                default            => null,
+                $n >= 1  && $n <= 2  => 'A',
+                $n >= 3  && $n <= 4  => 'B',
+                $n >= 5  && $n <= 6  => 'C',
+                $n >= 7  && $n <= 8  => 'D',
+                $n >= 9  && $n <= 14 => 'E',
+                $n >= 15             => 'F',
+                default              => null,
             };
             if ($key) return BotMessages::resolveOption('MSG_RES_03', $key);
         }

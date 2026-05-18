@@ -50,18 +50,19 @@ class BotMessages
             'MSG_TIMEOUT_ASESOR' => "¡Disculpá la demora! 🙏\n\nPasaron varias horas desde tu última consulta sin que pudiéramos terminarla. Para asegurarnos de tener tus datos al día, vamos a empezar de nuevo.\n\n¿En qué te ayudamos?",
 
             // Deportes
-            'MSG_DEP_01' => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
+            'MSG_DEP_01' => "Contamos con canchas de Fútbol 5 y 8, Pádel y Tenis, podés ver las que quedan disponibles y reservar en https://atcsports.io/venues/el-anden-caba.\n\nLas canchas están disponibles de *8 a 24 hs*.\n🏢 Oficina deportiva (atención al público): *8 a 23.30 hs*.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\nEscribí *0* para hablar con un asesor, o *atrás* para volver al menú principal.",
 
             // Restaurante — MSG_RES_01 es dinámico (fechas), no tiene default fijo
             'MSG_RES_01' => null,
-            'MSG_RES_02' => "¿A qué hora querés llegar?\n\n*1.* Turno 1: 12.30 hs\n*2.* Turno 2: 14 hs\n*3.* Turno 3: 20 hs\n*4.* Turno 4: 22 hs\n\n*0.* Hablar con un asesor",
-            'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* Más de 8 personas\n\n*0.* Hablar con un asesor",
+            'MSG_RES_02' => "¿A qué hora querés llegar?\n\n*1.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*2.* Turno mediodía 2: 14 hs\n*3.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*4.* Turno noche 1: 20 hs\n*5.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
+            'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
+            'MSG_RES_15PLUS' => "ℹ️ Para grupos de *15 o más personas*, la reserva requiere coordinación previa con nuestro equipo.\n\n⚠️ Los sábados y domingos al mediodía, grupos de 15 o más personas tienen *menú fijo completo obligatorio*.\n\nUn asesor se va a comunicar con vos para coordinar todos los detalles.",
             'MSG_RES_04' => "¿Tenés preferencia de sector?\n\n*1.* Interior\n*2.* Exterior\n*3.* Sin preferencia\n\n*0.* Hablar con un asesor",
             'MSG_RES_05' => "¿A nombre de quién reservamos la mesa?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
             'MSG_RES_05_CUSTOM' => "Por favor ingresá el nombre del responsable de la reserva:",
             'MSG_RES_06' => "¿Cuál es tu mail? Lo usamos para enviarte la confirmación y un recordatorio de tu reserva.\n\nIngresá tu dirección de correo electrónico.",
             'MSG_RES_MAIL_INVALIDO' => "El mail ingresado no parece tener un formato válido. Por favor ingresá una dirección de correo electrónico correcta (ejemplo: nombre@dominio.com).",
-            'MSG_CONFIRMAR_MAIL' => "Tu mail registrado es *{{mail}}*.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
+            'MSG_CONFIRMAR_MAIL' => "Tu mail registrado es {{mail}}.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
             'MSG_RES_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\nAl confirmar, aceptás los términos y condiciones enviados en la imagen adjunta.\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RES_CONFIRMACION_FUTURA' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\nAl confirmar, aceptás los términos y condiciones enviados en la imagen adjunta.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
@@ -87,10 +88,12 @@ class BotMessages
             'MSG_EVT_07' => "¿A nombre de quién registramos el evento?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
             'MSG_EVT_07_CUSTOM' => "Por favor ingresá el nombre del responsable del evento:",
             'MSG_EVT_PERSONAS' => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
+            'MSG_EVT_PERSONAS_AVISO_MENU' => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
             'MSG_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\nAl confirmar, aceptás los términos y condiciones enviados en la imagen adjunta.\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RESERVA_EXITOSA' => "✅ ¡Tu reserva está confirmada!\n\nGuardamos todos los datos. Si necesitás hacer algún cambio o tenés alguna consulta, no dudes en escribirnos.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto en El Anden! 🌿",
             'MSG_RESERVA_PRECONFIRMADA' => "✅ ¡Tu pre-reserva fue registrada!\n\nUn asesor de El Anden se va a comunicar con vos para confirmarla.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto! 🌿",
             'MSG_VOLVER_CONFIRMADA' => "Tu reserva ya fue confirmada, por lo que no es posible modificarla desde acá.\n\nSi necesitás hacer un cambio o cancelación, un asesor de El Anden puede ayudarte.\n\nEscribí *0* para hablar con un asesor.",
+            'MSG_DESPEDIDA' => "¡Hasta pronto! 👋\n\nSi necesitás algo, escribinos cuando quieras. En El Anden siempre vas a tener un lugar 🌿",
             default => null,
         };
     }

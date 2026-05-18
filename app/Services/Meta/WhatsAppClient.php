@@ -77,6 +77,23 @@ class WhatsAppClient
     }
 
     /**
+     * Marca un mensaje entrante como leído (doble tilde azul en el lado del usuario).
+     * Es best-effort: si falla, no interrumpe el procesamiento.
+     */
+    public function markAsRead(string $messageId): void
+    {
+        try {
+            $this->request('POST', "{$this->phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'status'            => 'read',
+                'message_id'        => $messageId,
+            ]);
+        } catch (\Throwable) {
+            // best-effort, no bloqueamos el procesamiento si falla
+        }
+    }
+
+    /**
      * Verifica la firma X-Hub-Signature-256 del webhook contra el app secret.
      * Meta firma el body crudo con HMAC-SHA256.
      */
