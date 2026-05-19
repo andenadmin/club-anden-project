@@ -5,6 +5,7 @@ use App\Http\Controllers\BotPreciosController;
 use App\Http\Controllers\BotSimulatorController;
 use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
+use App\Http\Controllers\ReservasController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/crm', [CrmController::class, 'index'])->name('crm.index');
         Route::get('/crm/export', [CrmController::class, 'export'])->name('crm.export');
     });
+
+    // Reservas
+    Route::get('/reservas', [ReservasController::class, 'index'])->name('reservas.index');
 
     // Inbox
     Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');

@@ -277,7 +277,15 @@ class BotEngine
                     }
                     $fecha = $parsed->format('d/m/y');
                 }
-                $esFutura = Carbon::createFromFormat('d/m/y', $fecha)->diffInDays(Carbon::today(), false) < -7;
+                $carbonFecha = Carbon::createFromFormat('d/m/y', $fecha);
+                // No permitir fechas con más de 30 días de anticipación
+                if ($carbonFecha->diffInDays(Carbon::today(), false) < -30) {
+                    return $this->handleInvalid($session, fn () => [
+                        "Solo podemos tomar reservas con hasta 30 días de anticipación. Por favor elegí una fecha dentro de ese período.",
+                        BotMessages::render('MSG_RES_01'),
+                    ]);
+                }
+                $esFutura = $carbonFecha->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
                 return $this->nextStep($session, 'hora', 'MSG_RES_02');
@@ -304,7 +312,10 @@ class BotEngine
                         $this->escalate($session, 'SOLICITUD_CLIENTE')
                     );
                 }
-                $this->saveDato($session, 'numero_personas', $personas);
+                // Si el usuario tipeo un número directo, guardar ese número para el resumen
+                $rawNum = preg_match('/^(\d+)/', trim($text), $mRaw) ? (int)$mRaw[1] : null;
+                $displayPersonas = ($rawNum !== null) ? "{$rawNum} personas" : $personas;
+                $this->saveDato($session, 'numero_personas', $displayPersonas);
                 $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                 $this->saveDato($session, 'nombre_responsable', $nombre);
                 return $this->skipMailIfKnown($session, 'MSG_RES_06');
@@ -1027,7 +1038,9 @@ class BotEngine
                     if (!$parsed) return false;
                     $fecha = $parsed->format('d/m/y');
                 }
-                $esFutura = Carbon::createFromFormat('d/m/y', $fecha)->diffInDays(Carbon::today(), false) < -7;
+                $carbonFechaC = Carbon::createFromFormat('d/m/y', $fecha);
+                if ($carbonFechaC->diffInDays(Carbon::today(), false) < -30) return false;
+                $esFutura = $carbonFechaC->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
                 return true;
@@ -1039,7 +1052,8 @@ class BotEngine
             case 'numero_personas':
                 $personas = $this->resolvePersonasRestaurante($text);
                 if (!$personas) return false;
-                $this->saveDato($session, 'numero_personas', $personas);
+                $rawNumC = preg_match('/^(\d+)/', trim($text), $mRawC) ? (int)$mRawC[1] : null;
+                $this->saveDato($session, 'numero_personas', ($rawNumC !== null) ? "{$rawNumC} personas" : $personas);
                 return true;
             case 'nombre_responsable':
                 if (trim($text) === '') return false;
@@ -1111,9 +1125,9 @@ class BotEngine
     {
         $this->pushHistory($session);
         $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
+        $imgUrl = rtrim(config('app.url'), '/') . '/images/terminos_condiciones.png';
         return [
-            '[IMG]' . rtrim(config('app.url'), '/') . '/images/terminos_condiciones.png',
-            'o podés verlo acá: https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing',
+            '[IMG]' . $imgUrl . '||Al confirmar, aceptás los términos y condiciones de El Andén.' . "\n\nTambién podés verlos acá: https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing",
             $this->buildConfirmacionMsg($session),
         ];
     }

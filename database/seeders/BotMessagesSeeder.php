@@ -79,7 +79,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_RES_02',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — elegir horario',
-                'content'  => "¿A qué hora querés llegar?\n\n*1.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*2.* Turno mediodía 2: 14 hs\n*3.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*4.* Turno noche 1: 20 hs\n*5.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
+                'content'  => "¿A qué hora querés llegar?\n\n*A.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*B.* Turno mediodía 2: 14 hs\n*C.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*D.* Turno noche 1: 20 hs\n*E.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
             ],
             [
                 'key'      => 'MSG_RES_03',

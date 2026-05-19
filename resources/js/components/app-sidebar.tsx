@@ -1,9 +1,10 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Inbox, MessageCircle, MessagesSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
+import { ClipboardList, MessageCircle, MessagesSquare, MessageSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import {
     Sidebar,
     SidebarContent,
@@ -41,6 +42,7 @@ function CollapseToggle() {
 }
 
 export function AppSidebar() {
+    const { isCurrentUrl } = useCurrentUrl();
     const { inboxUnreadTotal, isSuperAdmin } = usePage().props as {
         inboxUnreadTotal?: number;
         isSuperAdmin?: boolean;
@@ -48,11 +50,12 @@ export function AppSidebar() {
     const inboxUnread = inboxUnreadTotal ?? 0;
 
     const mainNavItems: NavItem[] = [
-        { title: 'Inbox',            href: '/inbox',         icon: Inbox,           badge: inboxUnread },
-        { title: 'Bot Simulator',    href: '/bot',           icon: MessageCircle },
-        { title: 'Mensajes del Bot', href: '/bot/messages',  icon: MessagesSquare },
+        { title: 'Bot Andén',        href: '/inbox',        icon: MessageSquare,  badge: inboxUnread },
+        { title: 'Reservas',         href: '/reservas',     icon: ClipboardList },
+        { title: 'Mensajes del Bot', href: '/bot/messages', icon: MessagesSquare },
         ...(isSuperAdmin ? [{ title: 'CRM Clientes', href: '/crm', icon: Users }] : []),
     ];
+
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -73,6 +76,16 @@ export function AppSidebar() {
             </SidebarContent>
 
             <div className="px-2">
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={isCurrentUrl('/bot')} tooltip={{ children: 'Bot Simulator' }}>
+                            <Link href="/bot" prefetch>
+                                <MessageCircle />
+                                <span>Bot Simulator</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
                 <CollapseToggle />
             </div>
 

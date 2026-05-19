@@ -43,11 +43,16 @@ class WhatsAppSender
         $to = PhoneNumber::normalize($session->numero_contacto);
 
         $isImage  = str_starts_with($body, '[IMG]');
-        $imageUrl = $isImage ? substr($body, 5) : null;
+        $imageUrl = null;
+        $caption  = '';
+        if ($isImage) {
+            // Formato: [IMG]url  o  [IMG]url||caption
+            [$imageUrl, $caption] = array_pad(explode('||', substr($body, 5), 2), 2, '');
+        }
 
         try {
             $waId = $isImage
-                ? $this->client->sendImage($to, $imageUrl)
+                ? $this->client->sendImage($to, $imageUrl, $caption)
                 : $this->client->sendText($to, $body);
             $msg = $this->engine->logOutbound($session, $body, $waId, $sender);
             $msg->update(['wa_status' => 'sent']);
