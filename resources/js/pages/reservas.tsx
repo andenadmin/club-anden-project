@@ -503,32 +503,41 @@ function VistaMultiDia({
     ahora,
     fullWidth,
     highlightToday = false,
+    filtroTipo,
+    onFiltroToggle,
 }: {
     fechas_rango: string[];
     reservas: Reserva[];
     ahora: string;
     fullWidth: boolean;
     highlightToday?: boolean;
+    filtroTipo: TipoReserva | null;
+    onFiltroToggle: (tipo: TipoReserva) => void;
 }) {
-    // Agrupa por fecha → hora
+    const reservasFiltradas = useMemo(
+        () => filtroTipo ? reservas.filter((r) => r.tipo === filtroTipo) : reservas,
+        [reservas, filtroTipo],
+    );
+
+    // Agrupa por fecha → hora (usa reservas filtradas por tipo)
     const byFechaHora = useMemo(() => {
         const map: Record<string, Record<string, Reserva[]>> = {};
         for (const f of fechas_rango) map[f] = {};
-        for (const r of reservas) {
+        for (const r of reservasFiltradas) {
             if (!r.fecha || !map[r.fecha]) continue;
             const h = r.hora ?? 'Sin hora';
             map[r.fecha][h] ??= [];
             map[r.fecha][h].push(r);
         }
         return map;
-    }, [fechas_rango, reservas]);
+    }, [fechas_rango, reservasFiltradas]);
 
     // Franjas horarias únicas presentes en los datos, ordenadas
     const timeSlots = useMemo(() => {
         const times = new Set<string>();
-        for (const r of reservas) if (r.hora) times.add(r.hora);
+        for (const r of reservasFiltradas) if (r.hora) times.add(r.hora);
         return [...times].sort();
-    }, [reservas]);
+    }, [reservasFiltradas]);
 
     const totalGeneral  = reservas.length;
     const totalPersonas = reservas.reduce((acc, r) => acc + extractPersonasMax(r.numero_personas), 0);
@@ -615,11 +624,18 @@ function VistaMultiDia({
                             {(['RESTAURANTE', 'NINOS', 'GENERAL_EVT'] as TipoReserva[]).map((tipo) => {
                                 const count = reservas.filter((r) => r.tipo === tipo).length;
                                 if (!count) return null;
+                                const activo = filtroTipo === tipo;
+                                const opaco  = filtroTipo !== null && !activo;
                                 return (
-                                    <span key={tipo} className="flex items-center gap-1">
+                                    <button
+                                        key={tipo}
+                                        type="button"
+                                        onClick={() => onFiltroToggle(tipo)}
+                                        className={`flex items-center gap-1 rounded-full transition-opacity ${opaco ? 'opacity-30' : 'opacity-100'}`}
+                                    >
                                         <TipoBadge tipo={tipo} />
                                         <span className={`text-xs font-semibold ${TIPO_CONFIG[tipo].text}`}>{count}</span>
-                                    </span>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -655,10 +671,14 @@ function VistaDia({
     reservas,
     ahora,
     es_hoy,
+    filtroTipo,
+    onFiltroToggle,
 }: {
     reservas: Reserva[];
     ahora: string;
     es_hoy: boolean;
+    filtroTipo: TipoReserva | null;
+    onFiltroToggle: (tipo: TipoReserva) => void;
 }) {
     const [pestaña, setPestaña] = useState<'activas' | 'historial'>(() => {
         try { return (localStorage.getItem('reservas_tab') as 'activas' | 'historial') ?? 'activas'; }
@@ -670,8 +690,9 @@ function VistaDia({
         setPestaña(tab);
     }
 
-    const reservasActivas   = useMemo(() => reservas.filter((r) => !isReservaVencida(r.hora, ahora)), [reservas, ahora]);
-    const reservasHistorial = useMemo(() => reservas.filter((r) => isReservaVencida(r.hora, ahora)),  [reservas, ahora]);
+    const reservasTipo      = useMemo(() => filtroTipo ? reservas.filter((r) => r.tipo === filtroTipo) : reservas, [reservas, filtroTipo]);
+    const reservasActivas   = useMemo(() => reservasTipo.filter((r) => !isReservaVencida(r.hora, ahora)), [reservasTipo, ahora]);
+    const reservasHistorial = useMemo(() => reservasTipo.filter((r) => isReservaVencida(r.hora, ahora)),  [reservasTipo, ahora]);
     const reservasTab       = pestaña === 'activas' ? reservasActivas : reservasHistorial;
 
     const proximas = useMemo(() => getProximasLlegadas(reservasActivas, ahora), [reservasActivas, ahora]);
@@ -698,11 +719,18 @@ function VistaDia({
                             {(['RESTAURANTE', 'NINOS', 'GENERAL_EVT'] as TipoReserva[]).map((tipo) => {
                                 const count = reservas.filter((r) => r.tipo === tipo).length;
                                 if (!count) return null;
+                                const activo = filtroTipo === tipo;
+                                const opaco  = filtroTipo !== null && !activo;
                                 return (
-                                    <span key={tipo} className="flex items-center gap-1">
+                                    <button
+                                        key={tipo}
+                                        type="button"
+                                        onClick={() => onFiltroToggle(tipo)}
+                                        className={`flex items-center gap-1 rounded-full transition-opacity ${opaco ? 'opacity-30' : 'opacity-100'}`}
+                                    >
                                         <TipoBadge tipo={tipo} />
                                         <span className={`text-xs font-semibold ${TIPO_CONFIG[tipo].text}`}>{count}</span>
-                                    </span>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -797,6 +825,11 @@ function VistaDia({
 export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas_rango }: Props) {
     const [query, setQuery]           = useState('');
     const [dateHighlight, setDateHighlight] = useState(false);
+    const [filtroTipo, setFiltroTipo] = useState<TipoReserva | null>(null);
+
+    function toggleFiltroTipo(tipo: TipoReserva) {
+        setFiltroTipo((prev) => (prev === tipo ? null : tipo));
+    }
     const searchTimeout     = useRef<ReturnType<typeof setTimeout> | null>(null);
     const dateInputRef      = useRef<HTMLInputElement>(null);
     const highlightTimeout  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -860,6 +893,7 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
 
     function handleSearch(value: string) {
         setQuery(value);
+        if (value) setFiltroTipo(null);
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
         searchTimeout.current = setTimeout(() => {}, 0);
     }
@@ -964,7 +998,13 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                 {/* Contenido según vista */}
                 {vista === 'dia' ? (
                     <div className="max-w-2xl mx-auto w-full">
-                        <VistaDia reservas={reservasFiltradas} ahora={ahora} es_hoy={es_hoy} />
+                        <VistaDia
+                            reservas={reservasFiltradas}
+                            ahora={ahora}
+                            es_hoy={es_hoy}
+                            filtroTipo={filtroTipo}
+                            onFiltroToggle={toggleFiltroTipo}
+                        />
                     </div>
                 ) : (
                     <VistaMultiDia
@@ -973,6 +1013,8 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                         ahora={ahora}
                         fullWidth={vista === 'semana'}
                         highlightToday={dateHighlight}
+                        filtroTipo={filtroTipo}
+                        onFiltroToggle={toggleFiltroTipo}
                     />
                 )}
             </div>
