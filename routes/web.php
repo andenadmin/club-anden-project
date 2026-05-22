@@ -38,7 +38,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Reservas
-    Route::get('/reservas', [ReservasController::class, 'index'])->name('reservas.index');
+    Route::get('/reservas',              [ReservasController::class, 'index'])->name('reservas.index');
+    Route::patch('/reservas/{reserva}',  [ReservasController::class, 'update'])->name('reservas.update');
 
     // Inbox
     Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');

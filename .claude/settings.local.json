@@ -39,7 +39,9 @@
       "Bash(chmod 600 ~/.ssh/forge_key)",
       "Bash(scp *)",
       "Bash(composer require *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(xargs grep *)",
+      "Bash(xargs cat *)"
     ]
   }
 }

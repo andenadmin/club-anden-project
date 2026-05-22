@@ -726,6 +726,29 @@ class BotEngine
     {
         $datos    = $session->datos_parciales ?? [];
         $rama     = $session->rama_activa;
+
+        // Si la fecha guardada ya pasó, rechazar y pedir que reinicie el flujo
+        $fechaGuardada = $datos['fecha'] ?? null;
+        if ($fechaGuardada) {
+            try {
+                $carbonGuardada = Carbon::createFromFormat('d/m/y', $fechaGuardada)->startOfDay();
+                if ($carbonGuardada->lt(Carbon::today())) {
+                    $session->mergeEstado([
+                        'estado_actual'   => 'INICIO',
+                        'current_step'    => null,
+                        'datos_parciales' => [],
+                        'rama_activa'     => null,
+                        'subtipo_activo'  => null,
+                    ]);
+                    return [
+                        "⚠️ La fecha de tu reserva ({$fechaGuardada}) ya pasó, por lo que no pudimos confirmarla.",
+                        "Por favor iniciá una nueva reserva eligiendo una fecha válida.",
+                        BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $session->cliente?->nombre_cliente ?? '']),
+                    ];
+                }
+            } catch (\Exception) {}
+        }
+
         $esFutura = $datos['fecha_es_futura'] ?? false;
 
         $estado = match(true) {

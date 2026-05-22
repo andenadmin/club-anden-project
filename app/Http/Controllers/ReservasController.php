@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Reserva;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,23 +13,80 @@ class ReservasController extends Controller
 {
     public function index(Request $request): Response
     {
-        $fecha    = $request->input('fecha', Carbon::today()->format('Y-m-d'));
-        $fechaBot = Carbon::createFromFormat('Y-m-d', $fecha)->format('d/m/y');
+        $vista  = $request->input('vista', 'dia');
+        $fecha  = $request->input('fecha', Carbon::today()->format('Y-m-d'));
+        $inicio = Carbon::createFromFormat('Y-m-d', $fecha)->startOfDay();
+
+        $dias = match ($vista) {
+            'semana'   => 7,
+            'quincena' => 15,
+            default    => 1,
+        };
+
+        $fechasRango     = collect(range(0, $dias - 1))->map(fn ($d) => $inicio->copy()->addDays($d));
+        $fechasBotFormat = $fechasRango->map(fn ($f) => $f->format('d/m/y'))->values()->toArray();
+        $placeholders    = implode(',', array_fill(0, count($fechasBotFormat), '?'));
 
         $reservas = Reserva::with('cliente')
-            ->where('rama_servicio', 'RESTAURANTE')
-            ->whereRaw("json_extract(datos, '$.fecha') = ?", [$fechaBot])
+            ->whereIn('rama_servicio', ['RESTAURANTE', 'EVENTOS'])
             ->whereNotIn('estado_reserva', ['CANCELADA'])
-            ->orderByRaw("json_extract(datos, '$.hora')")
+            ->whereRaw("json_extract(datos, '$.fecha') IN ({$placeholders})", $fechasBotFormat)
             ->get()
             ->map(function (Reserva $r) {
                 $datos = $r->datos ?? [];
+
+                $tipo = match (true) {
+                    $r->rama_servicio === 'RESTAURANTE' => 'RESTAURANTE',
+                    $r->subtipo === 'NINOS'             => 'NINOS',
+                    default                             => 'GENERAL_EVT',
+                };
+
+                // Hora normalizada a "HH:mm"
+                $hora = null;
+                if ($tipo === 'RESTAURANTE') {
+                    $hora = $datos['hora'] ?? null;
+                } else {
+                    $horaInicio = $datos['hora_inicio'] ?? null;
+                    if (isset($horaInicio) && is_numeric($horaInicio) && !str_contains((string) $horaInicio, ':')) {
+                        $hora = sprintf('%02d:00', (int) $horaInicio);
+                    } else {
+                        $hora = $horaInicio;
+                    }
+                }
+                // Sanear separador y formato (ej. "15.30" → "15:30")
+                if ($hora) {
+                    $hora = str_replace('.', ':', (string) $hora);
+                    if (preg_match('/^(\d{1,2}):(\d{2})$/', $hora, $hm)) {
+                        $hora = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+                    }
+                }
+
+                // Personas normalizadas
+                if ($tipo === 'NINOS') {
+                    $ninos   = (int) ($datos['numero_ninos'] ?? 0);
+                    $adultos = (int) ($datos['numero_adultos'] ?? 0);
+                    $personas = ($ninos + $adultos) . ' pers.';
+                } else {
+                    $personas = (string) ($datos['numero_personas'] ?? '');
+                }
+
+                // Fecha normalizada a "Y-m-d"
+                $fechaNorm = null;
+                try {
+                    $fechaBot  = $datos['fecha'] ?? '';
+                    $fechaNorm = $fechaBot
+                        ? Carbon::createFromFormat('d/m/y', $fechaBot)->format('Y-m-d')
+                        : null;
+                } catch (\Exception) {}
+
                 return [
                     'id'              => $r->id,
+                    'tipo'            => $tipo,
                     'nombre'          => $datos['nombre_responsable'] ?? $r->cliente?->nombre_cliente ?? 'Sin nombre',
                     'telefono'        => $r->cliente?->numero_contacto ?? '',
-                    'hora'            => $datos['hora'] ?? '',
-                    'numero_personas' => $datos['numero_personas'] ?? '',
+                    'fecha'           => $fechaNorm,
+                    'hora'            => $hora,
+                    'numero_personas' => $personas,
                     'mail'            => $datos['mail_contacto'] ?? null,
                     'comentarios'     => $datos['extras_texto'] ?? null,
                     'estado'          => $r->estado_reserva,
@@ -36,9 +94,66 @@ class ReservasController extends Controller
             });
 
         return Inertia::render('reservas', [
-            'reservas' => $reservas,
-            'fecha'    => $fecha,
-            'ahora'    => Carbon::now()->format('H:i'),
+            'reservas'     => $reservas,
+            'fecha'        => $fecha,
+            'ahora'        => Carbon::now()->format('H:i'),
+            'es_hoy'       => $fecha === Carbon::today()->format('Y-m-d'),
+            'vista'        => $vista,
+            'fechas_rango' => $fechasRango->map(fn ($f) => $f->format('Y-m-d'))->values(),
         ]);
+    }
+
+    public function update(Request $request, Reserva $reserva): RedirectResponse
+    {
+        \Log::info('ReservasController@update', [
+            'reserva_id'    => $reserva->id,
+            'rama_servicio' => $reserva->rama_servicio,
+            'subtipo'       => $reserva->subtipo,
+            'input'         => $request->only(['nombre','fecha','hora','numero_personas','mail','estado']),
+        ]);
+
+        $v = $request->validate([
+            'nombre'          => 'required|string|max:255',
+            'fecha'           => 'required|date_format:Y-m-d',
+            'hora'            => 'nullable|string|max:10',
+            'numero_personas' => 'nullable|string|max:100',
+            'mail'            => 'nullable|email|max:255',
+            'comentarios'     => 'nullable|string|max:2000',
+            'estado'          => 'required|in:CONFIRMADA,PENDIENTE_CONFIRMACION,CANCELADA,ESCALADA,COMPLETADA',
+        ]);
+
+        $datos = $reserva->datos ?? [];
+        $datos['nombre_responsable'] = $v['nombre'];
+        $datos['fecha']              = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
+        $datos['mail_contacto']      = $v['mail'] ?: null;
+        $datos['extras_texto']       = $v['comentarios'] ?: null;
+        $datos['tiene_extras']       = !empty($v['comentarios']);
+
+        $horaNorm = null;
+        if (!empty($v['hora'])) {
+            $h = str_replace('.', ':', trim($v['hora']));
+            if (preg_match('/^(\d{1,2}):(\d{2})$/', $h, $hm)) {
+                $h = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+            }
+            $horaNorm = $h;
+        }
+
+        if ($reserva->rama_servicio === 'RESTAURANTE') {
+            if ($horaNorm)                     $datos['hora']             = $horaNorm;
+            if (!empty($v['numero_personas'])) $datos['numero_personas']  = $v['numero_personas'];
+        } elseif ($reserva->subtipo === 'GENERAL_EVT') {
+            if ($horaNorm)                     $datos['hora_inicio']      = $horaNorm;
+            if (!empty($v['numero_personas'])) $datos['numero_personas']  = (int) $v['numero_personas'];
+        } elseif ($reserva->subtipo === 'NINOS') {
+            if ($horaNorm)                     $datos['hora_inicio']      = $horaNorm;
+        }
+
+        $reserva->update([
+            'datos'          => $datos,
+            'estado_reserva' => $v['estado'],
+            'tiene_extras'   => !empty($v['comentarios']),
+        ]);
+
+        return redirect()->back();
     }
 }

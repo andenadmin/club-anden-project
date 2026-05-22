@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Info, Menu } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Info, Menu } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useSidebar } from '@/components/ui/sidebar';
 import { useChatPolling } from '@/hooks/use-chat-polling';
 import { useInboxPolling } from '@/hooks/use-inbox-polling';
+import { useNotificationSound } from '@/hooks/use-notification-sound';
 import { useTitleFlash } from '@/hooks/use-title-flash';
 
 interface SelectedConversation {
@@ -34,8 +35,10 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
     const [resumePromptDismissed, setResumePromptDismissed] = useState(false);
     const { toggleSidebar } = useSidebar();
 
+    const { play: playAlert, muted, toggle: toggleMuted } = useNotificationSound();
+
     // Polling de la lista (3s) — actualiza conversaciones y trigger toasts en escaladas nuevas.
-    const { conversations, unreadTotal } = useInboxPolling(initialConversations);
+    const { conversations, unreadTotal } = useInboxPolling(initialConversations, playAlert);
 
     // Polling del chat seleccionado (2s) — agrega mensajes nuevos y refresca estado de la sesión.
     const selectedNumero  = selected?.numero ?? null;
@@ -87,14 +90,21 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
             <aside className={`${selected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 shrink-0 bg-background border-r border-sidebar-border/50 overflow-hidden`}>
                 {/* Top bar mobile-only: en md+ el AppSidebar siempre está visible, pero en mobile
                     es offcanvas → necesitamos un botón visible para abrirlo. */}
-                <header className="md:hidden h-12 px-2 flex items-center gap-2 border-b border-sidebar-border/50 shrink-0">
+                <header className="h-12 px-2 flex items-center gap-2 border-b border-sidebar-border/50 shrink-0">
                     <button
                         onClick={toggleSidebar}
-                        className="p-2 -ml-1 rounded-md hover:bg-accent active:bg-accent/80"
+                        className="md:hidden p-2 -ml-1 rounded-md hover:bg-accent active:bg-accent/80"
                         aria-label="Abrir menú">
                         <Menu className="size-5" />
                     </button>
-                    <h1 className="font-semibold text-sm">Bandeja de entrada</h1>
+                    <h1 className="font-semibold text-sm flex-1">Bandeja de entrada</h1>
+                    <button
+                        onClick={toggleMuted}
+                        title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
+                        className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
+                    >
+                        {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+                    </button>
                 </header>
                 <div className="flex-1 overflow-y-auto">
                     <ConversationList

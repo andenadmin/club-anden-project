@@ -43,6 +43,7 @@ function CollapseToggle() {
 
 export function AppSidebar() {
     const { isCurrentUrl } = useCurrentUrl();
+    const { setOpenMobile } = useSidebar();
     const { inboxUnreadTotal, isSuperAdmin } = usePage().props as {
         inboxUnreadTotal?: number;
         isSuperAdmin?: boolean;
@@ -63,7 +64,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/bot" prefetch>
+                            <Link href="/inbox" prefetch onClick={() => setOpenMobile(false)}>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -79,7 +80,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild isActive={isCurrentUrl('/bot')} tooltip={{ children: 'Bot Simulator' }}>
-                            <Link href="/bot" prefetch>
+                            <Link href="/bot" prefetch onClick={() => setOpenMobile(false)}>
                                 <MessageCircle />
                                 <span>Bot Simulator</span>
                             </Link>

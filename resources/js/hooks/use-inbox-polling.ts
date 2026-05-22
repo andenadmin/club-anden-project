@@ -13,9 +13,9 @@ interface PollResponse {
 /**
  * Polling de la lista de conversaciones (cada 3s mientras la pestaña esté visible).
  * Devuelve el estado más reciente y el total de unread. Detecta nuevas conversaciones
- * escaladas y dispara un toast.
+ * escaladas y dispara un toast + llama a onAlert.
  */
-export function useInboxPolling(initial: ConversationListItem[]): {
+export function useInboxPolling(initial: ConversationListItem[], onAlert?: () => void): {
     conversations: ConversationListItem[];
     unreadTotal: number;
 } {
@@ -48,7 +48,7 @@ export function useInboxPolling(initial: ConversationListItem[]): {
                 const data = (await r.json()) as PollResponse;
                 if (cancelled) return;
 
-                detectNewEscalations(prevRef.current, data.conversations);
+                detectNewEscalations(prevRef.current, data.conversations, onAlert);
 
                 prevRef.current = new Map(data.conversations.map(c => [c.numero, c]));
                 setConversations(data.conversations);
@@ -74,7 +74,10 @@ export function useInboxPolling(initial: ConversationListItem[]): {
 function detectNewEscalations(
     prev: Map<string, ConversationListItem>,
     next: ConversationListItem[],
+    onAlert?: () => void,
 ): void {
+    let alerted = false;
+
     for (const conv of next) {
         const before = prev.get(conv.numero);
         const wasEscalated = before?.estado_actual === 'PAUSADO' && (before?.unread_count ?? 0) > 0;
@@ -86,10 +89,14 @@ function detectNewEscalations(
             toast(`Nueva conversación escalada: ${conv.nombre ?? conv.numero}`, {
                 description: conv.last_message?.body ?? '',
             });
+            alerted = true;
         } else if (newlyEscalated) {
             toast(`${conv.nombre ?? conv.numero} pidió hablar con un asesor`, {
                 description: conv.last_message?.body ?? '',
             });
+            alerted = true;
         }
     }
+
+    if (alerted) onAlert?.();
 }
