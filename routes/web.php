@@ -25,6 +25,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/bot/precios/{costoEvento}', [BotPreciosController::class, 'update'])->name('bot.precios.update');
 
     // Bot Messages Admin
+    Route::get('/bot/messages/unlock', [BotMessagesAdminController::class, 'showUnlock'])->name('bot.messages.unlock');
+    Route::post('/bot/messages/unlock', [BotMessagesAdminController::class, 'unlock'])->name('bot.messages.unlock.post');
     Route::get('/bot/messages', [BotMessagesAdminController::class, 'index'])->name('bot.messages');
     Route::put('/bot/messages/{botMessage}', [BotMessagesAdminController::class, 'update'])->name('bot.messages.update');
     Route::patch('/bot/messages/{botMessage}/archive', [BotMessagesAdminController::class, 'archive'])->name('bot.messages.archive');

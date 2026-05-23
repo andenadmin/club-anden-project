@@ -15,6 +15,7 @@ createInertiaApp({
             case name === 'welcome':
             case name === 'bot-simulator':
             case name === 'inbox':
+            case name === 'bot-messages-unlock':
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

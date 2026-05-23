@@ -12,8 +12,21 @@ class CostoEvento extends Model
 
     protected $casts = ['precio' => 'decimal:2'];
 
+    private static array $allPrecios = [];
+    private static bool  $preciosLoaded = false;
+
+    private static function loadPrecios(): void
+    {
+        if (self::$preciosLoaded) return;
+        self::$preciosLoaded = true;
+        self::$allPrecios = static::pluck('precio', 'concepto')
+            ->map(fn ($p) => (float) $p)
+            ->all();
+    }
+
     public static function precio(string $concepto): float
     {
-        return (float) self::where('concepto', $concepto)->value('precio') ?? 0;
+        self::loadPrecios();
+        return self::$allPrecios[$concepto] ?? 0.0;
     }
 }

@@ -10,12 +10,16 @@ class Feriado extends Model
 
     protected $casts = ['fecha' => 'date'];
 
+    private static ?array $allFeriados = null;
+
     public static function esFeriado(string $fecha): bool
     {
-        // fecha expected as DD/MM/YY
         try {
             $date = \Carbon\Carbon::createFromFormat('d/m/y', $fecha)->format('Y-m-d');
-            return self::where('fecha', $date)->exists();
+            if (self::$allFeriados === null) {
+                self::$allFeriados = static::pluck('fecha')->map(fn ($f) => (string) $f)->all();
+            }
+            return in_array($date, self::$allFeriados, true);
         } catch (\Throwable) {
             return false;
         }

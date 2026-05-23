@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\BotSession;
 use App\Models\ConversationMessage;
 use App\Services\BotEngine;
 use App\Services\Meta\WhatsAppClient;
@@ -40,7 +39,7 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
 
         // Marco el último inbound creado por process() con el wa_message_id de Meta
         // para idempotencia futura. process() crea el row sin wa_message_id porque no lo conoce.
-        $session = BotSession::where('numero_contacto', $this->from)->first();
+        $session = $engine->lastSession();
         if ($session) {
             $session->messages()
                 ->where('direction', ConversationMessage::DIRECTION_INBOUND)

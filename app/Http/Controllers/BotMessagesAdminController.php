@@ -9,8 +9,43 @@ use Inertia\Inertia;
 
 class BotMessagesAdminController extends Controller
 {
+    private const SESSION_KEY    = 'bot_messages_unlocked_at';
+    private const LOCK_MINUTES   = 60;
+
+    private function isUnlocked(): bool
+    {
+        $ts = session(self::SESSION_KEY);
+        return $ts && now()->diffInMinutes($ts, true) < self::LOCK_MINUTES;
+    }
+
+    public function showUnlock()
+    {
+        if ($this->isUnlocked()) {
+            return redirect()->route('bot.messages');
+        }
+
+        return Inertia::render('bot-messages-unlock');
+    }
+
+    public function unlock(Request $request)
+    {
+        $request->validate(['password' => ['required', 'string']]);
+
+        if ($request->password !== env('BOT_MESSAGES_PASSWORD')) {
+            return back()->withErrors(['password' => 'Contraseña incorrecta.']);
+        }
+
+        session([self::SESSION_KEY => now()]);
+
+        return redirect()->route('bot.messages');
+    }
+
     public function index()
     {
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
+
         $decorate = fn ($msg) => array_merge($msg->toArray(), [
             'default_content' => BotMessages::hardcodedDefault($msg->key),
         ]);
@@ -23,6 +58,8 @@ class BotMessagesAdminController extends Controller
 
     public function update(Request $request, BotMessage $botMessage)
     {
+        abort_unless($this->isUnlocked(), 403);
+
         $request->validate([
             'content' => ['required', 'string', 'max:4000'],
         ]);
@@ -34,18 +71,24 @@ class BotMessagesAdminController extends Controller
 
     public function archive(BotMessage $botMessage)
     {
+        abort_unless($this->isUnlocked(), 403);
+
         $botMessage->update(['is_archived' => true]);
         return back()->with('success', 'Mensaje archivado.');
     }
 
     public function restore(BotMessage $botMessage)
     {
+        abort_unless($this->isUnlocked(), 403);
+
         $botMessage->update(['is_archived' => false]);
         return back()->with('success', 'Mensaje restaurado.');
     }
 
     public function resetDefault(BotMessage $botMessage)
     {
+        abort_unless($this->isUnlocked(), 403);
+
         $default = BotMessages::hardcodedDefault($botMessage->key);
 
         if ($default === null) {

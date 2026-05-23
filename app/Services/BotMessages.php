@@ -7,7 +7,17 @@ use Carbon\Carbon;
 
 class BotMessages
 {
-    private static array $cache = [];
+    private static array $cache  = [];
+    private static bool  $loaded = false;
+
+    private static function loadAll(): void
+    {
+        if (self::$loaded) return;
+        self::$loaded = true;
+        BotMessage::where('is_archived', false)->each(function ($row) {
+            self::$cache[$row->key] = $row->content;
+        });
+    }
 
     // Reemplaza {{variable}} con valores del array $vars
     public static function render(string $id, array $vars = []): string
@@ -21,11 +31,9 @@ class BotMessages
 
     private static function template(string $id): string
     {
-        if (!isset(self::$cache[$id])) {
-            $row = BotMessage::findByKey($id);
-            self::$cache[$id] = $row?->content;
-        }
-        if (self::$cache[$id] !== null) {
+        self::loadAll();
+
+        if (isset(self::$cache[$id])) {
             return self::$cache[$id];
         }
 
@@ -63,13 +71,13 @@ class BotMessages
             'MSG_RES_06' => "¿Cuál es tu mail? Lo usamos para enviarte la confirmación y un recordatorio de tu reserva.\n\nIngresá tu dirección de correo electrónico.",
             'MSG_RES_MAIL_INVALIDO' => "El mail ingresado no parece tener un formato válido. Por favor ingresá una dirección de correo electrónico correcta (ejemplo: nombre@dominio.com).",
             'MSG_CONFIRMAR_MAIL' => "Tu mail registrado es {{mail}}.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
-            'MSG_RES_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
-            'MSG_RES_CONFIRMACION_FUTURA' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            'MSG_RES_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            'MSG_RES_CONFIRMACION_FUTURA' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
 
             // Eventos
             'MSG_EVT_01' => "¡Genial! Vamos a organizar tu evento 🎉\n\n¿Qué tipo de evento estás planeando?\n\n*1.* Evento privado (te contactamos con un asesor)\n*2.* Cumpleaños niños (6 a 12 años)\n*3.* Cumpleaños adolescentes (13 a 17 años)\n*4.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
-            'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\nPara ver el detalle de las opciones con precios estimados: [LINK_MENU_PACKS]\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
             'MSG_EVT_02' => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_FERIADO_AVISO' => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
             'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
@@ -89,7 +97,10 @@ class BotMessages
             'MSG_EVT_07_CUSTOM' => "Por favor ingresá el nombre del responsable del evento:",
             'MSG_EVT_PERSONAS' => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_PERSONAS_AVISO_MENU' => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
-            'MSG_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            'MSG_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            'MSG_LINK_TYC' => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",
+            'MSG_LINK_CUMPLE_NINOS' => "🎉 *Packs de Cumpleaños Niños — Opciones y Precios:*\nhttps://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link",
+            'MSG_LINK_CUMPLE_ADOLESCENTES' => "🎉 *Packs de Cumpleaños Adolescentes — Opciones:*\nhttps://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing",
             'MSG_RESERVA_EXITOSA' => "✅ ¡Tu reserva está confirmada!\n\nGuardamos todos los datos. Si necesitás hacer algún cambio o tenés alguna consulta, no dudes en escribirnos.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto en El Anden! 🌿",
             'MSG_RESERVA_PRECONFIRMADA' => "✅ ¡Tu pre-reserva fue registrada!\n\nUn asesor de El Anden se va a comunicar con vos para confirmarla.\n\n📍 *Cómo llegar:*\n• Estacionamiento gratuito: Yerbal 1201\n• Entrada peatonal: Yerbal 1255\n\n¡Hasta pronto! 🌿",
             'MSG_VOLVER_CONFIRMADA' => "Tu reserva ya fue confirmada, por lo que no es posible modificarla desde acá.\n\nSi necesitás hacer un cambio o cancelación, un asesor de El Anden puede ayudarte.\n\nEscribí *0* para hablar con un asesor.",

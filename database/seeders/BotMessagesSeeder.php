@@ -51,7 +51,13 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_CONFIRMACION',
                 'category' => 'general',
                 'label'    => 'Confirmación de reserva (genérico)',
-                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            ],
+            [
+                'key'      => 'MSG_LINK_TYC',
+                'category' => 'general',
+                'label'    => 'Link — Términos y Condiciones',
+                'content'  => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",
             ],
             [
                 'key'      => 'MSG_RESERVA_EXITOSA',
@@ -133,13 +139,13 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_RES_CONFIRMACION',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — confirmación de reserva',
-                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             ],
             [
                 'key'      => 'MSG_RES_CONFIRMACION_FUTURA',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — confirmación fecha futura',
-                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar reserva\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+                'content'  => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             ],
             [
                 'key'      => 'MSG_RES_CAMBIAR',
@@ -156,10 +162,22 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "¡Genial! Vamos a organizar tu evento 🎉\n\n¿Qué tipo de evento estás planeando?\n\n*1.* Evento privado (te contactamos con un asesor)\n*2.* Cumpleaños niños (6 a 12 años)\n*3.* Cumpleaños adolescentes (13 a 17 años)\n*4.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
             ],
             [
+                'key'      => 'MSG_LINK_CUMPLE_NINOS',
+                'category' => 'eventos',
+                'label'    => 'Link — Packs cumpleaños niños',
+                'content'  => "🎉 *Packs de Cumpleaños Niños — Opciones y Precios:*\nhttps://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link",
+            ],
+            [
+                'key'      => 'MSG_LINK_CUMPLE_ADOLESCENTES',
+                'category' => 'eventos',
+                'label'    => 'Link — Packs cumpleaños adolescentes',
+                'content'  => "🎉 *Packs de Cumpleaños Adolescentes — Opciones:*\nhttps://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing",
+            ],
+            [
                 'key'      => 'MSG_EVT_NINOS_PACK',
                 'category' => 'eventos',
                 'label'    => 'Eventos — pack niños',
-                'content'  => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\nPara ver el detalle de las opciones con precios estimados: [LINK_MENU_PACKS]\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
+                'content'  => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
             ],
             [
                 'key'      => 'MSG_EVT_02',

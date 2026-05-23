@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\Mail;
 
 class BotEngine
 {
+    private ?BotSession $lastSession = null;
+
+    /** Devuelve la sesión que procesó el último `process()`, evitando re-query en el job. */
+    public function lastSession(): ?BotSession
+    {
+        return $this->lastSession;
+    }
+
     /**
      * Procesa un mensaje entrante y devuelve las respuestas que el bot quiere mandar.
      * Loguea el inbound automáticamente. El logueo del outbound queda en manos del caller
@@ -32,6 +40,7 @@ class BotEngine
             ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0]
         );
 
+        $this->lastSession = $session;
         $this->logInbound($session, $text);
 
         return $this->dispatch($session, $text);
@@ -376,8 +385,7 @@ class BotEngine
             if ($nuevoSubtipo === 'NINOS') {
                 $session->mergeEstado(['current_step' => 'pack_seleccionado']);
                 return [
-                    '[IMG]' . rtrim(config('app.url'), '/') . '/images/anden_cumple_ninos.png',
-                    'o podés verlo acá: https://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link',
+                    BotMessages::render('MSG_LINK_CUMPLE_NINOS'),
                     BotMessages::render('MSG_EVT_NINOS_PACK'),
                 ];
             }
@@ -385,8 +393,7 @@ class BotEngine
             $session->mergeEstado(['current_step' => 'fecha']);
             $responses = [];
             if ($upper === ($keysEvt[2] ?? '3')) {
-                $responses[] = '[IMG]' . rtrim(config('app.url'), '/') . '/images/anden_cumples_adolescentes.png';
-                $responses[] = 'o podés verlo acá: https://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing';
+                $responses[] = BotMessages::render('MSG_LINK_CUMPLE_ADOLESCENTES');
             }
             $responses[] = BotMessages::render('MSG_EVT_02');
             return $responses;
@@ -445,12 +452,12 @@ class BotEngine
                     return $this->escalate($session, 'CAPACIDAD_EXCEDIDA');
                 }
                 $ninos = (int)$text;
-                $this->saveDato($session, 'numero_ninos', $ninos);
-
-                // Calcular canchas y coordinadores
                 [$canchas, $coordinadores] = $this->calcularCanchasCoordinadores($ninos);
-                $this->saveDato($session, 'num_canchas', $canchas);
-                $this->saveDato($session, 'num_coordinadores', $coordinadores);
+                $this->saveDatos($session, [
+                    'numero_ninos'      => $ninos,
+                    'num_canchas'       => $canchas,
+                    'num_coordinadores' => $coordinadores,
+                ]);
 
                 // Paso INFORMATIVO: calcular y enviar MSG_EVT_COSTO_MENU, luego continuar
                 $pack     = $session->getDatos('pack_seleccionado', '1');
@@ -518,9 +525,11 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_ADICIONALES')]);
                 }
                 $ids = array_values(array_unique(array_map('intval', $validos)));
-                $this->saveDato($session, 'alimentos_adicionales', $ids);
-                $this->saveDato($session, 'adicionales_pendientes_qty', $ids);
-                $this->saveDato($session, 'adicionales_qtys', []);
+                $this->saveDatos($session, [
+                    'alimentos_adicionales'      => $ids,
+                    'adicionales_pendientes_qty' => $ids,
+                    'adicionales_qtys'           => [],
+                ]);
                 // Preguntar primer adicional
                 return $this->askNextAdicionalQty($session);
 
@@ -547,14 +556,16 @@ class BotEngine
         $itemId  = (int)substr($step, strlen('adicional_qty_'));
         $qtys    = $session->getDatos('adicionales_qtys', []);
         $qtys[$itemId] = (int)$text;
-        $this->saveDato($session, 'adicionales_qtys', $qtys);
 
         // Sacar este item de pendientes
         $pendientes = array_values(array_filter(
             $session->getDatos('adicionales_pendientes_qty', []),
             fn ($id) => $id !== $itemId
         ));
-        $this->saveDato($session, 'adicionales_pendientes_qty', $pendientes);
+        $this->saveDatos($session, [
+            'adicionales_qtys'           => $qtys,
+            'adicionales_pendientes_qty' => $pendientes,
+        ]);
         $session->mergeEstado(['contador_invalidos' => 0]);
 
         if (!empty($pendientes)) {
@@ -580,8 +591,7 @@ class BotEngine
         switch ($step) {
             case 'extras_texto':
                 $tieneExtras = strtolower($text) !== 'ninguno';
-                $this->saveDato($session, 'extras_texto', $text);
-                $this->saveDato($session, 'tiene_extras', $tieneExtras);
+                $this->saveDatos($session, ['extras_texto' => $text, 'tiene_extras' => $tieneExtras]);
                 return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL');
 
             case 'mail_contacto':
@@ -757,14 +767,16 @@ class BotEngine
             default                              => 'CONFIRMADA',
         };
 
+        $presupuesto = $this->calcularPresupuesto($session);
+
         $reserva = Reserva::create([
-            'id_cliente'     => $session->id_cliente,
-            'rama_servicio'  => $rama,
-            'subtipo'        => $session->subtipo_activo,
-            'estado_reserva' => $estado,
-            'datos'          => $datos,
-            'tiene_extras'   => $datos['tiene_extras'] ?? false,
-            'presupuesto_total' => $this->calcularPresupuesto($session)['total'] ?? null,
+            'id_cliente'        => $session->id_cliente,
+            'rama_servicio'     => $rama,
+            'subtipo'           => $session->subtipo_activo,
+            'estado_reserva'    => $estado,
+            'datos'             => $datos,
+            'tiene_extras'      => $datos['tiene_extras'] ?? false,
+            'presupuesto_total' => $presupuesto['total'] ?? null,
         ]);
 
         // Incrementar contador y actualizar CRM
@@ -773,15 +785,14 @@ class BotEngine
             'EVENTOS'     => 'contador_reservas_eventos',
             default       => null,
         };
-        if ($counter) Cliente::find($session->id_cliente)?->increment($counter);
-
         $cliente = Cliente::find($session->id_cliente);
+        if ($counter) $cliente?->increment($counter);
+
         if ($cliente) {
             $crm = $cliente->crmOrCreate();
             $crmUpdate = ['fecha_ultimo_evento' => now()->toDateString()];
-            $presupuesto = $this->calcularPresupuesto($session)['total'] ?? 0;
-            if ($presupuesto > 0) {
-                $crmUpdate['valor_lifetime'] = $crm->valor_lifetime + $presupuesto;
+            if (($presupuesto['total'] ?? 0) > 0) {
+                $crmUpdate['valor_lifetime'] = $crm->valor_lifetime + $presupuesto['total'];
             }
             $crm->update($crmUpdate);
         }
@@ -1144,13 +1155,19 @@ class BotEngine
         $session->save();
     }
 
+    /** Guarda múltiples claves de datos_parciales en un solo UPDATE. */
+    private function saveDatos(BotSession $session, array $newDatos): void
+    {
+        $session->datos_parciales = array_merge($session->datos_parciales ?? [], $newDatos);
+        $session->save();
+    }
+
     private function goToConfirmacion(BotSession $session): array
     {
         $this->pushHistory($session);
         $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
-        $imgUrl = rtrim(config('app.url'), '/') . '/images/terminos_condiciones.png';
         return [
-            '[IMG]' . $imgUrl . '||Al confirmar, aceptás los términos y condiciones de El Andén.' . "\n\nTambién podés verlos acá: https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing",
+            BotMessages::render('MSG_LINK_TYC'),
             $this->buildConfirmacionMsg($session),
         ];
     }
