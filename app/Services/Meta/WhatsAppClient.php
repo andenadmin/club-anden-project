@@ -27,7 +27,10 @@ class WhatsAppClient
             'messaging_product' => 'whatsapp',
             'to'                => $to,
             'type'              => 'text',
-            'text'              => ['body' => $body],
+            'text'              => array_filter([
+                'body'        => $body,
+                'preview_url' => preg_match('/https?:\/\/\S+/', $body) ? true : null,
+            ]),
         ]);
 
         $waId = data_get($response, 'messages.0.id');

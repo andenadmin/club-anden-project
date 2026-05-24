@@ -58,6 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/read',      [InboxController::class, 'markRead'])->name('inbox.read')->where('numero', '[0-9]+');
     Route::patch('/inbox/{numero}/cliente',  [InboxController::class, 'updateCliente'])->name('inbox.cliente.update')->where('numero', '[0-9]+');
+    Route::get('/inbox/archived-list',       [InboxController::class, 'archivedList'])->name('inbox.archived-list');
+    Route::post('/inbox/{numero}/pin',       [InboxController::class, 'pin'])->name('inbox.pin')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/archive',   [InboxController::class, 'archive'])->name('inbox.archive')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/unarchive', [InboxController::class, 'unarchive'])->name('inbox.unarchive')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/important', [InboxController::class, 'important'])->name('inbox.important')->where('numero', '[0-9]+');
+    Route::delete('/inbox/{numero}',         [InboxController::class, 'destroy'])->name('inbox.destroy')->where('numero', '[0-9]+');
 });
 
 require __DIR__.'/settings.php';

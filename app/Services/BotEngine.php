@@ -297,7 +297,10 @@ class BotEngine
                 $esFutura = $carbonFecha->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
-                return $this->nextStep($session, 'hora', 'MSG_RES_02');
+                $esFdS = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
+                $msgs = [];
+                if ($esFdS) $msgs[] = BotMessages::render('MSG_RES_FIN_DE_SEMANA');
+                return array_merge($msgs, $this->nextStep($session, 'hora', 'MSG_RES_02'));
 
             case 'hora':
                 $hora = $this->resolveHoraRestaurante($text);

@@ -19,7 +19,11 @@ const fmtTime = (iso: string | null): string => {
 function waMd(raw: string): string {
     return raw
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+        .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+        .replace(
+            /https?:\/\/[^\s<>"]+/g,
+            url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`,
+        );
 }
 
 function csrf(): string {

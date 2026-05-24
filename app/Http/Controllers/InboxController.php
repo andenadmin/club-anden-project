@@ -161,6 +161,47 @@ class InboxController extends Controller
         return back();
     }
 
+    public function pin(string $numero): JsonResponse
+    {
+        $session  = $this->findSessionOrFail($numero);
+        $newVal   = !$session->is_pinned;
+        $session->update(['is_pinned' => $newVal, 'pinned_at' => $newVal ? now() : null]);
+        return response()->json(['is_pinned' => $newVal]);
+    }
+
+    public function archive(string $numero): JsonResponse
+    {
+        $this->findSessionOrFail($numero)->update(['is_archived' => true]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function unarchive(string $numero): JsonResponse
+    {
+        $this->findSessionOrFail($numero)->update(['is_archived' => false]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroy(string $numero): JsonResponse
+    {
+        $session = $this->findSessionOrFail($numero);
+        $session->messages()->delete();
+        $session->delete();
+        return response()->json(['ok' => true]);
+    }
+
+    public function important(string $numero): JsonResponse
+    {
+        $session = $this->findSessionOrFail($numero);
+        $newVal  = !$session->is_important;
+        $session->update(['is_important' => $newVal, 'important_at' => $newVal ? now() : null]);
+        return response()->json(['is_important' => $newVal]);
+    }
+
+    public function archivedList(): JsonResponse
+    {
+        return response()->json($this->loadConversations(archived: true));
+    }
+
     /**
      * Marca como leído (resetea unread_count). Lo llama el frontend al abrir la conversación.
      */
@@ -243,10 +284,11 @@ class InboxController extends Controller
     /**
      * Lista resumida de conversaciones, ordenada por última actividad.
      */
-    private function loadConversations(): array
+    private function loadConversations(bool $archived = false): array
     {
         return BotSession::query()
             ->with('cliente:id,nombre_cliente,numero_contacto')
+            ->where('is_archived', $archived)
             ->orderByDesc('last_message_at')
             ->orderByDesc('updated_at')
             ->get()
@@ -258,6 +300,9 @@ class InboxController extends Controller
                 'last_message_at'  => $s->last_message_at?->toIso8601String(),
                 'unread_count'     => (int) $s->unread_count,
                 'last_message'     => $this->lastMessagePreview($s->id),
+                'is_pinned'        => (bool) $s->is_pinned,
+                'is_archived'      => (bool) $s->is_archived,
+                'is_important'     => (bool) $s->is_important,
             ])
             ->values()
             ->all();

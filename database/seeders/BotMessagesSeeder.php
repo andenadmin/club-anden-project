@@ -94,6 +94,12 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
             ],
             [
+                'key'      => 'MSG_RES_FIN_DE_SEMANA',
+                'category' => 'restaurante',
+                'label'    => 'Restaurante — aviso sábado/domingo/feriado',
+                'content'  => "🗓️ *¡Atención — Sábado, Domingo o Feriado!*\n\nSi vas a reservar al mediodía, te avisamos que ese turno es *completo y obligatorio*, con horario fijo de *12:00 a 16:00 hs*.",
+            ],
+            [
                 'key'      => 'MSG_RES_15PLUS',
                 'category' => 'restaurante',
                 'label'    => 'Restaurante — grupos de 15 o más personas',

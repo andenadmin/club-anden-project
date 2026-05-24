@@ -24,6 +24,11 @@ class BotSession extends Model
         'resolved_by_advisor_at',
         'last_message_at',
         'unread_count',
+        'is_pinned',
+        'is_archived',
+        'is_important',
+        'pinned_at',
+        'important_at',
     ];
 
     protected $casts = [
@@ -32,8 +37,13 @@ class BotSession extends Model
         'next_resume_check_at'    => 'datetime',
         'resolved_by_advisor_at'  => 'datetime',
         'last_message_at'         => 'datetime',
+        'pinned_at'               => 'datetime',
+        'important_at'            => 'datetime',
         'contador_invalidos'      => 'integer',
         'unread_count'            => 'integer',
+        'is_pinned'               => 'boolean',
+        'is_archived'             => 'boolean',
+        'is_important'            => 'boolean',
     ];
 
     public function cliente(): BelongsTo

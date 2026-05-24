@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Bell, BellOff, Info, Menu } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Info, Menu, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
@@ -14,6 +14,7 @@ import { useChatPolling } from '@/hooks/use-chat-polling';
 import { useInboxPolling } from '@/hooks/use-inbox-polling';
 import { useNotificationSound } from '@/hooks/use-notification-sound';
 import { useTitleFlash } from '@/hooks/use-title-flash';
+import { cn } from '@/lib/utils';
 
 interface SelectedConversation {
     numero:   string;
@@ -33,12 +34,20 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
     const [summaryDesktopVisible, setSummaryDesktopVisible] = useState(true);
     const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
     const [resumePromptDismissed, setResumePromptDismissed] = useState(false);
+    const [search, setSearch] = useState('');
+    const [tab, setTab] = useState<'activos' | 'archivados'>('activos');
+    const [archivedConversations, setArchivedConversations] = useState<ConversationListItem[]>([]);
+    const [loadingArchived, setLoadingArchived] = useState(false);
     const { toggleSidebar } = useSidebar();
 
     const { play: playAlert, muted, toggle: toggleMuted } = useNotificationSound();
 
     // Polling de la lista (3s) — actualiza conversaciones y trigger toasts en escaladas nuevas.
-    const { conversations, unreadTotal } = useInboxPolling(initialConversations, playAlert);
+    const { conversations: polledConversations, unreadTotal } = useInboxPolling(initialConversations, playAlert);
+
+    // Estado local para actualizaciones optimistas (pin, archive, delete, important).
+    const [activeConversations, setActiveConversations] = useState<ConversationListItem[]>(initialConversations);
+    useEffect(() => { setActiveConversations(polledConversations); }, [polledConversations]);
 
     // Polling del chat seleccionado (2s) — agrega mensajes nuevos y refresca estado de la sesión.
     const selectedNumero  = selected?.numero ?? null;
@@ -52,6 +61,70 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
 
     // Título de pestaña parpadeante con el contador de unread cuando la pestaña está en background.
     useTitleFlash(unreadTotal);
+
+    const csrf = () =>
+        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
+    const handleTabChange = async (newTab: 'activos' | 'archivados') => {
+        setTab(newTab);
+        setSearch('');
+        if (newTab === 'archivados' && archivedConversations.length === 0) {
+            setLoadingArchived(true);
+            try {
+                const r = await fetch('/inbox/archived-list', { headers: { Accept: 'application/json' } });
+                if (r.ok) setArchivedConversations(await r.json());
+            } finally {
+                setLoadingArchived(false);
+            }
+        }
+    };
+
+    const handlePin = async (numero: string) => {
+        setActiveConversations(prev =>
+            prev.map(c => c.numero === numero ? { ...c, is_pinned: !c.is_pinned } : c),
+        );
+        await fetch(`/inbox/${numero}/pin`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf() } });
+    };
+
+    const handleImportant = async (numero: string) => {
+        setActiveConversations(prev =>
+            prev.map(c => c.numero === numero ? { ...c, is_important: !c.is_important } : c),
+        );
+        await fetch(`/inbox/${numero}/important`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf() } });
+    };
+
+    const handleArchive = async (numero: string) => {
+        setActiveConversations(prev => prev.filter(c => c.numero !== numero));
+        await fetch(`/inbox/${numero}/archive`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf() } });
+        if (selected?.numero === numero) router.visit('/inbox', { preserveScroll: false });
+        // Forzar reload de archivados si el tab está abierto
+        setArchivedConversations([]);
+    };
+
+    const handleUnarchive = async (numero: string) => {
+        setArchivedConversations(prev => prev.filter(c => c.numero !== numero));
+        await fetch(`/inbox/${numero}/unarchive`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf() } });
+    };
+
+    const handleDelete = async (numero: string) => {
+        if (!window.confirm('¿Eliminar esta conversación? Esta acción no se puede deshacer.')) return;
+        setActiveConversations(prev => prev.filter(c => c.numero !== numero));
+        setArchivedConversations(prev => prev.filter(c => c.numero !== numero));
+        await fetch(`/inbox/${numero}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf() } });
+        if (selected?.numero === numero) router.visit('/inbox', { preserveScroll: false });
+    };
+
+    const displayedConversations = tab === 'archivados' ? archivedConversations : activeConversations;
+
+    const filteredConversations = useMemo(() => {
+        if (!search.trim()) return displayedConversations;
+        const q = search.toLowerCase().trim();
+        return displayedConversations.filter(c =>
+            c.nombre?.toLowerCase().includes(q) ||
+            c.numero.includes(q) ||
+            c.last_message?.body.toLowerCase().includes(q),
+        );
+    }, [displayedConversations, search]);
 
     // Resetear el dismissed cuando cambia la conversación o cuando next_resume_check_at se posterga.
     const dismissKey = selectedNumero
@@ -90,27 +163,79 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
             <aside className={`${selected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 shrink-0 bg-background border-r border-sidebar-border/50 overflow-hidden`}>
                 {/* Top bar mobile-only: en md+ el AppSidebar siempre está visible, pero en mobile
                     es offcanvas → necesitamos un botón visible para abrirlo. */}
-                <header className="h-12 px-2 flex items-center gap-2 border-b border-sidebar-border/50 shrink-0">
-                    <button
-                        onClick={toggleSidebar}
-                        className="md:hidden p-2 -ml-1 rounded-md hover:bg-accent active:bg-accent/80"
-                        aria-label="Abrir menú">
-                        <Menu className="size-5" />
-                    </button>
-                    <h1 className="font-semibold text-sm flex-1">Bandeja de entrada</h1>
-                    <button
-                        onClick={toggleMuted}
-                        title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
-                        className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
-                    >
-                        {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
-                    </button>
+                <header className="flex flex-col shrink-0 border-b border-sidebar-border/50">
+                    <div className="h-12 px-2 flex items-center gap-2">
+                        <button
+                            onClick={toggleSidebar}
+                            className="md:hidden p-2 -ml-1 rounded-md hover:bg-accent active:bg-accent/80"
+                            aria-label="Abrir menú">
+                            <Menu className="size-5" />
+                        </button>
+                        <h1 className="font-semibold text-sm flex-1">Bandeja de entrada</h1>
+                        <button
+                            onClick={toggleMuted}
+                            title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
+                            className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
+                        >
+                            {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+                        </button>
+                    </div>
+                    <div className="flex">
+                        {(['activos', 'archivados'] as const).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => handleTabChange(t)}
+                                className={cn(
+                                    'flex-1 py-2 text-xs font-medium transition-colors border-b-2',
+                                    tab === t
+                                        ? 'border-primary text-foreground'
+                                        : 'border-transparent text-muted-foreground hover:text-foreground',
+                                )}
+                            >
+                                {t === 'activos' ? 'Activos' : 'Archivados'}
+                            </button>
+                        ))}
+                    </div>
                 </header>
+                <div className="px-3 py-2 border-b border-sidebar-border/50 shrink-0">
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                        <input
+                            type="text"
+                            placeholder="Buscar conversación..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full pl-8 pr-7 py-1.5 text-sm bg-muted/50 border border-input rounded-md placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        {search && (
+                            <button
+                                onClick={() => setSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                aria-label="Limpiar búsqueda"
+                            >
+                                <X className="size-3.5" />
+                            </button>
+                        )}
+                    </div>
+                </div>
                 <div className="flex-1 overflow-y-auto">
-                    <ConversationList
-                        conversations={conversations}
-                        selectedNumero={selected?.numero ?? null}
-                    />
+                    {loadingArchived ? (
+                        <div className="flex items-center justify-center p-8 text-sm text-muted-foreground">
+                            Cargando...
+                        </div>
+                    ) : (
+                        <ConversationList
+                            conversations={filteredConversations}
+                            selectedNumero={selected?.numero ?? null}
+                            emptySearch={!!search.trim()}
+                            isArchived={tab === 'archivados'}
+                            onPin={handlePin}
+                            onArchive={handleArchive}
+                            onUnarchive={handleUnarchive}
+                            onDelete={handleDelete}
+                            onImportant={handleImportant}
+                        />
+                    )}
                 </div>
             </aside>
 

@@ -98,6 +98,7 @@ class BotMessages
             'MSG_EVT_PERSONAS' => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_PERSONAS_AVISO_MENU' => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
             'MSG_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
+            'MSG_RES_FIN_DE_SEMANA' => "🗓️ *¡Atención — Sábado, Domingo o Feriado!*\n\nSi vas a reservar al mediodía, te avisamos que ese turno es *completo y obligatorio*, con horario fijo de *12:00 a 16:00 hs*.",
             'MSG_LINK_TYC' => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",
             'MSG_LINK_CUMPLE_NINOS' => "🎉 *Packs de Cumpleaños Niños — Opciones y Precios:*\nhttps://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link",
             'MSG_LINK_CUMPLE_ADOLESCENTES' => "🎉 *Packs de Cumpleaños Adolescentes — Opciones:*\nhttps://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing",
