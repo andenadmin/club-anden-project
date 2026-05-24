@@ -76,18 +76,26 @@ class BotMessages
             'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Sector\n*5.* Nombre del responsable\n*6.* Mail\n\n*0.* Hablar con un asesor",
 
             // Eventos
-            'MSG_EVT_01' => "¡Genial! Vamos a organizar tu evento 🎉\n\n¿Qué tipo de evento estás planeando?\n\n*1.* Evento privado (te contactamos con un asesor)\n*2.* Cumpleaños niños (6 a 12 años)\n*3.* Cumpleaños adolescentes (13 a 17 años)\n*4.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_01' => "¡Genial! Vamos a organizar tu cumpleaños 🎉\n\n¿Qué tipo de festejo estás planeando?\n\n*1.* Evento privado\n*2.* Fútbol (6 a 13 años)\n*3.* Pádel (hasta 16 años)\n*4.* Hockey\n*5.* Cumpleaños adolescentes (14 a 17 años)\n*6.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_MODALIDAD' => "¿Qué modalidad querés para el cumple?\n\n*1.* Combo Futbolero — solo fútbol\n*2.* Combo Animación Deportiva — fútbol + juegos + competencias\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_NOMBRE_HIJO' => "¿Cuál es el nombre del/la festejado/a y qué edad va a cumplir?\n\nEscribilo así: *Nombre, edad* (ejemplo: *Lucas, 8*)",
+            'MSG_EVT_COLEGIO' => "¿En qué colegio está?",
+            'MSG_EVT_NECESIDADES_ESPECIALES' => "⚠️ ¿Alguno de los chicos tiene alguna *necesidad alimentaria especial*?\n\n(celiaquía, diabetes, alergias, restricciones de dieta, etc.)\n\nSi hay alguna, describila brevemente.\nSi no hay ninguna, respondé *ninguna*.",
+            'MSG_EVT_INFO_PADEL' => "🎾 *Cumpleaños Pádel — El Andén*\n\n🏟️ 1 hora de pádel por cancha (máx. 4 chicos)\n👨‍🏫 Coordinador obligatorio (menores de 16)\n🍽️ Menú incluido con bebida y servicio de mesa\n⚠️ No se permite ingresar comida, bebidas ni decoración del exterior\n\n¡Seguimos con la reserva!",
+            'MSG_EVT_INFO_HOCKEY' => "🏒 *Cumpleaños Hockey — El Andén*\n\nTe recopilamos los datos para coordinar tu cumple de hockey. Un asesor va a confirmar la disponibilidad y el presupuesto final.\n\n¡Seguimos!",
+            'MSG_EVT_MENU_PADEL' => "¿Qué menú preferís para los chicos?\n\n(Se elige 1 opción para todo el grupo. Incluye bebida y servicio de mesa.)\n\n*1.* Picada Andén caliente con dips\n*2.* 2 porciones de pizza\n*3.* Súper pancho\n*4.* Hamburguesa 100% carne\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_MENU_ADULTOS_TIPO' => "¿Qué menú completo querés para los adultos?\n\n*1.* 🥩 Parrillada Criolla Andén\n*2.* 🍖 Menú Pernil\n*3.* 🍗 Menú Milanesa Completa Club\n*4.* 🍕 Menú Pizza Andén\n\n*0.* Hablar con un asesor",
             'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
             'MSG_EVT_02' => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_FERIADO_AVISO' => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
             'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_03_HHMM' => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio.\nFormatos válidos: *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
-            'MSG_EVT_NINOS_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del responsable\n*4.* Mail\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_NINOS_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del/la festejado/a\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
             'MSG_EVT_05' => "¿Cuántos niños van a participar?\n\nIngresá un número entre 1 y 50.\nSi son más de 50, escribí *0* para hablar con un asesor.",
             'MSG_EVT_COSTO_MENU' => "Para {{numero_ninos}} niños con {{pack_label}}, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
             'MSG_EVT_MENU' => "¿Qué menú preferís para los chicos?\n\n*1.* 2 porciones de pizza\n*2.* Pancho\n*3.* Hamburguesa\n\n*0.* Hablar con un asesor",
-            'MSG_EVT_ADULTOS' => "¿Cuántos adultos van a asistir al evento?\n\nIngresá un número (puede ser 0).\n\nℹ️ Los adultos pueden optar por:\n• Menú fijo: \${{precio_menu_adulto}} por persona (se suma al presupuesto)\n• Cafetería libre: disponible en el lugar, no incluida en el pack",
+            'MSG_EVT_ADULTOS' => "¿Cuántos adultos van a asistir al evento?\n\nIngresá un número (puede ser 0).\n\nℹ️ Hasta 10 adultos al almuerzo/cena: eligen de la carta el día del evento.\n   Más de 10 adultos: menú fijo completo obligatorio.\n   Merienda (16–19:30 hs): hasta 15 adultos a elección.",
             'MSG_EVT_MENU_ADULTOS' => "De los {{numero_adultos}} adultos, ¿cuántos van a tomar el menú fijo?\n\nIngresá un número entre 0 y {{numero_adultos}}.",
             'MSG_EVT_ADICIONALES' => "¿Querés agregar alimentos adicionales al evento? (no incluidos en el pack base)\n\n*1.* 🍟 Bandejas de Papas Fritas Calientes\n*2.* 🥪 Sándwiches de Miga\n*3.* 🍉 Bandejas de Frutas\n*4.* 🍦 Helados (Palito de Agua o Bombón Helado)\n\nPodés elegir varias opciones separando los números con coma (ejemplo: *1,3*).\nSi no querés adicionales, respondé *ninguno*.\n\n*0.* Hablar con un asesor",
             'MSG_EVT_ADICIONAL_QTY' => "¿Cuántas {{item_name}} querés agregar?\n\nIngresá un número entero.",
@@ -102,6 +110,8 @@ class BotMessages
             'MSG_RES_FINDE_TURNOS'         => "¿A qué turno querés asistir?\n\n*A.* 12:00 hs\n*B.* 14:00 hs\n\n*0.* Hablar con un asesor",
             'MSG_RES_FINDE_ORDEN_LLEGADA'  => "🗓️ Los sábados, domingos y feriados las reservas se toman hasta las *11:00 hs*.\n\nPasado ese horario, la atención es *por orden de llegada*. ¡Te esperamos! 🌿",
             'MSG_RES_SECTOR_LLENO'         => "⚠️ En este momento todos los sectores están completos para esa fecha.\n\nUn asesor se va a comunicar con vos para ver si podemos encontrarte lugar. 🙏",
+            'MSG_LINK_CUMPLE_PADEL' => "🎾 *Packs de Cumpleaños Pádel — Opciones y Precios:*\n_(link próximamente)_",
+            'MSG_LINK_CUMPLE_HOCKEY' => "🏒 *Packs de Cumpleaños Hockey — Opciones y Precios:*\n_(link próximamente)_",
             'MSG_LINK_TYC' => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",
             'MSG_LINK_CUMPLE_NINOS' => "🎉 *Packs de Cumpleaños Niños — Opciones y Precios:*\nhttps://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link",
             'MSG_LINK_CUMPLE_ADOLESCENTES' => "🎉 *Packs de Cumpleaños Adolescentes — Opciones:*\nhttps://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing",
@@ -224,10 +234,54 @@ class BotMessages
     {
         return match($opcion) {
             '1' => 'Evento privado',
-            '2' => 'Cumpleaños niños (6 a 12 años)',
-            '3' => 'Cumpleaños adolescentes (13 a 17 años)',
-            '4' => 'Cumpleaños adultos',
+            '2' => 'Cumpleaños fútbol (6 a 13 años)',
+            '3' => 'Cumpleaños pádel (hasta 16 años)',
+            '4' => 'Cumpleaños hockey',
+            '5' => 'Cumpleaños adolescentes (14 a 17 años)',
+            '6' => 'Cumpleaños adultos',
             default => 'Tipo ' . $opcion,
+        };
+    }
+
+    public static function modalidadLabel(string $opcion): string
+    {
+        return match($opcion) {
+            '1' => 'Combo Futbolero',
+            '2' => 'Combo Animación Deportiva',
+            default => 'Modalidad ' . $opcion,
+        };
+    }
+
+    public static function menuPadelLabel(string $opcion): string
+    {
+        return match($opcion) {
+            '1' => 'Picada Andén caliente con dips',
+            '2' => '2 porciones de pizza',
+            '3' => 'Súper pancho',
+            '4' => 'Hamburguesa 100% carne',
+            default => 'Opción ' . $opcion,
+        };
+    }
+
+    public static function menuAdultosLabel(string $opcion): string
+    {
+        return match($opcion) {
+            '1' => 'Parrillada Criolla Andén',
+            '2' => 'Menú Pernil',
+            '3' => 'Menú Milanesa Completa Club',
+            '4' => 'Menú Pizza Andén',
+            default => 'Opción ' . $opcion,
+        };
+    }
+
+    public static function menuAdultosConcepto(string $opcion): string
+    {
+        return match($opcion) {
+            '1' => 'menu_adulto_parrillada',
+            '2' => 'menu_adulto_pernil',
+            '3' => 'menu_adulto_milanesa',
+            '4' => 'menu_adulto_pizza',
+            default => 'menu_adulto_parrillada',
         };
     }
 

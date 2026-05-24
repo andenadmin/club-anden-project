@@ -36,9 +36,11 @@ class ReservasController extends Controller
                 $datos = $r->datos ?? [];
 
                 $tipo = match (true) {
-                    $r->rama_servicio === 'RESTAURANTE' => 'RESTAURANTE',
-                    $r->subtipo === 'NINOS'             => 'NINOS',
-                    default                             => 'GENERAL_EVT',
+                    $r->rama_servicio === 'RESTAURANTE'                  => 'RESTAURANTE',
+                    in_array($r->subtipo, ['NINOS', 'FUTBOL'], true)     => 'FUTBOL',
+                    $r->subtipo === 'PADEL'                              => 'PADEL',
+                    $r->subtipo === 'HOCKEY'                             => 'HOCKEY',
+                    default                                              => 'GENERAL_EVT',
                 };
 
                 // Hora normalizada a "HH:mm"
@@ -71,7 +73,7 @@ class ReservasController extends Controller
                 }
 
                 // Personas normalizadas
-                if ($tipo === 'NINOS') {
+                if (in_array($tipo, ['FUTBOL', 'PADEL', 'HOCKEY'], true)) {
                     $ninos   = (int) ($datos['numero_ninos'] ?? 0);
                     $adultos = (int) ($datos['numero_adultos'] ?? 0);
                     $personas = ($ninos + $adultos) . ' pers.';
@@ -89,17 +91,19 @@ class ReservasController extends Controller
                 } catch (\Exception) {}
 
                 return [
-                    'id'              => $r->id,
-                    'tipo'            => $tipo,
-                    'nombre'          => $datos['nombre_responsable'] ?? $r->cliente?->nombre_cliente ?? 'Sin nombre',
-                    'telefono'        => $r->cliente?->numero_contacto ?? '',
-                    'fecha'           => $fechaNorm,
-                    'hora'            => $hora,
-                    'numero_personas' => $personas,
-                    'sector'          => $datos['sector'] ?? null,
-                    'mail'            => $datos['mail_contacto'] ?? null,
-                    'comentarios'     => $datos['extras_texto'] ?? null,
-                    'estado'          => $r->estado_reserva,
+                    'id'                    => $r->id,
+                    'tipo'                  => $tipo,
+                    'nombre'                => $datos['nombre_responsable'] ?? $r->cliente?->nombre_cliente ?? 'Sin nombre',
+                    'telefono'              => $r->cliente?->numero_contacto ?? '',
+                    'fecha'                 => $fechaNorm,
+                    'hora'                  => $hora,
+                    'numero_personas'       => $personas,
+                    'sector'                => $datos['sector'] ?? null,
+                    'mail'                  => $datos['mail_contacto'] ?? null,
+                    'comentarios'           => $datos['extras_texto'] ?? null,
+                    'estado'                => $r->estado_reserva,
+                    'nombre_hijo'           => $datos['nombre_hijo'] ?? null,
+                    'necesidades_especiales'=> $datos['necesidades_especiales'] ?? null,
                 ];
             });
 
@@ -156,7 +160,7 @@ class ReservasController extends Controller
         } elseif ($reserva->subtipo === 'GENERAL_EVT') {
             if ($horaNorm)                     $datos['hora_inicio']      = $horaNorm;
             if (!empty($v['numero_personas'])) $datos['numero_personas']  = (int) $v['numero_personas'];
-        } elseif ($reserva->subtipo === 'NINOS') {
+        } elseif (in_array($reserva->subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true)) {
             if ($horaNorm)                     $datos['hora_inicio']      = $horaNorm;
         }
 

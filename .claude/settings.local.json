@@ -41,7 +41,9 @@
       "Bash(composer require *)",
       "Bash(git add *)",
       "Bash(xargs grep *)",
-      "Bash(xargs cat *)"
+      "Bash(xargs cat *)",
+      "PowerShell(php -l \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\\\\app\\\\Services\\\\BotEngine.php\" ; php -l \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\\\\app\\\\Services\\\\BotMessages.php\")",
+      "PowerShell(php -l \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\\\\app\\\\Services\\\\BotEngine.php\" ; php -l \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\\\\app\\\\Services\\\\BotMessages.php\" ; php -l \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\\\\app\\\\Http\\\\Controllers\\\\ReservasController.php\")"
     ]
   }
 }

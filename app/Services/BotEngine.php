@@ -415,9 +415,11 @@ class BotEngine
             // Resolver aliases de texto para tipo de evento
             $tipoAliases = [
                 '1' => ['privado', 'evento privado', 'asesor'],
-                '2' => ['niños', 'ninos', 'chicos', 'kids', 'infantil', 'niño', 'nino', 'pequeños', 'pequeños'],
-                '3' => ['adolescentes', 'adolescente', 'jovenes', 'jóvenes', 'teen', 'teens'],
-                '4' => ['adultos', 'adulto', 'grande', 'grandes', 'mayores'],
+                '2' => ['futbol', 'fútbol', 'soccer', 'niños', 'ninos', 'chicos', 'kids', 'infantil'],
+                '3' => ['padel', 'pádel', 'tenis'],
+                '4' => ['hockey'],
+                '5' => ['adolescentes', 'adolescente', 'jovenes', 'jóvenes', 'teen', 'teens'],
+                '6' => ['adultos', 'adulto', 'grande', 'grandes', 'mayores'],
             ];
             $lower = strtolower(trim($text));
             foreach ($tipoAliases as $key => $words) {
@@ -433,37 +435,60 @@ class BotEngine
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_01')]);
             }
             $this->saveDato($session, 'tipo_evento', $optsEvt[$upper]);
-            // 1ra opción = evento privado → asesor
-            if ($upper === ($keysEvt[0] ?? '1')) {
+            // 1 = evento privado → asesor
+            if ($upper === '1') {
                 return $this->escalate($session, 'SOLICITUD_CLIENTE');
             }
-            // 2da opción = cumpleaños niños, resto → general
-            $nuevoSubtipo = ($upper === ($keysEvt[1] ?? '2')) ? 'NINOS' : 'GENERAL_EVT';
+            $nuevoSubtipo = match($upper) {
+                '2' => 'FUTBOL',
+                '3' => 'PADEL',
+                '4' => 'HOCKEY',
+                default => 'GENERAL_EVT',
+            };
             $this->pushHistory($session);
             $session->mergeEstado(['subtipo_activo' => $nuevoSubtipo, 'contador_invalidos' => 0]);
-            if ($nuevoSubtipo === 'NINOS') {
+
+            if ($nuevoSubtipo === 'FUTBOL') {
                 $session->mergeEstado(['current_step' => 'pack_seleccionado']);
                 return [
                     BotMessages::render('MSG_LINK_CUMPLE_NINOS'),
                     BotMessages::render('MSG_EVT_NINOS_PACK'),
                 ];
             }
-            // GENERAL_EVT
+            if ($nuevoSubtipo === 'PADEL') {
+                $session->mergeEstado(['current_step' => 'fecha']);
+                return [
+                    BotMessages::render('MSG_LINK_CUMPLE_PADEL'),
+                    BotMessages::render('MSG_EVT_INFO_PADEL'),
+                    BotMessages::render('MSG_EVT_02'),
+                ];
+            }
+            if ($nuevoSubtipo === 'HOCKEY') {
+                $session->mergeEstado(['current_step' => 'fecha']);
+                return [
+                    BotMessages::render('MSG_EVT_INFO_HOCKEY'),
+                    BotMessages::render('MSG_EVT_02'),
+                ];
+            }
+            // GENERAL_EVT (adolescentes=5, adultos=6)
             $session->mergeEstado(['current_step' => 'fecha']);
             $responses = [];
-            if ($upper === ($keysEvt[2] ?? '3')) {
+            if ($upper === '5') {
                 $responses[] = BotMessages::render('MSG_LINK_CUMPLE_ADOLESCENTES');
             }
             $responses[] = BotMessages::render('MSG_EVT_02');
             return $responses;
         }
 
-        return $subtipo === 'NINOS'
-            ? $this->stepNinos($session, $text)
-            : $this->stepGeneralEvt($session, $text);
+        return match($subtipo) {
+            'NINOS', 'FUTBOL' => $this->stepFutbol($session, $text),
+            'PADEL'           => $this->stepPadel($session, $text),
+            'HOCKEY'          => $this->stepHockey($session, $text),
+            default           => $this->stepGeneralEvt($session, $text),
+        };
     }
 
-    private function stepNinos(BotSession $session, string $text): array
+    private function stepFutbol(BotSession $session, string $text): array
     {
         $step = $session->current_step;
 
@@ -473,34 +498,58 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NINOS_PACK')]);
                 }
                 $this->saveDato($session, 'pack_seleccionado', strtoupper(trim($text)));
+                return $this->nextStep($session, 'modalidad', 'MSG_EVT_MODALIDAD');
+
+            case 'modalidad':
+                $modalidad = BotMessages::resolveOption('MSG_EVT_MODALIDAD', $text);
+                if (!$modalidad) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MODALIDAD')]);
+                }
+                $this->saveDato($session, 'modalidad', strtoupper(trim($text)));
                 return $this->nextStep($session, 'fecha', 'MSG_EVT_02');
 
             case 'fecha':
-                $dateNinos = $this->parseEventDate($text);
-                if (!$dateNinos || !$dateNinos->isAfter(Carbon::today())) {
+                $dateFut = $this->parseEventDate($text);
+                if (!$dateFut || !$dateFut->isAfter(Carbon::today())) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
                 }
-                $fechaStrNinos  = $dateNinos->format('d/m/y');
-                $esFeriadoNinos = Feriado::esFeriado($fechaStrNinos);
-                $this->saveDato($session, 'fecha', $fechaStrNinos);
-                $this->saveDato($session, 'es_feriado', $esFeriadoNinos ? 1 : 2);
+                $fechaStrFut  = $dateFut->format('d/m/y');
+                $esFeriadoFut = Feriado::esFeriado($fechaStrFut);
+                $this->saveDato($session, 'fecha', $fechaStrFut);
+                $this->saveDato($session, 'es_feriado', $esFeriadoFut ? 1 : 2);
                 $this->pushHistory($session);
                 $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
                 $msgs = [];
-                if ($esFeriadoNinos) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
+                if ($esFeriadoFut) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
                 $msgs[] = BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)]);
                 return $msgs;
 
             case 'hora_inicio':
-                $horaNinos = $this->parseEventTime($text);
-                if (!$horaNinos) {
+                $horaFut = $this->parseEventTime($text);
+                if (!$horaFut) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
                 }
-                $horaIntNinos = (int) explode(':', $horaNinos)[0];
-                if (!$this->validarHoraNinos($horaIntNinos, $session)) {
+                $horaIntFut = (int) explode(':', $horaFut)[0];
+                if (!$this->validarHoraNinos($horaIntFut, $session)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
                 }
-                $this->saveDato($session, 'hora_inicio', $horaIntNinos);
+                $this->saveDato($session, 'hora_inicio', $horaIntFut);
+                return $this->nextStep($session, 'nombre_hijo', 'MSG_EVT_NOMBRE_HIJO');
+
+            case 'nombre_hijo':
+                $raw = trim($text);
+                if (empty($raw)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NOMBRE_HIJO')]);
+                }
+                $this->saveDato($session, 'nombre_hijo', $raw);
+                return $this->nextStep($session, 'colegio', 'MSG_EVT_COLEGIO');
+
+            case 'colegio':
+                $raw = trim($text);
+                if (empty($raw)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_COLEGIO')]);
+                }
+                $this->saveDato($session, 'colegio', $raw);
                 return $this->nextStep($session, 'numero_ninos', 'MSG_EVT_05');
 
             case 'numero_ninos':
@@ -517,14 +566,12 @@ class BotEngine
                     'num_canchas'       => $canchas,
                     'num_coordinadores' => $coordinadores,
                 ]);
-
-                // Paso INFORMATIVO: calcular y enviar MSG_EVT_COSTO_MENU, luego continuar
-                $pack     = $session->getDatos('pack_seleccionado', '1');
-                $precio   = CostoEvento::precio('pack_' . $pack . '_menu');
-                $costo    = $ninos * $precio;
-                $infoMsg  = BotMessages::render('MSG_EVT_COSTO_MENU', [
-                    'numero_ninos'        => $ninos,
-                    'pack_label'          => BotMessages::packLabel($pack),
+                $pack    = $session->getDatos('pack_seleccionado', '1');
+                $precio  = CostoEvento::precio('pack_' . $pack . '_menu');
+                $costo   = $ninos * $precio;
+                $infoMsg = BotMessages::render('MSG_EVT_COSTO_MENU', [
+                    'numero_ninos'         => $ninos,
+                    'pack_label'           => BotMessages::packLabel($pack),
                     'costo_menu_calculado' => number_format($costo, 0, ',', '.'),
                 ]);
                 $this->pushHistory($session);
@@ -537,18 +584,11 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MENU')]);
                 }
                 $this->saveDato($session, 'menu_preferido', $menu);
-                $precioAdulto = CostoEvento::precio('menu_adulto');
-                return $this->nextStep($session, 'numero_adultos', 'MSG_EVT_ADULTOS', [
-                    'precio_menu_adulto' => number_format($precioAdulto, 0, ',', '.'),
-                ]);
+                return $this->nextStep($session, 'numero_adultos', 'MSG_EVT_ADULTOS');
 
             case 'numero_adultos':
                 if (!ctype_digit($text)) {
-                    return $this->handleInvalid($session, fn () => [
-                        BotMessages::render('MSG_EVT_ADULTOS', [
-                            'precio_menu_adulto' => number_format(CostoEvento::precio('menu_adulto'), 0, ',', '.'),
-                        ])
-                    ]);
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_ADULTOS')]);
                 }
                 $adultos = (int)$text;
                 $this->saveDato($session, 'numero_adultos', $adultos);
@@ -567,19 +607,30 @@ class BotEngine
                         BotMessages::render('MSG_EVT_MENU_ADULTOS', ['numero_adultos' => $adultos])
                     ]);
                 }
-                $this->saveDato($session, 'menu_adultos', (int)$text);
+                $menuAdultosQty = (int)$text;
+                $this->saveDato($session, 'menu_adultos', $menuAdultosQty);
+                if ($menuAdultosQty > 0) {
+                    return $this->nextStep($session, 'menu_adultos_tipo', 'MSG_EVT_MENU_ADULTOS_TIPO');
+                }
+                return $this->nextStep($session, 'alimentos_adicionales', 'MSG_EVT_ADICIONALES');
+
+            case 'menu_adultos_tipo':
+                $tipoLabel = BotMessages::resolveOption('MSG_EVT_MENU_ADULTOS_TIPO', $text);
+                if (!$tipoLabel) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MENU_ADULTOS_TIPO')]);
+                }
+                $this->saveDato($session, 'menu_adultos_tipo', strtoupper(trim($text)));
                 return $this->nextStep($session, 'alimentos_adicionales', 'MSG_EVT_ADICIONALES');
 
             case 'alimentos_adicionales':
                 if (strtolower($text) === 'ninguno') {
                     $this->saveDato($session, 'alimentos_adicionales', []);
-                    return $this->nextStep($session, 'extras_texto', 'MSG_EVT_EXTRAS');
+                    return $this->nextStep($session, 'necesidades_especiales', 'MSG_EVT_NECESIDADES_ESPECIALES');
                 }
-                // Validar lista de claves contra las opciones del mensaje
                 $optsAdic = BotMessages::parseOptions('MSG_EVT_ADICIONALES');
                 unset($optsAdic['0'], $optsAdic['NINGUNO']);
-                $partes   = array_map('trim', explode(',', $text));
-                $validos  = array_filter($partes, fn ($p) => isset($optsAdic[strtoupper($p)]));
+                $partes  = array_map('trim', explode(',', $text));
+                $validos = array_filter($partes, fn ($p) => isset($optsAdic[strtoupper($p)]));
                 if (count($validos) !== count($partes) || empty($validos)) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_ADICIONALES')]);
                 }
@@ -589,15 +640,208 @@ class BotEngine
                     'adicionales_pendientes_qty' => $ids,
                     'adicionales_qtys'           => [],
                 ]);
-                // Preguntar primer adicional
                 return $this->askNextAdicionalQty($session);
 
             default:
-                // Sub-pasos de cantidad de adicionales
                 if (str_starts_with($step, 'adicional_qty_')) {
                     return $this->handleAdicionalQty($session, $text);
                 }
-                return $this->stepNinosLate($session, $text);
+                return $this->stepFutbolLate($session, $text);
+        }
+    }
+
+    private function stepPadel(BotSession $session, string $text): array
+    {
+        $step = $session->current_step;
+
+        switch ($step) {
+            case 'fecha':
+                $datePad = $this->parseEventDate($text);
+                if (!$datePad || !$datePad->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                $fechaStrPad  = $datePad->format('d/m/y');
+                $esFeriadoPad = Feriado::esFeriado($fechaStrPad);
+                $this->saveDato($session, 'fecha', $fechaStrPad);
+                $this->saveDato($session, 'es_feriado', $esFeriadoPad ? 1 : 2);
+                $this->pushHistory($session);
+                $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
+                $msgs = [];
+                if ($esFeriadoPad) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
+                $msgs[] = BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)]);
+                return $msgs;
+
+            case 'hora_inicio':
+                $horaPad = $this->parseEventTime($text);
+                if (!$horaPad) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
+                }
+                $horaIntPad = (int) explode(':', $horaPad)[0];
+                if (!$this->validarHoraNinos($horaIntPad, $session)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])]);
+                }
+                $this->saveDato($session, 'hora_inicio', $horaIntPad);
+                return $this->nextStep($session, 'nombre_hijo', 'MSG_EVT_NOMBRE_HIJO');
+
+            case 'nombre_hijo':
+                $raw = trim($text);
+                if (empty($raw)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NOMBRE_HIJO')]);
+                }
+                $this->saveDato($session, 'nombre_hijo', $raw);
+                return $this->nextStep($session, 'colegio', 'MSG_EVT_COLEGIO');
+
+            case 'colegio':
+                $raw = trim($text);
+                if (empty($raw)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_COLEGIO')]);
+                }
+                $this->saveDato($session, 'colegio', $raw);
+                return $this->nextStep($session, 'numero_ninos', 'MSG_EVT_05');
+
+            case 'numero_ninos':
+                if (!ctype_digit($text) || (int)$text < 1) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_05')]);
+                }
+                if ((int)$text > 40) {
+                    return $this->escalate($session, 'CAPACIDAD_EXCEDIDA');
+                }
+                $ninosPad = (int)$text;
+                $canchasPad = max(1, (int)ceil($ninosPad / 4));
+                $this->saveDatos($session, [
+                    'numero_ninos' => $ninosPad,
+                    'num_canchas'  => $canchasPad,
+                ]);
+                $this->pushHistory($session);
+                $session->mergeEstado(['current_step' => 'menu_preferido', 'contador_invalidos' => 0]);
+                return [BotMessages::render('MSG_EVT_MENU_PADEL')];
+
+            case 'menu_preferido':
+                $menuPad = BotMessages::resolveOption('MSG_EVT_MENU_PADEL', $text);
+                if (!$menuPad) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MENU_PADEL')]);
+                }
+                $this->saveDato($session, 'menu_preferido', $menuPad);
+                return $this->nextStep($session, 'numero_adultos', 'MSG_EVT_ADULTOS');
+
+            case 'numero_adultos':
+                if (!ctype_digit($text)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_ADULTOS')]);
+                }
+                $adultosPad = (int)$text;
+                $this->saveDato($session, 'numero_adultos', $adultosPad);
+                if ($adultosPad > 0) {
+                    $this->pushHistory($session);
+                    $session->mergeEstado(['current_step' => 'menu_adultos', 'contador_invalidos' => 0]);
+                    return [BotMessages::render('MSG_EVT_MENU_ADULTOS', ['numero_adultos' => $adultosPad])];
+                }
+                $this->saveDato($session, 'menu_adultos', 0);
+                return $this->nextStep($session, 'alimentos_adicionales', 'MSG_EVT_ADICIONALES');
+
+            case 'menu_adultos':
+                $adultosPad2 = (int)$session->getDatos('numero_adultos', 0);
+                if (!ctype_digit($text) || (int)$text < 0 || (int)$text > $adultosPad2) {
+                    return $this->handleInvalid($session, fn () => [
+                        BotMessages::render('MSG_EVT_MENU_ADULTOS', ['numero_adultos' => $adultosPad2])
+                    ]);
+                }
+                $qtyPad = (int)$text;
+                $this->saveDato($session, 'menu_adultos', $qtyPad);
+                if ($qtyPad > 0) {
+                    return $this->nextStep($session, 'menu_adultos_tipo', 'MSG_EVT_MENU_ADULTOS_TIPO');
+                }
+                return $this->nextStep($session, 'alimentos_adicionales', 'MSG_EVT_ADICIONALES');
+
+            case 'menu_adultos_tipo':
+                $tipoLabelPad = BotMessages::resolveOption('MSG_EVT_MENU_ADULTOS_TIPO', $text);
+                if (!$tipoLabelPad) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MENU_ADULTOS_TIPO')]);
+                }
+                $this->saveDato($session, 'menu_adultos_tipo', strtoupper(trim($text)));
+                return $this->nextStep($session, 'alimentos_adicionales', 'MSG_EVT_ADICIONALES');
+
+            case 'alimentos_adicionales':
+                if (strtolower($text) === 'ninguno') {
+                    $this->saveDato($session, 'alimentos_adicionales', []);
+                    return $this->nextStep($session, 'necesidades_especiales', 'MSG_EVT_NECESIDADES_ESPECIALES');
+                }
+                $optsAdicPad = BotMessages::parseOptions('MSG_EVT_ADICIONALES');
+                unset($optsAdicPad['0'], $optsAdicPad['NINGUNO']);
+                $partesPad  = array_map('trim', explode(',', $text));
+                $validosPad = array_filter($partesPad, fn ($p) => isset($optsAdicPad[strtoupper($p)]));
+                if (count($validosPad) !== count($partesPad) || empty($validosPad)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_ADICIONALES')]);
+                }
+                $idsPad = array_values(array_unique(array_map('intval', $validosPad)));
+                $this->saveDatos($session, [
+                    'alimentos_adicionales'      => $idsPad,
+                    'adicionales_pendientes_qty' => $idsPad,
+                    'adicionales_qtys'           => [],
+                ]);
+                return $this->askNextAdicionalQty($session);
+
+            default:
+                if (str_starts_with($step, 'adicional_qty_')) {
+                    return $this->handleAdicionalQty($session, $text);
+                }
+                return $this->stepFutbolLate($session, $text);
+        }
+    }
+
+    private function stepHockey(BotSession $session, string $text): array
+    {
+        $step = $session->current_step;
+
+        switch ($step) {
+            case 'fecha':
+                $dateHok = $this->parseEventDate($text);
+                if (!$dateHok || !$dateHok->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                $fechaStrHok  = $dateHok->format('d/m/y');
+                $esFeriadoHok = Feriado::esFeriado($fechaStrHok);
+                $this->saveDato($session, 'fecha', $fechaStrHok);
+                $this->saveDato($session, 'es_feriado', $esFeriadoHok ? 1 : 2);
+                $this->pushHistory($session);
+                $session->mergeEstado(['current_step' => 'hora_inicio', 'contador_invalidos' => 0]);
+                $msgs = [];
+                if ($esFeriadoHok) $msgs[] = BotMessages::render('MSG_EVT_FERIADO_AVISO');
+                $msgs[] = BotMessages::render('MSG_EVT_03_HHMM');
+                return $msgs;
+
+            case 'hora_inicio':
+                $horaHok = $this->parseEventTime($text);
+                if (!$horaHok) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_03_HHMM')]);
+                }
+                $this->saveDato($session, 'hora_inicio', $horaHok);
+                return $this->nextStep($session, 'nombre_hijo', 'MSG_EVT_NOMBRE_HIJO');
+
+            case 'nombre_hijo':
+                $rawHok = trim($text);
+                if (empty($rawHok)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NOMBRE_HIJO')]);
+                }
+                $this->saveDato($session, 'nombre_hijo', $rawHok);
+                return $this->nextStep($session, 'colegio', 'MSG_EVT_COLEGIO');
+
+            case 'colegio':
+                $rawHok2 = trim($text);
+                if (empty($rawHok2)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_COLEGIO')]);
+                }
+                $this->saveDato($session, 'colegio', $rawHok2);
+                return $this->nextStep($session, 'numero_ninos', 'MSG_EVT_05');
+
+            case 'numero_ninos':
+                if (!ctype_digit($text) || (int)$text < 1) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_05')]);
+                }
+                $this->saveDato($session, 'numero_ninos', (int)$text);
+                return $this->nextStep($session, 'necesidades_especiales', 'MSG_EVT_NECESIDADES_ESPECIALES');
+
+            default:
+                return $this->stepFutbolLate($session, $text);
         }
     }
 
@@ -631,7 +875,7 @@ class BotEngine
             return $this->askNextAdicionalQty($session);
         }
 
-        return $this->nextStep($session, 'extras_texto', 'MSG_EVT_EXTRAS');
+        return $this->nextStep($session, 'necesidades_especiales', 'MSG_EVT_NECESIDADES_ESPECIALES');
     }
 
     private function askNextAdicionalQty(BotSession $session): array
@@ -643,11 +887,20 @@ class BotEngine
         return [BotMessages::render('MSG_EVT_ADICIONAL_QTY', ['item_name' => BotMessages::adicionalLabel($itemId)])];
     }
 
-    private function stepNinosLate(BotSession $session, string $text): array
+    private function stepFutbolLate(BotSession $session, string $text): array
     {
         $step = $session->current_step;
 
         switch ($step) {
+            case 'necesidades_especiales':
+                $necesidades = trim($text);
+                if (empty($necesidades)) {
+                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NECESIDADES_ESPECIALES')]);
+                }
+                $value = strtolower($necesidades) === 'ninguna' ? null : $necesidades;
+                $this->saveDato($session, 'necesidades_especiales', $value);
+                return $this->nextStep($session, 'extras_texto', 'MSG_EVT_EXTRAS');
+
             case 'extras_texto':
                 $tieneExtras = strtolower($text) !== 'ninguno';
                 $this->saveDatos($session, ['extras_texto' => $text, 'tiene_extras' => $tieneExtras]);
@@ -784,7 +1037,9 @@ class BotEngine
             if ($session->rama_activa === 'RESTAURANTE') {
                 return [BotMessages::render('MSG_RES_CAMBIAR')];
             }
-            $msgId = $session->subtipo_activo === 'NINOS' ? 'MSG_EVT_NINOS_CAMBIAR' : 'MSG_EVT_CAMBIAR';
+            $msgId = in_array($session->subtipo_activo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true)
+                ? 'MSG_EVT_NINOS_CAMBIAR'
+                : 'MSG_EVT_CAMBIAR';
             return [BotMessages::render($msgId)];
         }
 
@@ -982,7 +1237,8 @@ class BotEngine
         $datos         = $session->datos_parciales ?? [];
         $cambiandoPaso = $datos['cambiando_paso'] ?? null;
         $subtipo       = $session->subtipo_activo;
-        $msgCambiar    = $subtipo === 'NINOS' ? 'MSG_EVT_NINOS_CAMBIAR' : 'MSG_EVT_CAMBIAR';
+        $esSubtipoNinos = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
+        $msgCambiar     = $esSubtipoNinos ? 'MSG_EVT_NINOS_CAMBIAR' : 'MSG_EVT_CAMBIAR';
 
         if ($cambiandoPaso === null) {
             $opts    = BotMessages::parseOptions($msgCambiar);
@@ -992,8 +1248,8 @@ class BotEngine
             if (!in_array($upper, $strKeys, true)) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render($msgCambiar)]);
             }
-            $sequence = $subtipo === 'NINOS'
-                ? ['fecha', 'hora_inicio', 'nombre_responsable', 'mail_contacto']
+            $sequence = $esSubtipoNinos
+                ? ['fecha', 'hora_inicio', 'nombre_hijo', 'nombre_responsable', 'mail_contacto']
                 : ['fecha', 'hora_inicio', 'numero_personas', 'nombre_responsable', 'mail_contacto'];
             $pos  = array_search($upper, $nonZero, true);
             $paso = $pos !== false ? ($sequence[$pos] ?? null) : null;
@@ -1010,7 +1266,10 @@ class BotEngine
                 }
                 return [BotMessages::render('MSG_EVT_MAIL')];
             }
-            if ($paso === 'hora_inicio' && $subtipo === 'NINOS') {
+            if ($paso === 'nombre_hijo') {
+                return [BotMessages::render('MSG_EVT_NOMBRE_HIJO')];
+            }
+            if ($paso === 'hora_inicio' && $esSubtipoNinos && $subtipo !== 'HOCKEY') {
                 return [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])];
             }
             $msgMap = [
@@ -1032,7 +1291,8 @@ class BotEngine
 
         $result = $this->validateAndSaveCambioEvento($session, $cambiandoPaso, $text);
         if ($result === false) {
-            if ($cambiandoPaso === 'hora_inicio' && $subtipo === 'NINOS') {
+            $esSubtipoNinosC = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
+            if ($cambiandoPaso === 'hora_inicio' && $esSubtipoNinosC && $subtipo !== 'HOCKEY') {
                 return $this->handleInvalid($session, fn () => [
                     BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])
                 ]);
@@ -1040,6 +1300,7 @@ class BotEngine
             $msgMap = [
                 'fecha'                     => 'MSG_EVT_02',
                 'hora_inicio'               => 'MSG_EVT_03_HHMM',
+                'nombre_hijo'               => 'MSG_EVT_NOMBRE_HIJO',
                 'numero_personas'           => 'MSG_EVT_PERSONAS',
                 'nombre_responsable'        => 'MSG_EVT_07',
                 'nombre_responsable_custom' => 'MSG_EVT_07_CUSTOM',
@@ -1068,7 +1329,8 @@ class BotEngine
 
     private function validateAndSaveCambioEvento(BotSession $session, string $campo, string $text): mixed
     {
-        $subtipo = $session->subtipo_activo;
+        $subtipo        = $session->subtipo_activo;
+        $esSubtipoNinos = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
 
         switch ($campo) {
             case 'fecha':
@@ -1080,10 +1342,16 @@ class BotEngine
                 $this->saveDato($session, 'es_feriado', $esFeriado ? 1 : 2);
                 return true;
 
+            case 'nombre_hijo':
+                $raw = trim($text);
+                if (empty($raw)) return false;
+                $this->saveDato($session, 'nombre_hijo', $raw);
+                return true;
+
             case 'hora_inicio':
                 $hora = $this->parseEventTime($text);
                 if (!$hora) return false;
-                if ($subtipo === 'NINOS') {
+                if ($esSubtipoNinos && $subtipo !== 'HOCKEY') {
                     $h = (int) explode(':', $hora)[0];
                     if (!$this->validarHoraNinos($h, $session)) return false;
                     $this->saveDato($session, 'hora_inicio', $h);
@@ -1285,12 +1553,23 @@ class BotEngine
             if (!empty($datos['fecha']))             $lines[] = "📅 Fecha: {$datos['fecha']}";
             if (!empty($datos['hora_inicio']))       $lines[] = "🕐 Hora inicio: {$datos['hora_inicio']}";
 
-            if ($subtipo === 'NINOS') {
+            $esSubtipoNinos = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
+
+            if ($esSubtipoNinos) {
+                if (!empty($datos['nombre_hijo']))       $lines[] = "🎂 Festejado/a: {$datos['nombre_hijo']}";
+                if (!empty($datos['colegio']))           $lines[] = "🏫 Colegio: {$datos['colegio']}";
+                if ($subtipo === 'FUTBOL' && !empty($datos['modalidad'])) {
+                    $lines[] = "⚽ Modalidad: " . BotMessages::modalidadLabel($datos['modalidad']);
+                }
                 if (!empty($datos['pack_seleccionado'])) $lines[] = "🎁 Pack: " . BotMessages::packLabel($datos['pack_seleccionado']);
-                if (!empty($datos['numero_ninos']))      $lines[] = "👦 Niños: {$datos['numero_ninos']}";
-                if (!empty($datos['menu_preferido']))    $lines[] = "🍕 Menú niños: {$datos['menu_preferido']}";
+                if (!empty($datos['numero_ninos']))      $lines[] = "👦 Chicos: {$datos['numero_ninos']}";
+                if (!empty($datos['menu_preferido']))    $lines[] = "🍕 Menú chicos: {$datos['menu_preferido']}";
                 if (isset($datos['numero_adultos']))     $lines[] = "🧑 Adultos: {$datos['numero_adultos']}";
-                if (!empty($datos['menu_adultos']))      $lines[] = "🍽️ Menú adultos: {$datos['menu_adultos']}";
+                if (!empty($datos['menu_adultos'])) {
+                    $tipoKey = $datos['menu_adultos_tipo'] ?? null;
+                    $tipoStr = $tipoKey ? ' — ' . BotMessages::menuAdultosLabel($tipoKey) : '';
+                    $lines[] = "🍽️ Menú adultos: {$datos['menu_adultos']}{$tipoStr}";
+                }
 
                 // Adicionales
                 $ids  = $datos['alimentos_adicionales'] ?? [];
@@ -1300,6 +1579,9 @@ class BotEngine
                     $lines[] = "➕ " . BotMessages::adicionalLabel((int)$id) . ": x{$qty}";
                 }
 
+                if (!empty($datos['necesidades_especiales'])) {
+                    $lines[] = "⚠️ Necesidades especiales: {$datos['necesidades_especiales']}";
+                }
                 if (!empty($datos['extras_texto']) && strtolower($datos['extras_texto']) !== 'ninguno') {
                     $lines[] = "📝 Extras: {$datos['extras_texto']}";
                 }
@@ -1310,8 +1592,8 @@ class BotEngine
             if (!empty($datos['mail_contacto']))       $lines[] = "📧 Mail: {$datos['mail_contacto']}";
             if (!empty($datos['nombre_responsable']))  $lines[] = "👤 Responsable: {$datos['nombre_responsable']}";
 
-            // Presupuesto para NINOS
-            if ($subtipo === 'NINOS') {
+            // Presupuesto para FUTBOL/NINOS/PADEL
+            if (in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL'], true)) {
                 $ppto = $this->calcularPresupuesto($session);
                 if ($ppto['total'] > 0) {
                     $lines[] = "";
@@ -1336,28 +1618,23 @@ class BotEngine
 
     private function calcularPresupuesto(BotSession $session): array
     {
-        if ($session->subtipo_activo !== 'NINOS') return ['total' => 0, 'detalle' => [], 'recargo_feriado' => 0];
+        $subtipo = $session->subtipo_activo;
+        $empty   = ['total' => 0, 'detalle' => [], 'recargo_feriado' => 0];
 
-        $datos = $session->datos_parciales ?? [];
+        if (!in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL'], true)) return $empty;
 
-        $pack            = $datos['pack_seleccionado'] ?? '1';
-        $ninos           = (int)($datos['numero_ninos'] ?? 0);
-        $canchas         = (int)($datos['num_canchas'] ?? 1);
-        $coordinadores   = (int)($datos['num_coordinadores'] ?? 2);
-        $menuAdultos     = (int)($datos['menu_adultos'] ?? 0);
-        $ids             = $datos['alimentos_adicionales'] ?? [];
-        $qtys            = $datos['adicionales_qtys'] ?? [];
-        $esFeriado       = ($datos['es_feriado'] ?? 2) === 1;
+        $datos         = $session->datos_parciales ?? [];
+        $esFeriado     = ($datos['es_feriado'] ?? 2) === 1;
+        $menuAdultosQty  = (int)($datos['menu_adultos'] ?? 0);
+        $menuAdultosTipo = $datos['menu_adultos_tipo'] ?? null;
+        $ids           = $datos['alimentos_adicionales'] ?? [];
+        $qtys          = $datos['adicionales_qtys'] ?? [];
 
-        $pMenuNinos    = CostoEvento::precio('pack_' . $pack . '_menu');
-        $pCancha       = CostoEvento::precio('cancha');
-        $pCoord        = CostoEvento::precio('coordinador');
-        $pMenuAdulto   = CostoEvento::precio('menu_adulto');
+        $pMenuAdulto = $menuAdultosTipo
+            ? CostoEvento::precio(BotMessages::menuAdultosConcepto($menuAdultosTipo))
+            : CostoEvento::precio('menu_adulto_parrillada');
 
-        $subtMenuNinos  = $ninos * $pMenuNinos;
-        $subtCanchas    = $canchas * $pCancha;
-        $subtCoords     = $coordinadores * $pCoord;
-        $subtMenuAdults = $menuAdultos * $pMenuAdulto;
+        $subtMenuAdults  = $menuAdultosQty * $pMenuAdulto;
 
         $subtAdicionales = 0;
         $detAdicionales  = [];
@@ -1369,17 +1646,65 @@ class BotEngine
             $detAdicionales[] = BotMessages::adicionalLabel((int)$id) . " x{$qty}: $" . number_format($sub, 0, ',', '.');
         }
 
-        $subtotal     = $subtMenuNinos + $subtCanchas + $subtCoords + $subtMenuAdults + $subtAdicionales;
-        $recargo      = $esFeriado ? $subtotal * 0.30 : 0;
-        $total        = $subtotal + $recargo;
+        if ($subtipo === 'PADEL') {
+            $ninos    = (int)($datos['numero_ninos'] ?? 0);
+            $canchas  = (int)($datos['num_canchas'] ?? max(1, (int)ceil($ninos / 4)));
+            $horaInt  = is_int($datos['hora_inicio'] ?? null)
+                ? (int)$datos['hora_inicio']
+                : (int)explode(':', (string)($datos['hora_inicio'] ?? '8:00'))[0];
+            $esNoche  = $horaInt >= 20;
+            $pCancha  = CostoEvento::precio('padel_cancha');
+            $pCoord   = $esNoche
+                ? CostoEvento::precio('padel_coordinador_noche')
+                : CostoEvento::precio('padel_coordinador');
+            $pMenuNin = CostoEvento::precio('padel_menu_juvenil');
+
+            $subtMenuNinos = $ninos * $pMenuNin;
+            $subtCanchas   = $canchas * $pCancha;
+            $subtCoords    = $canchas * $pCoord;
+
+            $subtotal = $subtMenuNinos + $subtCanchas + $subtCoords + $subtMenuAdults + $subtAdicionales;
+            $recargo  = $esFeriado ? $subtotal * 0.30 : 0;
+            $total    = $subtotal + $recargo;
+
+            $detalle = [
+                "Menú juvenil pádel × {$ninos}: $" . number_format($subtMenuNinos, 0, ',', '.'),
+                "Canchas × {$canchas}: $" . number_format($subtCanchas, 0, ',', '.'),
+                "Coordinadores × {$canchas}: $" . number_format($subtCoords, 0, ',', '.'),
+            ];
+            if ($menuAdultosQty > 0) {
+                $detalle[] = "Menú adultos × {$menuAdultosQty}: $" . number_format($subtMenuAdults, 0, ',', '.');
+            }
+            $detalle = array_merge($detalle, $detAdicionales);
+
+            return compact('subtotal', 'recargo', 'total', 'detalle') + ['recargo_feriado' => $recargo];
+        }
+
+        // FUTBOL / NINOS
+        $pack          = $datos['pack_seleccionado'] ?? '1';
+        $ninos         = (int)($datos['numero_ninos'] ?? 0);
+        $canchas       = (int)($datos['num_canchas'] ?? 1);
+        $coordinadores = (int)($datos['num_coordinadores'] ?? 2);
+
+        $pMenuNinos = CostoEvento::precio('pack_' . $pack . '_menu');
+        $pCancha    = CostoEvento::precio('cancha');
+        $pCoord     = CostoEvento::precio('coordinador');
+
+        $subtMenuNinos = $ninos * $pMenuNinos;
+        $subtCanchas   = $canchas * $pCancha;
+        $subtCoords    = $coordinadores * $pCoord;
+
+        $subtotal = $subtMenuNinos + $subtCanchas + $subtCoords + $subtMenuAdults + $subtAdicionales;
+        $recargo  = $esFeriado ? $subtotal * 0.30 : 0;
+        $total    = $subtotal + $recargo;
 
         $detalle = [
             "Menú niños (" . BotMessages::packLabel($pack) . ") × {$ninos}: $" . number_format($subtMenuNinos, 0, ',', '.'),
             "Canchas × {$canchas}: $" . number_format($subtCanchas, 0, ',', '.'),
             "Coordinadores × {$coordinadores}: $" . number_format($subtCoords, 0, ',', '.'),
         ];
-        if ($menuAdultos > 0) {
-            $detalle[] = "Menú adultos × {$menuAdultos}: $" . number_format($subtMenuAdults, 0, ',', '.');
+        if ($menuAdultosQty > 0) {
+            $detalle[] = "Menú adultos × {$menuAdultosQty}: $" . number_format($subtMenuAdults, 0, ',', '.');
         }
         $detalle = array_merge($detalle, $detAdicionales);
 
@@ -1581,24 +1906,45 @@ class BotEngine
         }
 
         if ($rama === 'EVENTOS') {
-            if ($subtipo === 'NINOS') {
+            if (in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL'], true)) {
                 if (str_starts_with((string)$step, 'adicional_qty_')) {
                     $itemId = (int)substr((string)$step, strlen('adicional_qty_'));
                     return [BotMessages::render('MSG_EVT_ADICIONAL_QTY', ['item_name' => BotMessages::adicionalLabel($itemId)])];
                 }
+                $menuPrefMsg = $subtipo === 'PADEL' ? 'MSG_EVT_MENU_PADEL' : 'MSG_EVT_MENU';
+                $horaMsg     = fn() => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])];
                 $msgMap = [
                     'pack_seleccionado'         => fn() => [BotMessages::render('MSG_EVT_NINOS_PACK')],
+                    'modalidad'                 => fn() => [BotMessages::render('MSG_EVT_MODALIDAD')],
                     'fecha'                     => fn() => [BotMessages::render('MSG_EVT_02')],
-                    'hora_inicio'               => fn() => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])],
+                    'hora_inicio'               => $horaMsg,
+                    'nombre_hijo'               => fn() => [BotMessages::render('MSG_EVT_NOMBRE_HIJO')],
+                    'colegio'                   => fn() => [BotMessages::render('MSG_EVT_COLEGIO')],
                     'numero_ninos'              => fn() => [BotMessages::render('MSG_EVT_05')],
-                    'menu_preferido'            => fn() => [BotMessages::render('MSG_EVT_MENU')],
-                    'numero_adultos'            => fn() => [BotMessages::render('MSG_EVT_ADULTOS', [
-                        'precio_menu_adulto' => number_format(CostoEvento::precio('menu_adulto'), 0, ',', '.'),
-                    ])],
+                    'menu_preferido'            => fn() => [BotMessages::render($menuPrefMsg)],
+                    'numero_adultos'            => fn() => [BotMessages::render('MSG_EVT_ADULTOS')],
                     'menu_adultos'              => fn() => [BotMessages::render('MSG_EVT_MENU_ADULTOS', [
                         'numero_adultos' => $datos['numero_adultos'] ?? '?',
                     ])],
+                    'menu_adultos_tipo'         => fn() => [BotMessages::render('MSG_EVT_MENU_ADULTOS_TIPO')],
                     'alimentos_adicionales'     => fn() => [BotMessages::render('MSG_EVT_ADICIONALES')],
+                    'necesidades_especiales'    => fn() => [BotMessages::render('MSG_EVT_NECESIDADES_ESPECIALES')],
+                    'extras_texto'              => fn() => [BotMessages::render('MSG_EVT_EXTRAS')],
+                    'mail_contacto'             => fn() => $this->getMailMessages($session, 'MSG_EVT_MAIL'),
+                    'nombre_responsable'        => fn() => [BotMessages::render('MSG_EVT_07')],
+                    'nombre_responsable_custom' => fn() => [BotMessages::render('MSG_EVT_07_CUSTOM')],
+                ];
+                return ($msgMap[$step] ?? fn() => $this->escalate($session, 'SOLICITUD_CLIENTE'))();
+            }
+
+            if ($subtipo === 'HOCKEY') {
+                $msgMap = [
+                    'fecha'                     => fn() => [BotMessages::render('MSG_EVT_02')],
+                    'hora_inicio'               => fn() => [BotMessages::render('MSG_EVT_03_HHMM')],
+                    'nombre_hijo'               => fn() => [BotMessages::render('MSG_EVT_NOMBRE_HIJO')],
+                    'colegio'                   => fn() => [BotMessages::render('MSG_EVT_COLEGIO')],
+                    'numero_ninos'              => fn() => [BotMessages::render('MSG_EVT_05')],
+                    'necesidades_especiales'    => fn() => [BotMessages::render('MSG_EVT_NECESIDADES_ESPECIALES')],
                     'extras_texto'              => fn() => [BotMessages::render('MSG_EVT_EXTRAS')],
                     'mail_contacto'             => fn() => $this->getMailMessages($session, 'MSG_EVT_MAIL'),
                     'nombre_responsable'        => fn() => [BotMessages::render('MSG_EVT_07')],

@@ -6,7 +6,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-type TipoReserva = 'RESTAURANTE' | 'NINOS' | 'GENERAL_EVT';
+type TipoReserva = 'RESTAURANTE' | 'FUTBOL' | 'NINOS' | 'PADEL' | 'HOCKEY' | 'GENERAL_EVT';
 type Vista = 'dia' | 'semana' | 'quincena';
 
 interface Reserva {
@@ -21,6 +21,8 @@ interface Reserva {
     mail: string | null;
     comentarios: string | null;
     estado: 'CONFIRMADA' | 'PENDIENTE_CONFIRMACION' | 'CANCELADA' | 'ESCALADA' | 'COMPLETADA';
+    nombre_hijo: string | null;
+    necesidades_especiales: string | null;
 }
 
 interface Props {
@@ -41,11 +43,29 @@ const TIPO_CONFIG: Record<TipoReserva, { label: string; badge: string; col: stri
         col:   'border-l-emerald-400',
         text:  'text-emerald-700 dark:text-emerald-400',
     },
+    FUTBOL: {
+        label: 'Cumple Fútbol',
+        badge: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
+        col:   'border-l-pink-400',
+        text:  'text-pink-700 dark:text-pink-400',
+    },
     NINOS: {
         label: 'Cumpleaños',
         badge: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
         col:   'border-l-pink-400',
         text:  'text-pink-700 dark:text-pink-400',
+    },
+    PADEL: {
+        label: 'Cumple Pádel',
+        badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+        col:   'border-l-sky-400',
+        text:  'text-sky-700 dark:text-sky-400',
+    },
+    HOCKEY: {
+        label: 'Cumple Hockey',
+        badge: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+        col:   'border-l-orange-400',
+        text:  'text-orange-700 dark:text-orange-400',
     },
     GENERAL_EVT: {
         label: 'Evento',
@@ -287,7 +307,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                     </div>
 
                     {/* Personas */}
-                    {reserva.tipo !== 'NINOS' && (
+                    {!(['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'] as TipoReserva[]).includes(reserva.tipo) && (
                         <div>
                             <label className={labelCls}>Número de personas</label>
                             <input type="text" value={form.numero_personas} onChange={e => set('numero_personas', e.target.value)} className={inputCls} />
@@ -398,6 +418,16 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
                     {notas.hasBabyChair && <NotaBadge tipo="bebe" />}
                     {notas.celebration  && <NotaBadge tipo="cumple" />}
                     {notas.allergy      && <NotaBadge tipo="alergia" />}
+                </div>
+            )}
+
+            {reserva.nombre_hijo && (
+                <p className="mt-2 text-sm font-medium text-pink-700 dark:text-pink-400">🎂 {reserva.nombre_hijo}</p>
+            )}
+
+            {reserva.necesidades_especiales && (
+                <div className="mt-2 rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-2.5 py-1.5">
+                    <p className="text-xs font-semibold text-red-700 dark:text-red-400">⚠️ Necesidades: {reserva.necesidades_especiales}</p>
                 </div>
             )}
 
