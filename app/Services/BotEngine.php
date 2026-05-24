@@ -11,6 +11,7 @@ use App\Models\CrmCliente;
 use App\Models\CostoEvento;
 use App\Models\Feriado;
 use App\Models\Reserva;
+use App\Services\RestaurantCapacity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 
@@ -297,15 +298,48 @@ class BotEngine
                 $esFutura = $carbonFecha->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
-                $esFdS = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
+                $esFdS      = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
+                $esMismoDia = $carbonFecha->isSameDay(Carbon::today());
+
+                // Sábado/domingo/feriado del mismo día después de las 11am → por orden de llegada
+                if ($esFdS && $esMismoDia) {
+                    $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
+                    if ($ahoraMin >= 11 * 60) {
+                        $session->mergeEstado([
+                            'estado_actual'   => 'INICIO',
+                            'current_step'    => null,
+                            'datos_parciales' => [],
+                            'rama_activa'     => null,
+                        ]);
+                        return [BotMessages::render('MSG_RES_FINDE_ORDEN_LLEGADA')];
+                    }
+                }
+
+                $this->saveDato($session, 'es_finde', $esFdS);
                 $msgs = [];
                 if ($esFdS) $msgs[] = BotMessages::render('MSG_RES_FIN_DE_SEMANA');
-                return array_merge($msgs, $this->nextStep($session, 'hora', 'MSG_RES_02'));
+                $horaMsgId = $esFdS ? 'MSG_RES_FINDE_TURNOS' : 'MSG_RES_02';
+                return array_merge($msgs, $this->nextStep($session, 'hora', $horaMsgId));
 
             case 'hora':
-                $hora = $this->resolveHoraRestaurante($text);
-                if (!$hora) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_02')]);
+                $esFinde = (bool) ($session->datos_parciales['es_finde'] ?? false);
+                if ($esFinde) {
+                    $hora = $this->resolveHoraFinde($text);
+                    if (!$hora) {
+                        // Si piden un horario que no es turno válido → por orden de llegada
+                        $session->mergeEstado([
+                            'estado_actual'   => 'INICIO',
+                            'current_step'    => null,
+                            'datos_parciales' => [],
+                            'rama_activa'     => null,
+                        ]);
+                        return [BotMessages::render('MSG_RES_FINDE_ORDEN_LLEGADA')];
+                    }
+                } else {
+                    $hora = $this->resolveHoraRestaurante($text);
+                    if (!$hora) {
+                        return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_02')]);
+                    }
                 }
                 $this->saveDato($session, 'hora', $hora);
                 return $this->nextStep($session, 'numero_personas', 'MSG_RES_03');
@@ -330,6 +364,28 @@ class BotEngine
                 $this->saveDato($session, 'numero_personas', $displayPersonas);
                 $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                 $this->saveDato($session, 'nombre_responsable', $nombre);
+                // Mostrar selección de sector con capacidad disponible
+                return $this->buildSectorStep($session);
+
+            case 'sector':
+                $datos     = $session->datos_parciales ?? [];
+                $fecha     = $datos['fecha'] ?? '';
+                $numPersonas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
+                $upper     = strtoupper(trim($text));
+                $sectorLabel = BotMessages::sectorRestaurante($upper);
+
+                if (!$sectorLabel) {
+                    return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
+                }
+
+                // Verificar capacidad si elige un sector específico (no "Sin preferencia")
+                $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
+                if ($sectorKey !== null && !RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                    return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
+                }
+
+                $this->saveDato($session, 'sector', $sectorLabel);
+                $this->saveDato($session, 'sector_key', $sectorKey);
                 return $this->skipMailIfKnown($session, 'MSG_RES_06');
 
             case 'mail_contacto':
@@ -855,7 +911,7 @@ class BotEngine
             if (!in_array($upperText, $strKeys, true)) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_CAMBIAR')]);
             }
-            $stepSequence = ['fecha', 'hora', 'numero_personas', 'nombre_responsable', 'mail_contacto'];
+            $stepSequence = ['fecha', 'hora', 'numero_personas', 'sector', 'nombre_responsable', 'mail_contacto'];
             $pos  = array_search($upperText, $nonZero, true);
             $paso = $pos !== false ? ($stepSequence[$pos] ?? null) : null;
             if ($paso === null) {
@@ -871,9 +927,13 @@ class BotEngine
                 }
                 return [BotMessages::render('MSG_RES_06')];
             }
+            if ($paso === 'sector') {
+                return [$this->buildSectorMsg($session)];
+            }
+            $esFinde = (bool) ($session->datos_parciales['es_finde'] ?? false);
             $msgMap = [
                 'fecha'              => 'MSG_RES_01',
-                'hora'               => 'MSG_RES_02',
+                'hora'               => $esFinde ? 'MSG_RES_FINDE_TURNOS' : 'MSG_RES_02',
                 'numero_personas'    => 'MSG_RES_03',
                 'nombre_responsable' => 'MSG_RES_05_CUSTOM',
             ];
@@ -1082,9 +1142,24 @@ class BotEngine
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
                 return true;
             case 'hora':
-                $hora = $this->resolveHoraRestaurante($text);
+                $esFinde = (bool) ($session->datos_parciales['es_finde'] ?? false);
+                $hora = $esFinde ? $this->resolveHoraFinde($text) : $this->resolveHoraRestaurante($text);
                 if (!$hora) return false;
                 $this->saveDato($session, 'hora', $hora);
+                return true;
+            case 'sector':
+                $upper       = strtoupper(trim($text));
+                $sectorLabel = BotMessages::sectorRestaurante($upper);
+                if (!$sectorLabel) return false;
+                $datos       = $session->datos_parciales ?? [];
+                $fecha       = $datos['fecha'] ?? '';
+                $numPersonas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
+                $sectorKey   = RestaurantCapacity::sectorKey($sectorLabel);
+                if ($sectorKey !== null && !RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                    return false;
+                }
+                $this->saveDato($session, 'sector', $sectorLabel);
+                $this->saveDato($session, 'sector_key', $sectorKey);
                 return true;
             case 'numero_personas':
                 $personas = $this->resolvePersonasRestaurante($text);
@@ -1201,6 +1276,7 @@ class BotEngine
             if (!empty($datos['fecha']))             $lines[] = "📅 Fecha: {$datos['fecha']}";
             if (!empty($datos['hora']))              $lines[] = "🕐 Horario: {$datos['hora']}";
             if (!empty($datos['numero_personas']))   $lines[] = "👥 Personas: {$datos['numero_personas']}";
+            if (!empty($datos['sector']))            $lines[] = "🪑 Sector: {$datos['sector']}";
             if (!empty($datos['nombre_responsable']))$lines[] = "👤 Responsable: {$datos['nombre_responsable']}";
             if (!empty($datos['mail_contacto']))     $lines[] = "📧 Mail: {$datos['mail_contacto']}";
         } elseif ($rama === 'EVENTOS') {
@@ -1493,10 +1569,12 @@ class BotEngine
         }
 
         if ($rama === 'RESTAURANTE') {
+            $esFinde = (bool) ($datos['es_finde'] ?? false);
             $msgMap = [
                 'fecha'          => fn() => [BotMessages::render('MSG_RES_01')],
-                'hora'           => fn() => [BotMessages::render('MSG_RES_02')],
+                'hora'           => fn() => [BotMessages::render($esFinde ? 'MSG_RES_FINDE_TURNOS' : 'MSG_RES_02')],
                 'numero_personas'=> fn() => [BotMessages::render('MSG_RES_03')],
+                'sector'         => fn() => [$this->buildSectorMsg($session)],
                 'mail_contacto'  => fn() => $this->getMailMessages($session, 'MSG_RES_06'),
             ];
             return ($msgMap[$step] ?? fn() => $this->escalate($session, 'SOLICITUD_CLIENTE'))();
@@ -1733,6 +1811,74 @@ class BotEngine
     private function validarHoraNinos(int $hora, BotSession $session): bool
     {
         return $hora >= 8 && $hora <= 23;
+    }
+
+    /** Resuelve hora para fines de semana: solo acepta 12:00 o 14:00. */
+    private function resolveHoraFinde(string $text): ?string
+    {
+        $direct = BotMessages::resolveOption('MSG_RES_FINDE_TURNOS', $text);
+        if ($direct) {
+            if (preg_match('/(\d{1,2}):(\d{2})\s*hs/i', $direct, $m)) {
+                return sprintf('%02d:%02d', (int)$m[1], (int)$m[2]);
+            }
+            if (preg_match('/(\d{1,2})\s*hs/i', $direct, $m)) {
+                return sprintf('%02d:00', (int)$m[1]);
+            }
+        }
+
+        $parsed = $this->parseEventTime($text);
+        if (!$parsed) return null;
+
+        [$h, $m] = array_map('intval', explode(':', $parsed));
+        if ($h === 12 && $m === 0) return '12:00';
+        if ($h === 14 && $m === 0) return '14:00';
+
+        return null;
+    }
+
+    /** Construye el mensaje de sector dinámico y avanza al paso sector (o escala si todo está lleno). */
+    private function buildSectorStep(BotSession $session): array
+    {
+        $msg = $this->buildSectorMsg($session);
+        // buildSectorMsg devuelve MSG_RES_SECTOR_LLENO si todo está lleno → escalar
+        if ($msg === BotMessages::render('MSG_RES_SECTOR_LLENO')) {
+            return array_merge([$msg], $this->escalate($session, 'SOLICITUD_CLIENTE'));
+        }
+        $this->pushHistory($session);
+        $session->mergeEstado(['current_step' => 'sector', 'contador_invalidos' => 0]);
+        return [$msg];
+    }
+
+    /** Genera el texto del mensaje MSG_RES_04 con capacidad actualizada. */
+    private function buildSectorMsg(BotSession $session): string
+    {
+        $datos   = $session->datos_parciales ?? [];
+        $fecha   = $datos['fecha'] ?? '';
+        $personas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
+
+        $sectores = [
+            'A' => ['label' => 'Salón',   'key' => 'salon'],
+            'B' => ['label' => 'Galería', 'key' => 'galeria'],
+            'C' => ['label' => 'Terraza', 'key' => 'terraza'],
+        ];
+
+        $todosLlenos = true;
+        $lines = [];
+
+        foreach ($sectores as $letra => $opt) {
+            $disponible = RestaurantCapacity::tieneCapacidad($opt['key'], $fecha, $personas);
+            if ($disponible) $todosLlenos = false;
+            $suffix = $disponible ? '' : ' _(sin capacidad)_';
+            $lines[] = "*{$letra}.* {$opt['label']}{$suffix}";
+        }
+
+        if ($todosLlenos) {
+            return BotMessages::render('MSG_RES_SECTOR_LLENO');
+        }
+
+        $lines[] = '*D.* Sin preferencia';
+
+        return "¿En qué sector preferís sentarte?\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";
     }
 
     /**

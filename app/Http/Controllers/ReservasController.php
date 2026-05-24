@@ -53,11 +53,20 @@ class ReservasController extends Controller
                         $hora = $horaInicio;
                     }
                 }
-                // Sanear separador y formato (ej. "15.30" → "15:30")
+                // Normalizar a "HH:MM" (soporta labels como "Turno noche 1: 20 hs" o "11.30 hs")
                 if ($hora) {
-                    $hora = str_replace('.', ':', (string) $hora);
-                    if (preg_match('/^(\d{1,2}):(\d{2})$/', $hora, $hm)) {
+                    $h = (string) $hora;
+                    if (preg_match('/(\d{1,2})[.:,](\d{2})\s*hs/i', $h, $hm)) {
                         $hora = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+                    } elseif (preg_match('/(\d{1,2})\s*hs/i', $h, $hm)) {
+                        $hora = sprintf('%02d:00', (int) $hm[1]);
+                    } else {
+                        $h = str_replace('.', ':', $h);
+                        if (preg_match('/^(\d{1,2}):(\d{2})$/', $h, $hm)) {
+                            $hora = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+                        } elseif (preg_match('/(\d{1,2}):(\d{2})/', $h, $hm)) {
+                            $hora = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+                        }
                     }
                 }
 
@@ -87,6 +96,7 @@ class ReservasController extends Controller
                     'fecha'           => $fechaNorm,
                     'hora'            => $hora,
                     'numero_personas' => $personas,
+                    'sector'          => $datos['sector'] ?? null,
                     'mail'            => $datos['mail_contacto'] ?? null,
                     'comentarios'     => $datos['extras_texto'] ?? null,
                     'estado'          => $r->estado_reserva,
@@ -117,6 +127,7 @@ class ReservasController extends Controller
             'fecha'           => 'required|date_format:Y-m-d',
             'hora'            => 'nullable|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
+            'sector'          => 'nullable|in:Salón,Galería,Terraza,Sin preferencia',
             'mail'            => 'nullable|email|max:255',
             'comentarios'     => 'nullable|string|max:2000',
             'estado'          => 'required|in:CONFIRMADA,PENDIENTE_CONFIRMACION,CANCELADA,ESCALADA,COMPLETADA',
@@ -125,6 +136,7 @@ class ReservasController extends Controller
         $datos = $reserva->datos ?? [];
         $datos['nombre_responsable'] = $v['nombre'];
         $datos['fecha']              = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
+        $datos['sector']             = $v['sector'] ?: null;
         $datos['mail_contacto']      = $v['mail'] ?: null;
         $datos['extras_texto']       = $v['comentarios'] ?: null;
         $datos['tiene_extras']       = !empty($v['comentarios']);

@@ -17,6 +17,7 @@ interface Reserva {
     fecha: string | null;   // "Y-m-d"
     hora: string | null;    // "HH:mm"
     numero_personas: string;
+    sector: string | null;
     mail: string | null;
     comentarios: string | null;
     estado: 'CONFIRMADA' | 'PENDIENTE_CONFIRMACION' | 'CANCELADA' | 'ESCALADA' | 'COMPLETADA';
@@ -202,12 +203,15 @@ const ESTADO_OPTIONS = [
     { value: 'ESCALADA',               label: 'Con asesor' },
 ];
 
+const SECTOR_OPTIONS = ['Salón', 'Galería', 'Terraza', 'Sin preferencia'] as const;
+
 function makeFormData(r: Reserva) {
     return {
         nombre:          r.nombre,
         fecha:           r.fecha ?? '',
         hora:            r.hora ?? '',
         numero_personas: r.numero_personas,
+        sector:          r.sector ?? '',
         mail:            r.mail ?? '',
         comentarios:     r.comentarios ?? '',
         estado:          r.estado,
@@ -290,6 +294,17 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                         </div>
                     )}
 
+                    {/* Sector (solo restaurante) */}
+                    {reserva.tipo === 'RESTAURANTE' && (
+                        <div>
+                            <label className={labelCls}>Sector</label>
+                            <select value={form.sector} onChange={e => set('sector', e.target.value)} className={inputCls}>
+                                <option value="">— Sin especificar —</option>
+                                {SECTOR_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    )}
+
                     {/* Mail */}
                     <div>
                         <label className={labelCls}>Email de contacto</label>
@@ -343,6 +358,7 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
             fecha:           reserva.fecha ?? '',
             hora:            reserva.hora ?? '',
             numero_personas: reserva.numero_personas,
+            sector:          reserva.sector ?? '',
             mail:            reserva.mail ?? '',
             comentarios:     reserva.comentarios ?? '',
             estado:          'COMPLETADA',
@@ -363,11 +379,18 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
                         <span>{reserva.telefono}</span>
                     </div>
                 ) : <span />}
-                <span className="font-semibold text-foreground">
-                    {personas > 0
-                        ? `${personas} ${personas === 1 ? 'persona' : 'personas'}`
-                        : reserva.numero_personas || '—'}
-                </span>
+                <div className="flex items-center gap-2">
+                    {reserva.sector && reserva.sector !== 'Sin preferencia' && (
+                        <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                            {reserva.sector}
+                        </span>
+                    )}
+                    <span className="font-semibold text-foreground">
+                        {personas > 0
+                            ? `${personas} ${personas === 1 ? 'persona' : 'personas'}`
+                            : reserva.numero_personas || '—'}
+                    </span>
+                </div>
             </div>
 
             {(notas.hasBabyChair || notas.celebration || notas.allergy) && (
@@ -412,7 +435,7 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
                 )}
                 <button
                     onClick={() => setEditOpen(true)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium bg-white text-neutral-900 border border-neutral-200 hover:bg-neutral-50 dark:bg-white dark:text-black dark:hover:bg-neutral-100 transition-colors"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400 transition-colors"
                 >
                     <Pencil className="h-4 w-4" />
                     Editar

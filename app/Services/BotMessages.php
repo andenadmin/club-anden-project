@@ -65,7 +65,7 @@ class BotMessages
             'MSG_RES_02' => "¿A qué hora querés llegar?\n\n*A.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*B.* Turno mediodía 2: 14 hs\n*C.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*D.* Turno noche 1: 20 hs\n*E.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
             'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
             'MSG_RES_15PLUS' => "ℹ️ Para grupos de *15 o más personas*, la reserva requiere coordinación previa con nuestro equipo.\n\n⚠️ Los sábados y domingos al mediodía, grupos de 15 o más personas tienen *menú fijo completo obligatorio*.\n\nUn asesor se va a comunicar con vos para coordinar todos los detalles.",
-            'MSG_RES_04' => "¿Tenés preferencia de sector?\n\n*1.* Interior\n*2.* Exterior\n*3.* Sin preferencia\n\n*0.* Hablar con un asesor",
+            'MSG_RES_04' => "¿En qué sector preferís sentarte?\n\n*A.* Salón\n*B.* Galería\n*C.* Terraza\n*D.* Sin preferencia\n\n*0.* Hablar con un asesor",
             'MSG_RES_05' => "¿A nombre de quién reservamos la mesa?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
             'MSG_RES_05_CUSTOM' => "Por favor ingresá el nombre del responsable de la reserva:",
             'MSG_RES_06' => "¿Cuál es tu mail? Lo usamos para enviarte la confirmación y un recordatorio de tu reserva.\n\nIngresá tu dirección de correo electrónico.",
@@ -73,7 +73,7 @@ class BotMessages
             'MSG_CONFIRMAR_MAIL' => "Tu mail registrado es {{mail}}.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
             'MSG_RES_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RES_CONFIRMACION_FUTURA' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
-            'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
+            'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Sector\n*5.* Nombre del responsable\n*6.* Mail\n\n*0.* Hablar con un asesor",
 
             // Eventos
             'MSG_EVT_01' => "¡Genial! Vamos a organizar tu evento 🎉\n\n¿Qué tipo de evento estás planeando?\n\n*1.* Evento privado (te contactamos con un asesor)\n*2.* Cumpleaños niños (6 a 12 años)\n*3.* Cumpleaños adolescentes (13 a 17 años)\n*4.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
@@ -98,7 +98,10 @@ class BotMessages
             'MSG_EVT_PERSONAS' => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_PERSONAS_AVISO_MENU' => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
             'MSG_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
-            'MSG_RES_FIN_DE_SEMANA' => "🗓️ *¡Atención — Sábado, Domingo o Feriado!*\n\nSi vas a reservar al mediodía, te avisamos que ese turno es *completo y obligatorio*, con horario fijo de *12:00 a 16:00 hs*.",
+            'MSG_RES_FIN_DE_SEMANA'        => "🗓️ *¡Atención — Sábado, Domingo o Feriado!*\n\nSi vas a reservar al mediodía, te avisamos que ese turno es *completo y obligatorio*, con horario fijo de *12:00 a 16:00 hs*.",
+            'MSG_RES_FINDE_TURNOS'         => "¿A qué turno querés asistir?\n\n*A.* 12:00 hs\n*B.* 14:00 hs\n\n*0.* Hablar con un asesor",
+            'MSG_RES_FINDE_ORDEN_LLEGADA'  => "🗓️ Los sábados, domingos y feriados las reservas se toman hasta las *11:00 hs*.\n\nPasado ese horario, la atención es *por orden de llegada*. ¡Te esperamos! 🌿",
+            'MSG_RES_SECTOR_LLENO'         => "⚠️ En este momento todos los sectores están completos para esa fecha.\n\nUn asesor se va a comunicar con vos para ver si podemos encontrarte lugar. 🙏",
             'MSG_LINK_TYC' => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",
             'MSG_LINK_CUMPLE_NINOS' => "🎉 *Packs de Cumpleaños Niños — Opciones y Precios:*\nhttps://drive.google.com/file/d/1E-WP63zeEupvzXJJQv7-0337prMjena2/view?usp=drive_link",
             'MSG_LINK_CUMPLE_ADOLESCENTES' => "🎉 *Packs de Cumpleaños Adolescentes — Opciones:*\nhttps://drive.google.com/file/d/1pKLIUYpNucTk8aA7XfXqSdiu-zzWmz_z/view?usp=sharing",
@@ -187,10 +190,11 @@ class BotMessages
 
     public static function sectorRestaurante(string $opcion): ?string
     {
-        return match($opcion) {
-            '1' => 'Interior',
-            '2' => 'Exterior',
-            '3' => 'Sin preferencia',
+        return match(strtoupper(trim($opcion))) {
+            'A' => 'Salón',
+            'B' => 'Galería',
+            'C' => 'Terraza',
+            'D' => 'Sin preferencia',
             default => null,
         };
     }
