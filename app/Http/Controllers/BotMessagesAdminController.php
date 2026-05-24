@@ -10,7 +10,7 @@ use Inertia\Inertia;
 class BotMessagesAdminController extends Controller
 {
     private const SESSION_KEY    = 'bot_messages_unlocked_at';
-    private const LOCK_MINUTES   = 60;
+    private const LOCK_MINUTES   = 120; // 2 horas
 
     private function isUnlocked(): bool
     {
@@ -31,7 +31,7 @@ class BotMessagesAdminController extends Controller
     {
         $request->validate(['password' => ['required', 'string']]);
 
-        if ($request->password !== config('bot.messages_password')) {
+        if (trim($request->password) !== trim(config('bot.messages_password', ''))) {
             return back()->withErrors(['password' => 'Contraseña incorrecta.']);
         }
 

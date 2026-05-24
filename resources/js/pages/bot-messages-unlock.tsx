@@ -90,7 +90,7 @@ export default function BotMessagesUnlock() {
                         {/* Footer note */}
                         <div className="px-6 pb-5">
                             <p className="text-[11px] text-gray-400 dark:text-neutral-500 text-center leading-relaxed">
-                                La contraseña es válida por 1 hora.
+                                La contraseña es válida por 2 horas.
                                 <br />
                                 Pasado ese tiempo se pedirá nuevamente.
                             </p>
