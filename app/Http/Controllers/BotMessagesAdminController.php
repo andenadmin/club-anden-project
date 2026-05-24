@@ -31,7 +31,7 @@ class BotMessagesAdminController extends Controller
     {
         $request->validate(['password' => ['required', 'string']]);
 
-        if ($request->password !== env('BOT_MESSAGES_PASSWORD')) {
+        if ($request->password !== config('bot.messages_password')) {
             return back()->withErrors(['password' => 'Contraseña incorrecta.']);
         }
 
