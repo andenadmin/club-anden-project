@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
+import { Archive, Pencil } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import botMessages from '@/routes/bot/messages';
 
 interface BotMessage {
@@ -117,28 +119,49 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
 
                 {!collapsed && !editing && (
                     <div className="flex items-center gap-2 shrink-0">
-                        <button
-                            onClick={() => setEditing(true)}
-                            className="text-xs text-[#075e54] border border-[#075e54]/40 rounded-lg px-3 py-1 hover:bg-[#075e54]/5 transition-colors"
-                        >
-                            Editar
-                        </button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => setEditing(true)}
+                                        className="text-xs font-semibold text-white bg-[#075e54] rounded-lg px-3 py-1 hover:bg-[#0a7060] transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Pencil className="size-3" />
+                                        Editar
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Editar mensaje</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         {msg.default_content !== null && (
-                            <button
-                                onClick={resetDefault}
-                                className="text-xs text-amber-600 border border-amber-300 rounded-lg px-3 py-1 hover:bg-amber-50 transition-colors"
-                                title="Restaurar al texto original del sistema"
-                            >
-                                ↩ Default
-                            </button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={resetDefault}
+                                            className="text-xs font-semibold text-black bg-amber-400 rounded-lg px-3 py-1 hover:bg-amber-500 transition-colors"
+                                        >
+                                            ↩ Restaurar
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Restaurar al texto original del sistema</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         )}
-                        <button
-                            onClick={archive}
-                            className="text-xs text-gray-400 border border-gray-200 rounded-lg px-3 py-1 hover:bg-gray-100 hover:text-gray-600 transition-colors dark:border-neutral-600 dark:hover:bg-neutral-700"
-                            title="Archivar mensaje"
-                        >
-                            Archivar
-                        </button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={archive}
+                                        className="text-xs font-semibold text-black bg-red-400 rounded-lg px-3 py-1 hover:bg-red-500 transition-colors flex items-center gap-1.5"
+                                    >
+                                        <Archive className="size-3" />
+                                        Archivar
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Archivar mensaje (se puede restaurar)</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                 )}
             </div>

@@ -1126,6 +1126,14 @@ class BotEngine
 
     private function handleCompletado(BotSession $session, string $text): array
     {
+        // Ver precios de canchas
+        if ($session->rama_activa === 'DEPORTES') {
+            $lower = strtolower(trim($text));
+            if (in_array($lower, ['ver', 'precio', 'precios', 'ver precios', 'ver precio'], true)) {
+                return [BotMessages::render('MSG_DEPORTES_PRECIOS_CANCHAS')];
+            }
+        }
+
         // Si está en el flujo de deportes y escribe intención de cancelar/modificar → asesor
         if ($session->rama_activa === 'DEPORTES' && $this->isCancelOrModifyText($text)) {
             return $this->escalate($session, 'SOLICITUD_CLIENTE');
