@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
+import { PanelNotificationsBanner } from '@/components/panel-notifications-banner';
 import { TestToolbar } from '@/components/test-toolbar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -96,6 +97,7 @@ createInertiaApp({
             <TooltipProvider delayDuration={0}>
                 {app}
                 <Toaster />
+                <PanelNotificationsBanner />
                 <TestToolbar />
             </TooltipProvider>
         );
