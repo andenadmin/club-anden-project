@@ -389,7 +389,7 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
         <div className={`rounded-xl border border-border border-l-4 ${tipoCfg.col} bg-card px-4 py-3 shadow-sm`}>
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">#{reserva.id}</span>
+                    <span className="text-sm font-mono font-semibold text-muted-foreground shrink-0">#{reserva.id}</span>
                     <p className="text-base font-semibold leading-tight truncate">{reserva.nombre}</p>
                 </div>
                 <EstadoBadge estado={reserva.estado} />
@@ -898,6 +898,16 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
         );
     }, [reservas, query]);
 
+    const pendingCount = useMemo(
+        () => reservas.filter((r) => r.estado === 'PENDIENTE_CONFIRMACION').length,
+        [reservas],
+    );
+
+    function handleConfirmAllToday() {
+        if (!confirm(`¿Confirmar las ${pendingCount} reservas pendientes del día?`)) return;
+        router.post('/reservas/confirm-all-today', { fecha }, { preserveScroll: true });
+    }
+
     // Al montar: activa el highlight si venimos de "Ir a hoy"
     useEffect(() => {
         if (sessionStorage.getItem('reservas_highlight_today') !== '1') return;
@@ -971,6 +981,16 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                     <h1 className="text-2xl font-bold shrink-0">Reservas</h1>
 
                     <div className="flex items-center gap-2">
+                        {/* Confirmar todas (solo vista día con pendientes) */}
+                        {vista === 'dia' && pendingCount > 0 && (
+                            <button
+                                onClick={handleConfirmAllToday}
+                                className="rounded-md px-2.5 py-1.5 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors whitespace-nowrap"
+                            >
+                                Confirmar todas ({pendingCount})
+                            </button>
+                        )}
+
                         {/* Ir a hoy */}
                         <button
                             onClick={goToToday}

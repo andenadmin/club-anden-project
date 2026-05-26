@@ -40,7 +40,7 @@ class RestaurantConfig extends Model
                 'terraza_capacidad'  => 55,
                 'parrilla_capacidad' => 14,
                 'capacidad_pct'      => 100,
-                'sector_alerta_pct'  => 100,
+                'sector_alerta_pct'  => 70,
             ]);
         }
         return self::$cached;

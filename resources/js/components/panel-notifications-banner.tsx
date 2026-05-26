@@ -222,9 +222,9 @@ export function PanelNotificationsBanner() {
                 <SectorAlertaDialog notification={alertas[0]} onDismiss={dismiss} />
             )}
 
-            {/* Banners centrados para el resto */}
+            {/* Banners arriba para el resto */}
             {banners.length > 0 && (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 px-4 pointer-events-none">
+                <div className="fixed top-3 left-0 right-0 z-[100] flex flex-col items-center gap-2 px-4 pointer-events-none">
                     {banners.map(n => (
                         <div key={n.id} className="pointer-events-auto w-full flex justify-center">
                             <BannerItem notification={n} onDismiss={dismiss} />

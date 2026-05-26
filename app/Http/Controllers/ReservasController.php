@@ -172,4 +172,16 @@ class ReservasController extends Controller
 
         return redirect()->back();
     }
+
+    public function confirmAllToday(Request $request): RedirectResponse
+    {
+        $v = $request->validate(['fecha' => 'required|date_format:Y-m-d']);
+        $fechaBot = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
+
+        Reserva::where('estado_reserva', 'PENDIENTE_CONFIRMACION')
+            ->whereRaw("json_extract(datos, '$.fecha') = ?", [$fechaBot])
+            ->update(['estado_reserva' => 'CONFIRMADA']);
+
+        return redirect()->back();
+    }
 }

@@ -23,7 +23,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('sector_alerta', {
-                    mensaje: 'Alcanzamos el 100% de la capacidad en *Salón*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
+                    mensaje: 'Alcanzamos el 70% de la capacidad en *Salón*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
                     sector_key: 'salon',
                     sector_label: 'Salón',
                 })}
@@ -34,7 +34,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('sector_alerta', {
-                    mensaje: 'Alcanzamos el 100% de la capacidad en *Terraza*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
+                    mensaje: 'Alcanzamos el 70% de la capacidad en *Terraza*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
                     sector_key: 'terraza',
                     sector_label: 'Terraza',
                 })}

@@ -47,8 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/panel-notifications/{notification}/action',                   [PanelNotificationsController::class, 'action'])->name('panel-notifications.action');
 
     // Reservas
-    Route::get('/reservas',              [ReservasController::class, 'index'])->name('reservas.index');
-    Route::patch('/reservas/{reserva}',  [ReservasController::class, 'update'])->name('reservas.update');
+    Route::get('/reservas',                    [ReservasController::class, 'index'])->name('reservas.index');
+    Route::patch('/reservas/{reserva}',        [ReservasController::class, 'update'])->name('reservas.update');
+    Route::post('/reservas/confirm-all-today', [ReservasController::class, 'confirmAllToday'])->name('reservas.confirmAllToday');
 
     // Inbox
     Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');

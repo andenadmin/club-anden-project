@@ -383,8 +383,16 @@ class BotEngine
 
                 // Verificar capacidad si elige un sector específico (no "Sin preferencia")
                 $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
-                if ($sectorKey !== null && !RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
-                    return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
+                if ($sectorKey !== null) {
+                    if (RestaurantCapacity::estaCerrado($sectorKey)) {
+                        return $this->handleInvalid($session, fn () => [
+                            "El cupo de reservas para este turno ya está completo. De todas formas, te invitamos a que vengas y te atendemos por orden de llegada apenas se libere una mesa.",
+                            $this->buildSectorMsg($session),
+                        ]);
+                    }
+                    if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                        return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
+                    }
                 }
 
                 $this->saveDato($session, 'sector', $sectorLabel);
