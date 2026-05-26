@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import axios from 'axios';
 
 interface PanelNotification {
     id: number;
@@ -27,7 +26,7 @@ function NotificationItem({
 
     const handleMarkRead = async () => {
         try {
-            await axios.patch(`/panel-notifications/${id}/read`);
+            await fetch(`/panel-notifications/${id}/read`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' } });
         } catch {
             // best-effort
         }
@@ -36,7 +35,11 @@ function NotificationItem({
 
     const handleAction = async (accion: string) => {
         try {
-            await axios.post(`/panel-notifications/${id}/action`, { accion });
+            await fetch(`/panel-notifications/${id}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
+                body: JSON.stringify({ accion }),
+            });
         } catch {
             // best-effort
         }
@@ -103,8 +106,8 @@ export function PanelNotificationsBanner() {
 
     const fetchNotifications = async () => {
         try {
-            const res = await axios.get<PanelNotification[]>('/panel-notifications');
-            setNotifications(res.data);
+            const res = await fetch('/panel-notifications', { headers: { 'Accept': 'application/json' } });
+            if (res.ok) setNotifications(await res.json() as PanelNotification[]);
         } catch {
             // best-effort — no bloquear la UI
         }
