@@ -1,13 +1,7 @@
 let nextId = 9000;
 
 function isTestMode(): boolean {
-    try {
-        const el = document.getElementById('app');
-        const page = JSON.parse(el?.getAttribute('data-page') ?? '{}');
-        return page?.props?.testMode === true;
-    } catch {
-        return false;
-    }
+    return (document.querySelector('meta[name="test-mode"]') as HTMLMetaElement)?.content === 'true';
 }
 
 function inject(tipo: string, payload: Record<string, unknown>) {

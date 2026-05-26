@@ -31,6 +31,7 @@
         </style>
 
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="test-mode" content="{{ env('TEST_MODE', false) ? 'true' : 'false' }}">
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="apple-touch-icon" href="/anden_logo.png">
 
