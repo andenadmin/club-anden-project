@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Bell, BellOff, Info, Menu, Search, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, ChevronDown, Info, Menu, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
@@ -36,6 +36,7 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
     const [resumePromptDismissed, setResumePromptDismissed] = useState(false);
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState<'activos' | 'archivados'>('activos');
+    const [tabsCollapsed, setTabsCollapsed] = useState(false);
     const [archivedConversations, setArchivedConversations] = useState<ConversationListItem[]>([]);
     const [loadingArchived, setLoadingArchived] = useState(false);
     const { toggleSidebar } = useSidebar();
@@ -173,6 +174,13 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                         </button>
                         <h1 className="font-semibold text-sm flex-1">Bandeja de entrada</h1>
                         <button
+                            onClick={() => setTabsCollapsed(c => !c)}
+                            className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
+                            title={tabsCollapsed ? 'Expandir' : 'Contraer'}
+                        >
+                            <ChevronDown className={`size-4 transition-transform duration-200 ${tabsCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+                        <button
                             onClick={toggleMuted}
                             title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
                             className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
@@ -180,7 +188,7 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                             {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
                         </button>
                     </div>
-                    <div className="flex">
+                    {!tabsCollapsed && <div className="flex">
                         {(['activos', 'archivados'] as const).map(t => (
                             <button
                                 key={t}
@@ -195,7 +203,7 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                                 {t === 'activos' ? 'Activos' : 'Archivados'}
                             </button>
                         ))}
-                    </div>
+                    </div>}
                 </header>
                 <div className="px-3 py-2 border-b border-sidebar-border/50 shrink-0">
                     <div className="relative">

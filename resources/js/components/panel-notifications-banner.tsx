@@ -100,6 +100,8 @@ function NotificationItem({
     );
 }
 
+const TEST_MODE = import.meta.env.VITE_TEST_MODE === 'true';
+
 export function PanelNotificationsBanner() {
     const [notifications, setNotifications] = useState<PanelNotification[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -114,10 +116,24 @@ export function PanelNotificationsBanner() {
     };
 
     useEffect(() => {
-        fetchNotifications();
-        intervalRef.current = setInterval(fetchNotifications, 30_000);
+        if (!TEST_MODE) {
+            fetchNotifications();
+            intervalRef.current = setInterval(fetchNotifications, 30_000);
+        }
+
+        const onInject = (e: Event) => {
+            const n = (e as CustomEvent).detail as PanelNotification;
+            setNotifications(prev => [n, ...prev]);
+        };
+        const onClear = () => setNotifications([]);
+
+        window.addEventListener('test:inject-notification', onInject);
+        window.addEventListener('test:clear-notifications', onClear);
+
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
+            window.removeEventListener('test:inject-notification', onInject);
+            window.removeEventListener('test:clear-notifications', onClear);
         };
     }, []);
 

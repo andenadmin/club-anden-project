@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { PanelNotificationsBanner } from '@/components/panel-notifications-banner';
+import { TestToolbar } from '@/components/test-toolbar';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({
@@ -12,6 +13,7 @@ export default function AppSidebarLayout({
     return (
         <AppShell variant="sidebar">
             <PanelNotificationsBanner />
+            <TestToolbar />
             <AppSidebar />
             <AppContent variant="sidebar" className="overflow-x-hidden">
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
