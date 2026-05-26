@@ -5,6 +5,7 @@ use App\Http\Controllers\BotPreciosController;
 use App\Http\Controllers\BotSimulatorController;
 use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
+use App\Http\Controllers\PanelNotificationsController;
 use App\Http\Controllers\ReservasController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +39,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/crm', [CrmController::class, 'index'])->name('crm.index');
         Route::get('/crm/export', [CrmController::class, 'export'])->name('crm.export');
     });
+
+    // Panel Notifications
+    Route::get('/panel-notifications',                                          [PanelNotificationsController::class, 'index'])->name('panel-notifications.index');
+    Route::patch('/panel-notifications/{notification}/read',                    [PanelNotificationsController::class, 'markRead'])->name('panel-notifications.read');
+    Route::post('/panel-notifications/{notification}/action',                   [PanelNotificationsController::class, 'action'])->name('panel-notifications.action');
 
     // Reservas
     Route::get('/reservas',              [ReservasController::class, 'index'])->name('reservas.index');

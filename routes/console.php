@@ -20,6 +20,15 @@ Schedule::command('feriados:sync', [now()->addYear()->year])
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/feriados-sync.log'));
 
+// §4 — Auto-confirmación de reservas de restaurante con fecha dentro de las próximas 24 hs.
+// Corre a las 7, 11, 15, 19 y 23 hs todos los días.
+foreach ([7, 11, 15, 19, 23] as $hora) {
+    Schedule::command('reservas:auto-confirm-restaurante')
+        ->dailyAt("{$hora}:00")
+        ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/auto-confirm-restaurante.log'));
+}
+
 // §6.1.C — cap automático a las 12h sobre takeovers de asesor.
 // Cada 10 min escanea sesiones con motivo_pausa = ASESOR_TAKEOVER y timestamp_pausa <= now-12h,
 // las resetea a INICIO y manda MSG_TIMEOUT_ASESOR al usuario.

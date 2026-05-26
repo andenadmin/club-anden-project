@@ -1093,6 +1093,12 @@ class BotEngine
             'presupuesto_total' => $presupuesto['total'] ?? null,
         ]);
 
+        // Alerta de ocupación por sector: si es reserva de restaurante con sector elegido,
+        // verificar si se superó el umbral y emitir notificación de panel si corresponde.
+        if ($rama === 'RESTAURANTE' && isset($datos['sector_key']) && $datos['sector_key'] !== null) {
+            RestaurantCapacity::checkAlertaOcupacion($datos['sector_key'], $datos['fecha'] ?? '');
+        }
+
         // Incrementar contador y actualizar CRM
         $counter = match($rama) {
             'RESTAURANTE' => 'contador_reservas_restaurante',

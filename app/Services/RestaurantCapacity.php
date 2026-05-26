@@ -2,18 +2,24 @@
 
 namespace App\Services;
 
+use App\Models\PanelNotification;
 use App\Models\RestaurantConfig;
 use App\Models\Reserva;
 use Carbon\Carbon;
 
 class RestaurantCapacity
 {
-    // Mapeo etiqueta → clave interna del sector
     private const SECTOR_KEY = [
         'Salón'           => 'salon',
         'Galería'         => 'galeria',
         'Terraza'         => 'terraza',
         'Sin preferencia' => null,
+    ];
+
+    private const SECTOR_LABEL = [
+        'salon'   => 'Salón',
+        'galeria' => 'Galería',
+        'terraza' => 'Terraza',
     ];
 
     /**
@@ -36,11 +42,40 @@ class RestaurantCapacity
     }
 
     /**
+     * Verifica si un sector está marcado como cerrado manualmente por el admin.
+     * Auto-reabre si la fecha de cierre es anterior a hoy.
+     */
+    public static function estaCerrado(string $sectorKey): bool
+    {
+        $config = RestaurantConfig::get();
+
+        // Auto-reopen: si el sector fue cerrado un día anterior, reabrirlo
+        $fechaCierre = $config->sectores_cerrado_fecha;
+        if ($fechaCierre && Carbon::parse($fechaCierre)->lt(Carbon::today())) {
+            RestaurantConfig::clearCache();
+            $config->forceFill([
+                'salon_cerrado'          => false,
+                'galeria_cerrado'        => false,
+                'terraza_cerrado'        => false,
+                'sectores_cerrado_fecha' => null,
+            ])->save();
+            RestaurantConfig::clearCache();
+            return false;
+        }
+
+        return (bool) ($config->{"{$sectorKey}_cerrado"} ?? false);
+    }
+
+    /**
      * Verifica si un sector tiene capacidad para $personasNuevas personas más.
-     * Devuelve true si hay lugar.
+     * Devuelve true si hay lugar (y no está cerrado).
      */
     public static function tieneCapacidad(string $sectorKey, string $fechaBotFormat, int $personasNuevas): bool
     {
+        if (self::estaCerrado($sectorKey)) {
+            return false;
+        }
+
         $config = RestaurantConfig::get();
         $limite = $config->limiteParaSector($sectorKey);
         if ($limite <= 0) return true;
@@ -50,8 +85,47 @@ class RestaurantCapacity
     }
 
     /**
+     * Verifica si un sector superó el umbral de alerta y emite una PanelNotification
+     * si no existe ya una para hoy para ese sector.
+     */
+    public static function checkAlertaOcupacion(string $sectorKey, string $fechaBotFormat): void
+    {
+        $config = RestaurantConfig::get();
+        $limite = $config->limiteParaSector($sectorKey);
+        if ($limite <= 0) return;
+
+        $alertaPct = $config->sector_alerta_pct ?? 70;
+        $usadas    = self::personasEnSector($sectorKey, $fechaBotFormat);
+
+        $pctOcupado = ($usadas / $limite) * 100;
+        if ($pctOcupado < $alertaPct) return;
+
+        // No crear notificación duplicada para el mismo sector hoy
+        $yaExiste = PanelNotification::where('tipo', 'sector_alerta')
+            ->where('leida', false)
+            ->whereRaw("json_extract(payload, '$.sector_key') = ?", [$sectorKey])
+            ->whereDate('created_at', Carbon::today())
+            ->exists();
+
+        if ($yaExiste) return;
+
+        $sectorLabel = self::SECTOR_LABEL[$sectorKey] ?? $sectorKey;
+        $pctRedondeado = round($pctOcupado);
+
+        PanelNotification::create([
+            'tipo'    => 'sector_alerta',
+            'payload' => [
+                'mensaje'       => "⚠️ Alcanzamos el {$pctRedondeado}% de la capacidad en *{$sectorLabel}*. ¿Querés que informemos a quienes reservan que no hay más cupo?",
+                'sector_key'    => $sectorKey,
+                'sector_label'  => $sectorLabel,
+            ],
+            'leida' => false,
+        ]);
+    }
+
+    /**
      * Construye el texto del mensaje de selección de sector (MSG_RES_04 dinámico),
-     * marcando con "(sin capacidad)" los sectores llenos.
+     * marcando con "(sin capacidad)" los sectores llenos o cerrados.
      */
     public static function buildSectorMessage(string $fecha, int $personas): string
     {
@@ -61,7 +135,7 @@ class RestaurantCapacity
             'C' => ['label' => 'Terraza', 'key' => 'terraza'],
         ];
 
-        $lines = [];
+        $lines      = [];
         $todosLlenos = true;
 
         foreach ($opciones as $letra => $opt) {
@@ -73,10 +147,6 @@ class RestaurantCapacity
 
         $lines[] = '*D.* Sin preferencia';
 
-        $base = BotMessages::render('MSG_RES_04');
-
-        // Si el mensaje del admin tiene el texto base, lo usamos como encabezado
-        // Sino usamos uno por defecto
         $intro = "¿En qué sector preferís sentarte?";
 
         return $intro . "\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";

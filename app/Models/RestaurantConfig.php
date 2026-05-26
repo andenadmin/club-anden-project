@@ -13,6 +13,17 @@ class RestaurantConfig extends Model
         'galeria_capacidad',
         'terraza_capacidad',
         'capacidad_pct',
+        'sector_alerta_pct',
+        'salon_cerrado',
+        'galeria_cerrado',
+        'terraza_cerrado',
+        'sectores_cerrado_fecha',
+    ];
+
+    protected $casts = [
+        'salon_cerrado'   => 'boolean',
+        'galeria_cerrado' => 'boolean',
+        'terraza_cerrado' => 'boolean',
     ];
 
     private static ?self $cached = null;

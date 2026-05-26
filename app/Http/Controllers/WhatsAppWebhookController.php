@@ -58,6 +58,7 @@ class WhatsAppWebhookController extends Controller
                 from:        $msg['from'],
                 body:        $msg['body'],
                 waMessageId: $msg['id'],
+                messageType: $msg['type'] ?? 'text',
             );
         }
 
@@ -68,7 +69,7 @@ class WhatsAppWebhookController extends Controller
      * Aplana el payload y devuelve mensajes que entendemos (text / button / interactive).
      * Status updates, media, audio, etc. se ignoran por ahora.
      *
-     * @return array<int, array{from: string, body: string, id: string}>
+     * @return array<int, array{from: string, body: string, id: string, type: string}>
      */
     private function extractMessages(array $payload, ?string $expectedPhoneNumberId): array
     {
@@ -87,7 +88,8 @@ class WhatsAppWebhookController extends Controller
                 }
 
                 foreach ($value['messages'] ?? [] as $message) {
-                    $body = match ($message['type'] ?? null) {
+                    $type = $message['type'] ?? null;
+                    $body = match ($type) {
                         'text'        => $message['text']['body'] ?? '',
                         'button'      => $message['button']['text'] ?? '',
                         'interactive' => $message['interactive']['button_reply']['title']
@@ -98,10 +100,18 @@ class WhatsAppWebhookController extends Controller
                     $from = PhoneNumber::normalize($message['from'] ?? null);
                     $id   = $message['id'] ?? null;
 
-                    if ($body === '' || $from === '' || $id === null) {
+                    if ($from === '' || $id === null || $type === null) {
                         continue;
                     }
-                    $out[] = ['from' => $from, 'body' => $body, 'id' => $id];
+
+                    // Para mensajes no-texto: body vacío es aceptable — el job los maneja.
+                    // Para mensajes de texto/button/interactive: descartar si no hay body.
+                    $isNonText = !in_array($type, ['text', 'button', 'interactive'], true);
+                    if (!$isNonText && $body === '') {
+                        continue;
+                    }
+
+                    $out[] = ['from' => $from, 'body' => $body, 'id' => $id, 'type' => $type];
                 }
             }
         }

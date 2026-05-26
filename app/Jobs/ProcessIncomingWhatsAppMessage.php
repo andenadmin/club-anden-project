@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\BotSession;
 use App\Models\ConversationMessage;
+use App\Services\BotMessages;
 use App\Services\BotEngine;
 use App\Services\Meta\WhatsAppClient;
 use App\Services\Meta\WhatsAppSender;
@@ -11,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 
 class ProcessIncomingWhatsAppMessage implements ShouldQueue
 {
@@ -19,14 +22,25 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    /** Tipos de mensaje que NO son texto y deben recibir MSG_OPCION_INVALIDA. */
+    private const NON_TEXT_TYPES = [
+        'sticker', 'audio', 'image', 'video', 'document', 'location', 'contacts',
+    ];
+
     public function __construct(
         public readonly string $from,
         public readonly string $body,
         public readonly string $waMessageId,
+        public readonly string $messageType = 'text',
     ) {}
 
     public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClient $client): void
     {
+        // §8b — Debounce anti-spam: si el mismo número ya fue procesado en los últimos 5s, ignorar.
+        if (!Cache::add("debounce:{$this->from}", true, 5)) {
+            return;
+        }
+
         // Idempotencia: si ya procesamos este wa_message_id, salir.
         if (ConversationMessage::where('wa_message_id', $this->waMessageId)->exists()) {
             return;
@@ -34,6 +48,17 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
 
         // Marcar como leído (doble tilde azul en el lado del usuario)
         $client->markAsRead($this->waMessageId);
+
+        // §8a — Mensajes no-texto: responder con opción inválida sin avanzar estado.
+        if (in_array($this->messageType, self::NON_TEXT_TYPES, true)) {
+            $session = BotSession::firstOrCreate(
+                ['numero_contacto' => $this->from],
+                ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0]
+            );
+            $invalidMsg = BotMessages::render('MSG_OPCION_INVALIDA');
+            $sender->sendBotResponses($session, [$invalidMsg]);
+            return;
+        }
 
         $responses = $engine->process($this->from, $this->body);
 
