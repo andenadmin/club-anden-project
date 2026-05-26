@@ -44,7 +44,7 @@ class PanelNotificationsController extends Controller
         if ($notification->tipo === 'sector_alerta' && $accion === 'informar') {
             $sector = $notification->payload['sector_key'] ?? null;
 
-            if ($sector && in_array($sector, ['salon', 'galeria', 'terraza'], true)) {
+            if ($sector && in_array($sector, ['salon', 'galeria', 'terraza', 'parrilla'], true)) {
                 $config = RestaurantConfig::first();
                 if ($config) {
                     $config->update([

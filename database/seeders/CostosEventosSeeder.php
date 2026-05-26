@@ -10,11 +10,8 @@ class CostosEventosSeeder extends Seeder
     public function run(): void
     {
         $costos = [
-            // Menús por pack (precio por niño)
-            ['concepto' => 'pack_1_menu', 'descripcion' => 'Menú Pack 1 por niño', 'precio' => 5000],
-            ['concepto' => 'pack_2_menu', 'descripcion' => 'Menú Pack 2 por niño', 'precio' => 7000],
-            ['concepto' => 'pack_3_menu', 'descripcion' => 'Menú Pack 3 por niño', 'precio' => 9000],
-            ['concepto' => 'pack_4_menu', 'descripcion' => 'Menú Pack 4 por niño', 'precio' => 12000],
+            // Menú niños (precio por niño)
+            ['concepto' => 'menu_ninos', 'descripcion' => 'Menú niños por chico', 'precio' => 5000],
             // Infraestructura
             ['concepto' => 'cancha', 'descripcion' => 'Cancha por unidad', 'precio' => 15000],
             ['concepto' => 'coordinador', 'descripcion' => 'Coordinador por unidad', 'precio' => 8000],

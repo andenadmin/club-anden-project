@@ -13,6 +13,7 @@ class RestaurantCapacity
         'Salón'           => 'salon',
         'Galería'         => 'galeria',
         'Terraza'         => 'terraza',
+        'Parrilla'        => 'parrilla',
         'Sin preferencia' => null,
     ];
 
@@ -20,6 +21,7 @@ class RestaurantCapacity
         'salon'   => 'Salón',
         'galeria' => 'Galería',
         'terraza' => 'Terraza',
+        'parrilla'=> 'Parrilla',
     ];
 
     /**
@@ -57,6 +59,7 @@ class RestaurantCapacity
                 'salon_cerrado'          => false,
                 'galeria_cerrado'        => false,
                 'terraza_cerrado'        => false,
+                'parrilla_cerrado'       => false,
                 'sectores_cerrado_fecha' => null,
             ])->save();
             RestaurantConfig::clearCache();
@@ -133,6 +136,7 @@ class RestaurantCapacity
             'A' => ['label' => 'Salón',   'key' => 'salon'],
             'B' => ['label' => 'Galería', 'key' => 'galeria'],
             'C' => ['label' => 'Terraza', 'key' => 'terraza'],
+            'D' => ['label' => 'Parrilla','key' => 'parrilla'],
         ];
 
         $lines      = [];
@@ -145,7 +149,7 @@ class RestaurantCapacity
             $lines[] = "*{$letra}.* {$opt['label']}{$suffix}";
         }
 
-        $lines[] = '*D.* Sin preferencia';
+        $lines[] = '*E.* Sin preferencia';
 
         $intro = "¿En qué sector preferís sentarte?";
 

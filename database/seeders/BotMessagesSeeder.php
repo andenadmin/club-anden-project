@@ -182,8 +182,8 @@ class BotMessagesSeeder extends Seeder
             [
                 'key'      => 'MSG_EVT_NINOS_PACK',
                 'category' => 'eventos',
-                'label'    => 'Eventos — pack niños',
-                'content'  => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
+                'label'    => 'Eventos — info fútbol niños',
+                'content'  => "¡Nos encanta que elijan festejar en El Andén! 🎉\n\nReservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.",
             ],
             [
                 'key'      => 'MSG_EVT_02',
@@ -231,7 +231,7 @@ class BotMessagesSeeder extends Seeder
                 'key'      => 'MSG_EVT_COSTO_MENU',
                 'category' => 'eventos',
                 'label'    => 'Eventos — costo estimado del menú',
-                'content'  => "Para {{numero_ninos}} niños con {{pack_label}}, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
+                'content'  => "Para {{numero_ninos}} niños, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
             ],
             [
                 'key'      => 'MSG_EVT_MENU',

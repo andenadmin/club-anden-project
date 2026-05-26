@@ -58,7 +58,9 @@ class BotMessagesAdminController extends Controller
 
     public function update(Request $request, BotMessage $botMessage)
     {
-        abort_unless($this->isUnlocked(), 403);
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
 
         $request->validate([
             'content' => ['required', 'string', 'max:4000'],
@@ -71,7 +73,9 @@ class BotMessagesAdminController extends Controller
 
     public function archive(BotMessage $botMessage)
     {
-        abort_unless($this->isUnlocked(), 403);
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
 
         $botMessage->update(['is_archived' => true]);
         return back()->with('success', 'Mensaje archivado.');
@@ -79,7 +83,9 @@ class BotMessagesAdminController extends Controller
 
     public function restore(BotMessage $botMessage)
     {
-        abort_unless($this->isUnlocked(), 403);
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
 
         $botMessage->update(['is_archived' => false]);
         return back()->with('success', 'Mensaje restaurado.');
@@ -87,7 +93,9 @@ class BotMessagesAdminController extends Controller
 
     public function resetDefault(BotMessage $botMessage)
     {
-        abort_unless($this->isUnlocked(), 403);
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
 
         $default = BotMessages::hardcodedDefault($botMessage->key);
 

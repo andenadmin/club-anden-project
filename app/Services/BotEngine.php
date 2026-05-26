@@ -90,8 +90,11 @@ class BotEngine
         }
 
         // Trigger global de escalado (prioridad absoluta)
+        // Excepción: en pasos donde 0 es una cantidad válida, solo escalar con palabras clave
         $lower = strtolower(trim($text));
-        if ($text === '0' || in_array($lower, ['atencion', 'asesor', 'quiero un asesor', 'necesito un asesor', 'hablar con asesor'], true)) {
+        $stepsConCeroPorNumero = ['numero_adultos', 'menu_adultos'];
+        $skipEscalate0 = in_array($session->current_step, $stepsConCeroPorNumero, true);
+        if ((!$skipEscalate0 && $text === '0') || in_array($lower, ['atencion', 'asesor', 'quiero un asesor', 'necesito un asesor', 'hablar con asesor'], true)) {
             return $this->escalate($session, 'SOLICITUD_CLIENTE');
         }
 
@@ -449,10 +452,11 @@ class BotEngine
             $session->mergeEstado(['subtipo_activo' => $nuevoSubtipo, 'contador_invalidos' => 0]);
 
             if ($nuevoSubtipo === 'FUTBOL') {
-                $session->mergeEstado(['current_step' => 'pack_seleccionado']);
+                $session->mergeEstado(['current_step' => 'modalidad']);
                 return [
                     BotMessages::render('MSG_LINK_CUMPLE_NINOS'),
                     BotMessages::render('MSG_EVT_NINOS_PACK'),
+                    BotMessages::render('MSG_EVT_MODALIDAD'),
                 ];
             }
             if ($nuevoSubtipo === 'PADEL') {
@@ -493,13 +497,6 @@ class BotEngine
         $step = $session->current_step;
 
         switch ($step) {
-            case 'pack_seleccionado':
-                if (!BotMessages::resolveOption('MSG_EVT_NINOS_PACK', $text)) {
-                    return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_NINOS_PACK')]);
-                }
-                $this->saveDato($session, 'pack_seleccionado', strtoupper(trim($text)));
-                return $this->nextStep($session, 'modalidad', 'MSG_EVT_MODALIDAD');
-
             case 'modalidad':
                 $modalidad = BotMessages::resolveOption('MSG_EVT_MODALIDAD', $text);
                 if (!$modalidad) {
@@ -566,12 +563,10 @@ class BotEngine
                     'num_canchas'       => $canchas,
                     'num_coordinadores' => $coordinadores,
                 ]);
-                $pack    = $session->getDatos('pack_seleccionado', '1');
-                $precio  = CostoEvento::precio('pack_' . $pack . '_menu');
+                $precio  = CostoEvento::precio('menu_ninos');
                 $costo   = $ninos * $precio;
                 $infoMsg = BotMessages::render('MSG_EVT_COSTO_MENU', [
                     'numero_ninos'         => $ninos,
-                    'pack_label'           => BotMessages::packLabel($pack),
                     'costo_menu_calculado' => number_format($costo, 0, ',', '.'),
                 ]);
                 $this->pushHistory($session);
@@ -1575,7 +1570,6 @@ class BotEngine
                 if ($subtipo === 'FUTBOL' && !empty($datos['modalidad'])) {
                     $lines[] = "⚽ Modalidad: " . BotMessages::modalidadLabel($datos['modalidad']);
                 }
-                if (!empty($datos['pack_seleccionado'])) $lines[] = "🎁 Pack: " . BotMessages::packLabel($datos['pack_seleccionado']);
                 if (!empty($datos['numero_ninos']))      $lines[] = "👦 Chicos: {$datos['numero_ninos']}";
                 if (!empty($datos['menu_preferido']))    $lines[] = "🍕 Menú chicos: {$datos['menu_preferido']}";
                 if (isset($datos['numero_adultos']))     $lines[] = "🧑 Adultos: {$datos['numero_adultos']}";
@@ -1695,12 +1689,11 @@ class BotEngine
         }
 
         // FUTBOL / NINOS
-        $pack          = $datos['pack_seleccionado'] ?? '1';
         $ninos         = (int)($datos['numero_ninos'] ?? 0);
         $canchas       = (int)($datos['num_canchas'] ?? 1);
         $coordinadores = (int)($datos['num_coordinadores'] ?? 2);
 
-        $pMenuNinos = CostoEvento::precio('pack_' . $pack . '_menu');
+        $pMenuNinos = CostoEvento::precio('menu_ninos');
         $pCancha    = CostoEvento::precio('cancha');
         $pCoord     = CostoEvento::precio('coordinador');
 
@@ -1713,7 +1706,7 @@ class BotEngine
         $total    = $subtotal + $recargo;
 
         $detalle = [
-            "Menú niños (" . BotMessages::packLabel($pack) . ") × {$ninos}: $" . number_format($subtMenuNinos, 0, ',', '.'),
+            "Menú niños × {$ninos}: $" . number_format($subtMenuNinos, 0, ',', '.'),
             "Canchas × {$canchas}: $" . number_format($subtCanchas, 0, ',', '.'),
             "Coordinadores × {$coordinadores}: $" . number_format($subtCoords, 0, ',', '.'),
         ];
@@ -1928,7 +1921,6 @@ class BotEngine
                 $menuPrefMsg = $subtipo === 'PADEL' ? 'MSG_EVT_MENU_PADEL' : 'MSG_EVT_MENU';
                 $horaMsg     = fn() => [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])];
                 $msgMap = [
-                    'pack_seleccionado'         => fn() => [BotMessages::render('MSG_EVT_NINOS_PACK')],
                     'modalidad'                 => fn() => [BotMessages::render('MSG_EVT_MODALIDAD')],
                     'fecha'                     => fn() => [BotMessages::render('MSG_EVT_02')],
                     'hora_inicio'               => $horaMsg,
@@ -2212,33 +2204,25 @@ class BotEngine
     /** Genera el texto del mensaje MSG_RES_04 con capacidad actualizada. */
     private function buildSectorMsg(BotSession $session): string
     {
-        $datos   = $session->datos_parciales ?? [];
-        $fecha   = $datos['fecha'] ?? '';
+        $datos    = $session->datos_parciales ?? [];
+        $fecha    = $datos['fecha'] ?? '';
         $personas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
 
-        $sectores = [
-            'A' => ['label' => 'Salón',   'key' => 'salon'],
-            'B' => ['label' => 'Galería', 'key' => 'galeria'],
-            'C' => ['label' => 'Terraza', 'key' => 'terraza'],
-        ];
-
+        // Verificar si todos los sectores están llenos antes de delegar
+        $sectores = ['salon', 'galeria', 'terraza', 'parrilla'];
         $todosLlenos = true;
-        $lines = [];
-
-        foreach ($sectores as $letra => $opt) {
-            $disponible = RestaurantCapacity::tieneCapacidad($opt['key'], $fecha, $personas);
-            if ($disponible) $todosLlenos = false;
-            $suffix = $disponible ? '' : ' _(sin capacidad)_';
-            $lines[] = "*{$letra}.* {$opt['label']}{$suffix}";
+        foreach ($sectores as $key) {
+            if (RestaurantCapacity::tieneCapacidad($key, $fecha, $personas)) {
+                $todosLlenos = false;
+                break;
+            }
         }
 
         if ($todosLlenos) {
             return BotMessages::render('MSG_RES_SECTOR_LLENO');
         }
 
-        $lines[] = '*D.* Sin preferencia';
-
-        return "¿En qué sector preferís sentarte?\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";
+        return RestaurantCapacity::buildSectorMessage($fecha, $personas);
     }
 
     /**

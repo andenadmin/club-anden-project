@@ -86,7 +86,7 @@ class BotMessages
             'MSG_EVT_INFO_HOCKEY' => "🏒 *Cumpleaños Hockey — El Andén*\n\nTe recopilamos los datos para coordinar tu cumple de hockey. Un asesor va a confirmar la disponibilidad y el presupuesto final.\n\n¡Seguimos!",
             'MSG_EVT_MENU_PADEL' => "¿Qué menú preferís para los chicos?\n\n(Se elige 1 opción para todo el grupo. Incluye bebida y servicio de mesa.)\n\n*1.* Picada Andén caliente con dips\n*2.* 2 porciones de pizza\n*3.* Súper pancho\n*4.* Hamburguesa 100% carne\n\n*0.* Hablar con un asesor",
             'MSG_EVT_MENU_ADULTOS_TIPO' => "¿Qué menú completo querés para los adultos?\n\n*1.* 🥩 Parrillada Criolla Andén\n*2.* 🍖 Menú Pernil\n*3.* 🍗 Menú Milanesa Completa Club\n*4.* 🍕 Menú Pizza Andén\n\n*0.* Hablar con un asesor",
-            'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Anden! 🎉\n\nEn el pack reservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.\n\n¿Qué opción elegís?\n\n*1.* Pack 1\n*2.* Pack 2\n*3.* Pack 3\n*4.* Pack 4\n\n*0.* Hablar con un asesor",
+            'MSG_EVT_NINOS_PACK' => "¡Nos encanta que elijan festejar en El Andén! 🎉\n\nReservamos tu cancha de Fútbol 5 u 8. Hasta 20 nenes por cancha, duración máxima 2 hs y 15 min con intermedio para comer, 2 coordinadores, menú fijo + extras adicionales (no incluidos). La comida, canchas y coordinadores son obligatorios y proporcionales a la cantidad de niños.",
             'MSG_EVT_02' => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_FERIADO_AVISO' => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
             'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
@@ -94,7 +94,7 @@ class BotMessages
             'MSG_EVT_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
             'MSG_EVT_NINOS_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del/la festejado/a\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
             'MSG_EVT_05' => "¿Cuántos niños van a participar?\n\nIngresá un número entre 1 y 50.\nSi son más de 50, escribí *0* para hablar con un asesor.",
-            'MSG_EVT_COSTO_MENU' => "Para {{numero_ninos}} niños con {{pack_label}}, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
+            'MSG_EVT_COSTO_MENU' => "Para {{numero_ninos}} niños, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
             'MSG_EVT_MENU' => "¿Qué menú preferís para los chicos?\n\n*1.* 2 porciones de pizza\n*2.* Pancho\n*3.* Hamburguesa\n\n*0.* Hablar con un asesor",
             'MSG_EVT_ADULTOS' => "¿Cuántos adultos van a asistir al evento?\n\nIngresá un número (puede ser 0).\n\nℹ️ Hasta 10 adultos al almuerzo/cena: eligen de la carta el día del evento.\n   Más de 10 adultos: menú fijo completo obligatorio.\n   Merienda (16–19:30 hs): hasta 15 adultos a elección.",
             'MSG_EVT_MENU_ADULTOS' => "De los {{numero_adultos}} adultos, ¿cuántos van a tomar el menú fijo?\n\nIngresá un número entre 0 y {{numero_adultos}}.",
@@ -205,7 +205,8 @@ class BotMessages
             'A' => 'Salón',
             'B' => 'Galería',
             'C' => 'Terraza',
-            'D' => 'Sin preferencia',
+            'D' => 'Parrilla',
+            'E' => 'Sin preferencia',
             default => null,
         };
     }

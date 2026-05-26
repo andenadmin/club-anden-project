@@ -247,7 +247,7 @@ function ArchivedCard({ msg }: { msg: BotMessage }) {
 
                 <button
                     onClick={restore}
-                    className="shrink-0 text-xs text-[#075e54] border border-[#075e54]/40 rounded-lg px-3 py-1 hover:bg-[#075e54]/5 transition-colors"
+                    className="shrink-0 text-xs font-semibold text-white bg-[#075e54] rounded-lg px-3 py-1 hover:bg-[#0a7060] transition-colors"
                 >
                     Restaurar
                 </button>
