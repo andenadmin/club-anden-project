@@ -1,12 +1,19 @@
-import { usePage } from '@inertiajs/react';
-
 let nextId = 9000;
 
+function isTestMode(): boolean {
+    try {
+        const el = document.getElementById('app');
+        const page = JSON.parse(el?.getAttribute('data-page') ?? '{}');
+        return page?.props?.testMode === true;
+    } catch {
+        return false;
+    }
+}
+
 function inject(tipo: string, payload: Record<string, unknown>) {
-    const event = new CustomEvent('test:inject-notification', {
+    window.dispatchEvent(new CustomEvent('test:inject-notification', {
         detail: { id: nextId++, tipo, payload, leida: false, created_at: new Date().toISOString() },
-    });
-    window.dispatchEvent(event);
+    }));
 }
 
 function clearAll() {
@@ -14,8 +21,7 @@ function clearAll() {
 }
 
 export function TestToolbar() {
-    const { testMode } = usePage().props as { testMode?: boolean };
-    if (!testMode) return null;
+    if (!isTestMode()) return null;
 
     return (
         <div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-1.5 bg-yellow-50 border-2 border-yellow-400 rounded-xl shadow-xl px-3 py-2.5 text-xs font-mono">
