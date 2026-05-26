@@ -1,6 +1,14 @@
 import { usePage, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Clock, Info, X } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 interface PanelNotification {
     id: number;
@@ -15,7 +23,71 @@ interface PanelNotification {
     created_at: string;
 }
 
-function NotificationItem({
+// ─── Dialog para sector_alerta ────────────────────────────────────────────────
+
+function SectorAlertaDialog({
+    notification,
+    onDismiss,
+}: {
+    notification: PanelNotification;
+    onDismiss: (id: number) => void;
+}) {
+    const { id, payload } = notification;
+    const mensaje = payload?.mensaje ?? '';
+    const sectorLabel = payload?.sector_label ?? '';
+
+    const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
+    const handleAction = async (accion: string) => {
+        try {
+            await fetch(`/panel-notifications/${id}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                body: JSON.stringify({ accion }),
+            });
+        } catch { /* best-effort */ }
+        onDismiss(id);
+    };
+
+    return (
+        <Dialog open onOpenChange={() => handleAction('mantener')}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                        <AlertTriangle className="size-5 shrink-0" />
+                        Alerta de capacidad — {sectorLabel}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm text-foreground pt-1">
+                        {mensaje}
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                        onClick={() => handleAction('mantener')}
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-secondary hover:bg-secondary/80 text-secondary-foreground transition-colors"
+                    >
+                        No, mantener disponible
+                    </button>
+                    <div className="relative group flex-1">
+                        <button
+                            onClick={() => handleAction('informar')}
+                            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors"
+                        >
+                            Sí, informar sin cupo
+                        </button>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 text-xs text-white bg-gray-900 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg">
+                            El sector se marcará como sin disponibilidad en WhatsApp para nuevas reservas
+                        </div>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// ─── Banner genérico (aviso_confirmar, auto_confirm, job_error) ───────────────
+
+function BannerItem({
     notification,
     onDismiss,
 }: {
@@ -34,79 +106,40 @@ function NotificationItem({
         onDismiss(id);
     };
 
-    const handleAction = async (accion: string) => {
-        try {
-            await fetch(`/panel-notifications/${id}/action`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
-                body: JSON.stringify({ accion }),
-            });
-        } catch { /* best-effort */ }
-        onDismiss(id);
-    };
-
     const handleGoToReservas = () => {
         handleMarkRead();
         const savedVista = (() => { try { return localStorage.getItem('reservas_vista') ?? 'dia'; } catch { return 'dia'; } })();
         router.visit(`/reservas?vista=${savedVista}`);
     };
 
-    const isError  = tipo === 'job_error';
-    const isAviso  = tipo === 'aviso_confirmar';
-    const isAlerta = tipo === 'sector_alerta';
-    const isOk     = tipo === 'auto_confirm';
+    const isError = tipo === 'job_error';
+    const isAviso = tipo === 'aviso_confirmar';
+    const isOk    = tipo === 'auto_confirm';
 
-    const Icon = isError ? AlertCircle : isAviso ? Clock : isAlerta ? AlertTriangle : isOk ? CheckCircle : Info;
-    const iconColor = isError  ? 'text-red-600 dark:text-red-400'
-                    : isAviso  ? 'text-yellow-600 dark:text-yellow-400'
-                    : isAlerta ? 'text-yellow-500 dark:text-yellow-400'
-                    : isOk     ? 'text-green-600 dark:text-green-400'
-                    : 'text-blue-500';
+    const Icon = isError ? AlertCircle : isAviso ? Clock : isOk ? CheckCircle : Info;
 
-    const cardStyle = isError  ? 'border-red-400 bg-red-50 dark:bg-red-950 dark:border-red-700'
-                    : isAviso  ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-600'
-                    : isAlerta ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-600'
-                    : isOk     ? 'border-green-400 bg-green-50 dark:bg-green-950 dark:border-green-700'
+    const iconColor = isError ? 'text-red-400'
+                    : isAviso ? 'text-yellow-500 dark:text-yellow-400'
+                    : isOk    ? 'text-green-500 dark:text-green-400'
+                    : 'text-blue-400';
+
+    const cardStyle = isError ? 'border-red-400 bg-red-50 dark:bg-red-950 dark:border-red-700'
+                    : isAviso ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-600'
+                    : isOk    ? 'border-green-400 bg-green-50 dark:bg-green-950 dark:border-green-700'
                     : 'border-gray-200 bg-white dark:bg-neutral-900 dark:border-neutral-700';
 
-    const textStyle = isError  ? 'text-red-800 dark:text-red-200 font-medium'
-                    : isAviso  ? 'text-yellow-900 dark:text-yellow-100'
-                    : isAlerta ? 'text-yellow-900 dark:text-yellow-100'
-                    : isOk     ? 'text-green-800 dark:text-green-200'
+    const textStyle = isError ? 'text-red-800 dark:text-red-200 font-medium'
+                    : isAviso ? 'text-yellow-900 dark:text-yellow-100'
+                    : isOk    ? 'text-green-800 dark:text-green-200'
                     : 'text-gray-800 dark:text-neutral-100';
 
     return (
-        <div className={`flex items-start gap-3 border rounded-xl shadow-lg px-4 py-3 w-full max-w-xl ${cardStyle}`}>
+        <div className={`flex items-start gap-3 border rounded-xl shadow-lg px-5 py-4 w-full max-w-xl ${cardStyle}`}>
             <Icon className={`size-5 shrink-0 mt-0.5 ${iconColor}`} />
             <p className={`flex-1 text-sm leading-snug ${textStyle}`}>{mensaje}</p>
 
             <div className="flex items-center gap-2 shrink-0 ml-2">
-                {isAlerta ? (
-                    <>
-                        <div className="relative group">
-                            <button
-                                onClick={() => handleAction('informar')}
-                                className="text-xs font-medium bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                                Sí, informar
-                            </button>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 text-xs text-white bg-gray-800 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg">
-                                El sector se marcará como sin disponibilidad para nuevas reservas
-                            </div>
-                        </div>
-                        <div className="relative group">
-                            <button
-                                onClick={() => handleAction('mantener')}
-                                className="text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                                No, mantener
-                            </button>
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 text-xs text-white bg-gray-800 rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center shadow-lg">
-                                El sector seguirá apareciendo como disponible
-                            </div>
-                        </div>
-                    </>
-                ) : isAviso ? (
+                {isAviso ? (
                     <button
                         onClick={handleGoToReservas}
                         className="text-xs font-medium bg-yellow-200 hover:bg-yellow-300 text-yellow-900 border border-black dark:bg-yellow-800 dark:hover:bg-yellow-700 dark:text-yellow-100 dark:border-yellow-500 px-3 py-1.5 rounded-lg transition-colors"
@@ -116,9 +149,9 @@ function NotificationItem({
                 ) : (
                     <button
                         onClick={handleMarkRead}
-                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                            isError ? 'bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200'
-                                    : 'bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200'
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                            isError ? 'bg-red-100 hover:bg-red-200 text-red-800 border-red-400 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200 dark:border-red-700'
+                                    : 'bg-green-100 hover:bg-green-200 text-green-800 border-green-400 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200 dark:border-green-700'
                         }`}
                     >
                         Entendido
@@ -126,14 +159,20 @@ function NotificationItem({
                 )}
 
                 {!isError && (
-                    <button onClick={handleMarkRead} className="text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors ml-1" title="Cerrar">
-                        <X className="size-4" />
+                    <button
+                        onClick={handleMarkRead}
+                        className="size-6 flex items-center justify-center rounded-full bg-gray-500 hover:bg-gray-700 dark:bg-neutral-600 dark:hover:bg-neutral-400 transition-colors ml-1"
+                        title="Cerrar"
+                    >
+                        <X className="size-3.5 text-white" />
                     </button>
                 )}
             </div>
         </div>
     );
 }
+
+// ─── Root ─────────────────────────────────────────────────────────────────────
 
 export function PanelNotificationsBanner() {
     const { testMode } = usePage().props as { testMode?: boolean };
@@ -171,15 +210,28 @@ export function PanelNotificationsBanner() {
 
     const dismiss = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
+    const alertas  = notifications.filter(n => n.tipo === 'sector_alerta');
+    const banners  = notifications.filter(n => n.tipo !== 'sector_alerta');
+
     if (notifications.length === 0) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 px-4 pointer-events-none">
-            {notifications.map(n => (
-                <div key={n.id} className="pointer-events-auto w-full flex justify-center">
-                    <NotificationItem notification={n} onDismiss={dismiss} />
+        <>
+            {/* Dialogs modales para sector_alerta (uno a la vez, el primero) */}
+            {alertas[0] && (
+                <SectorAlertaDialog notification={alertas[0]} onDismiss={dismiss} />
+            )}
+
+            {/* Banners centrados para el resto */}
+            {banners.length > 0 && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 px-4 pointer-events-none">
+                    {banners.map(n => (
+                        <div key={n.id} className="pointer-events-auto w-full flex justify-center">
+                            <BannerItem notification={n} onDismiss={dismiss} />
+                        </div>
+                    ))}
                 </div>
-            ))}
-        </div>
+            )}
+        </>
     );
 }

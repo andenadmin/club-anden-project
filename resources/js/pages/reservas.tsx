@@ -388,7 +388,10 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
     return (
         <div className={`rounded-xl border border-border border-l-4 ${tipoCfg.col} bg-card px-4 py-3 shadow-sm`}>
             <div className="flex items-start justify-between gap-2">
-                <p className="text-base font-semibold leading-tight">{reserva.nombre}</p>
+                <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">#{reserva.id}</span>
+                    <p className="text-base font-semibold leading-tight truncate">{reserva.nombre}</p>
+                </div>
                 <EstadoBadge estado={reserva.estado} />
             </div>
 
