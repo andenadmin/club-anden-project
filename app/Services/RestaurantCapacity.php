@@ -118,7 +118,7 @@ class RestaurantCapacity
         PanelNotification::create([
             'tipo'    => 'sector_alerta',
             'payload' => [
-                'mensaje'       => "⚠️ Alcanzamos el {$pctRedondeado}% de la capacidad en *{$sectorLabel}*. ¿Querés que informemos a quienes reservan que no hay más cupo?",
+                'mensaje'       => "Alcanzamos el {$pctRedondeado}% de la capacidad en *{$sectorLabel}*. ¿Querés que informemos a quienes reservan que no hay más cupo?",
                 'sector_key'    => $sectorKey,
                 'sector_label'  => $sectorLabel,
             ],

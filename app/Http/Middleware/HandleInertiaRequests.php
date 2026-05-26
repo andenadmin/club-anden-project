@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
                 ? (int) BotSession::where('estado_actual', 'PAUSADO')->sum('unread_count')
                 : 0,
             'isSuperAdmin' => fn () => (bool) $request->user()?->isSuperAdmin(),
+            'testMode'     => (bool) env('TEST_MODE', false),
         ];
     }
 }

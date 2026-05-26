@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ClipboardList, MessageCircle, MessagesSquare, MessageSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
+import { ClipboardList, MessagesSquare, MessageSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -77,16 +77,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <div className="px-2">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton asChild isActive={isCurrentUrl('/bot')} tooltip={{ children: 'Bot Simulator' }}>
-                            <Link href="/bot" prefetch onClick={() => setOpenMobile(false)}>
-                                <MessageCircle />
-                                <span>Bot Simulator</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                {/* Bot Simulator oculto — ruta redirige a /inbox */}
                 <CollapseToggle />
             </div>
 

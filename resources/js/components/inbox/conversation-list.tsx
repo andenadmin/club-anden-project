@@ -101,9 +101,10 @@ function ConversationItem({
     onImportant?: (n: string) => void;
 }) {
     const isPaused = c.estado_actual === 'PAUSADO';
+    const needsAttention = isPaused && c.motivo_pausa !== 'ASESOR_TAKEOVER';
 
     return (
-        <li className="relative group border-b border-sidebar-border/50">
+        <li className={cn('relative group border-b border-sidebar-border/50', needsAttention && 'attention-pulse')}>
             <Link
                 href={`/inbox/${c.numero}`}
                 preserveScroll

@@ -14,10 +14,11 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Bot Simulator
-    Route::get('/bot', [BotSimulatorController::class, 'index'])->name('bot.simulator');
-    Route::post('/bot/message', [BotSimulatorController::class, 'message'])->name('bot.message');
-    Route::post('/bot/reset', [BotSimulatorController::class, 'reset'])->name('bot.reset');
+    // Bot Simulator (deshabilitado — redirige a inbox)
+    Route::get('/bot', fn() => redirect()->route('inbox'))->name('bot.simulator');
+    // Route::get('/bot', [BotSimulatorController::class, 'index'])->name('bot.simulator');
+    // Route::post('/bot/message', [BotSimulatorController::class, 'message'])->name('bot.message');
+    // Route::post('/bot/reset', [BotSimulatorController::class, 'reset'])->name('bot.reset');
 
     // Bot Precios Admin
     Route::get('/bot/precios', [BotPreciosController::class, 'index'])->name('bot.precios');

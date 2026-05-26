@@ -1,9 +1,4 @@
-/**
- * Barra de herramientas de prueba — solo visible cuando VITE_TEST_MODE=true.
- * Permite inyectar notificaciones y forzar estados de UI sin tocar la DB.
- */
-
-const TEST_MODE = import.meta.env.VITE_TEST_MODE === 'true';
+import { usePage } from '@inertiajs/react';
 
 let nextId = 9000;
 
@@ -19,15 +14,16 @@ function clearAll() {
 }
 
 export function TestToolbar() {
-    if (!TEST_MODE) return null;
+    const { testMode } = usePage().props as { testMode?: boolean };
+    if (!testMode) return null;
 
     return (
         <div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-1.5 bg-yellow-50 border-2 border-yellow-400 rounded-xl shadow-xl px-3 py-2.5 text-xs font-mono">
-            <p className="text-yellow-700 font-bold text-[10px] uppercase tracking-widest mb-0.5">🧪 Test Mode</p>
+            <p className="text-yellow-700 font-bold text-[10px] uppercase tracking-widest mb-0.5">Test Mode</p>
 
             <button
                 onClick={() => inject('sector_alerta', {
-                    mensaje: '⚠️ Alcanzamos el 100% de la capacidad en *Salón*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
+                    mensaje: 'Alcanzamos el 100% de la capacidad en *Salón*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
                     sector_key: 'salon',
                     sector_label: 'Salón',
                 })}
@@ -38,7 +34,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('sector_alerta', {
-                    mensaje: '⚠️ Alcanzamos el 100% de la capacidad en *Terraza*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
+                    mensaje: 'Alcanzamos el 100% de la capacidad en *Terraza*. ¿Querés que informemos a quienes reservan que no hay más cupo?',
                     sector_key: 'terraza',
                     sector_label: 'Terraza',
                 })}
@@ -49,7 +45,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('aviso_confirmar', {
-                    mensaje: '⏳ Tenés 2 reserva(s) de restaurante pendiente(s) de confirmación manual (#42, #43). Si no se confirman, se harán automáticamente en la próxima ejecución.',
+                    mensaje: 'Tenés 2 reserva(s) de restaurante pendiente(s) de confirmación manual (#42, #43). Si no se confirman, se harán automáticamente en la próxima ejecución.',
                     cantidad: 2,
                 })}
                 className="px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-900 rounded-lg transition-colors text-left"
@@ -59,7 +55,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('auto_confirm', {
-                    mensaje: '✅ Se confirmaron automáticamente 2 reserva(s) de restaurante tras 20 hs sin confirmación manual (#42, #43).',
+                    mensaje: 'Se confirmaron automáticamente 2 reserva(s) de restaurante tras 20 hs sin confirmación manual (#42, #43).',
                     cantidad: 2,
                 })}
                 className="px-2 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-colors text-left"
@@ -69,7 +65,7 @@ export function TestToolbar() {
 
             <button
                 onClick={() => inject('job_error', {
-                    mensaje: '🚨 *El job de auto-confirmación de reservas falló.* Revisá los logs del servidor para corregirlo.\n\nError: Connection refused.',
+                    mensaje: 'Error grave — Contactar programadores\n\nFalló el job de auto-confirmación de reservas.\nError: Connection refused.',
                 })}
                 className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors text-left"
             >

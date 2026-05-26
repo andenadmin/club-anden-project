@@ -30,7 +30,7 @@ class AutoConfirmRestaurantReservations extends Command
                 PanelNotification::create([
                     'tipo'    => 'job_error',
                     'payload' => [
-                        'mensaje' => "🚨 *El job de auto-confirmación de reservas falló.* Revisá los logs del servidor para corregirlo.\n\nError: " . $e->getMessage(),
+                        'mensaje' => "Error grave — Contactar programadores\n\nFalló el job de auto-confirmación de reservas.\nError: " . $e->getMessage(),
                     ],
                     'leida' => false,
                 ]);
@@ -112,7 +112,7 @@ class AutoConfirmRestaurantReservations extends Command
             PanelNotification::create([
                 'tipo'    => 'aviso_confirmar',
                 'payload' => [
-                    'mensaje'  => "⏳ Tenés " . count($paraAvisar) . " reserva(s) de restaurante pendiente(s) de confirmación manual ({$ids}). Si no se confirman, se harán automáticamente en la próxima ejecución.",
+                    'mensaje'  => "Tenés " . count($paraAvisar) . " reserva(s) de restaurante pendiente(s) de confirmación manual ({$ids}). Si no se confirman, se harán automáticamente en la próxima ejecución.",
                     'cantidad' => count($paraAvisar),
                 ],
                 'leida' => false,
@@ -125,7 +125,7 @@ class AutoConfirmRestaurantReservations extends Command
             PanelNotification::create([
                 'tipo'    => 'auto_confirm',
                 'payload' => [
-                    'mensaje'  => "✅ Se confirmaron automáticamente " . count($autoConfirmadas) . " reserva(s) de restaurante tras 20 hs sin confirmación manual ({$ids}).",
+                    'mensaje'  => "Se confirmaron automáticamente " . count($autoConfirmadas) . " reserva(s) de restaurante tras 20 hs sin confirmación manual ({$ids}).",
                     'cantidad' => count($autoConfirmadas),
                 ],
                 'leida' => false,

@@ -1,5 +1,6 @@
+import { usePage, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, Clock, Info, X } from 'lucide-react';
 
 interface PanelNotification {
     id: number;
@@ -24,12 +25,12 @@ function NotificationItem({
     const { id, tipo, payload } = notification;
     const mensaje = payload?.mensaje ?? '';
 
+    const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
     const handleMarkRead = async () => {
         try {
-            await fetch(`/panel-notifications/${id}/read`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' } });
-        } catch {
-            // best-effort
-        }
+            await fetch(`/panel-notifications/${id}/read`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': csrf() } });
+        } catch { /* best-effort */ }
         onDismiss(id);
     };
 
@@ -37,29 +38,47 @@ function NotificationItem({
         try {
             await fetch(`/panel-notifications/${id}/action`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
                 body: JSON.stringify({ accion }),
             });
-        } catch {
-            // best-effort
-        }
+        } catch { /* best-effort */ }
         onDismiss(id);
+    };
+
+    const handleGoToReservas = () => {
+        handleMarkRead();
+        const savedVista = (() => { try { return localStorage.getItem('reservas_vista') ?? 'dia'; } catch { return 'dia'; } })();
+        router.visit(`/reservas?vista=${savedVista}`);
     };
 
     const isError  = tipo === 'job_error';
     const isAviso  = tipo === 'aviso_confirmar';
     const isAlerta = tipo === 'sector_alerta';
+    const isOk     = tipo === 'auto_confirm';
 
-    const icon = isError ? '🚨' : isAviso ? '⏳' : tipo === 'auto_confirm' ? '✅' : isAlerta ? '⚠️' : 'ℹ️';
+    const Icon = isError ? AlertCircle : isAviso ? Clock : isAlerta ? AlertTriangle : isOk ? CheckCircle : Info;
+    const iconColor = isError  ? 'text-red-600 dark:text-red-400'
+                    : isAviso  ? 'text-yellow-600 dark:text-yellow-400'
+                    : isAlerta ? 'text-yellow-500 dark:text-yellow-400'
+                    : isOk     ? 'text-green-600 dark:text-green-400'
+                    : 'text-blue-500';
 
-    const borderColor = isError  ? 'border-red-400 bg-red-50'
-                      : isAviso  ? 'border-yellow-400 bg-yellow-50'
-                      : 'border-gray-200 bg-white';
+    const cardStyle = isError  ? 'border-red-400 bg-red-50 dark:bg-red-950 dark:border-red-700'
+                    : isAviso  ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-600'
+                    : isAlerta ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-600'
+                    : isOk     ? 'border-green-400 bg-green-50 dark:bg-green-950 dark:border-green-700'
+                    : 'border-gray-200 bg-white dark:bg-neutral-900 dark:border-neutral-700';
+
+    const textStyle = isError  ? 'text-red-800 dark:text-red-200 font-medium'
+                    : isAviso  ? 'text-yellow-900 dark:text-yellow-100'
+                    : isAlerta ? 'text-yellow-900 dark:text-yellow-100'
+                    : isOk     ? 'text-green-800 dark:text-green-200'
+                    : 'text-gray-800 dark:text-neutral-100';
 
     return (
-        <div className={`flex items-start gap-3 border rounded-xl shadow-md px-4 py-3 w-full max-w-2xl ${borderColor}`}>
-            <span className="text-lg shrink-0 mt-0.5">{icon}</span>
-            <p className={`flex-1 text-sm leading-snug ${isError ? 'text-red-800 font-medium' : 'text-gray-800'}`}>{mensaje}</p>
+        <div className={`flex items-start gap-3 border rounded-xl shadow-lg px-4 py-3 w-full max-w-xl ${cardStyle}`}>
+            <Icon className={`size-5 shrink-0 mt-0.5 ${iconColor}`} />
+            <p className={`flex-1 text-sm leading-snug ${textStyle}`}>{mensaje}</p>
 
             <div className="flex items-center gap-2 shrink-0 ml-2">
                 {isAlerta ? (
@@ -88,20 +107,18 @@ function NotificationItem({
                         </div>
                     </>
                 ) : isAviso ? (
-                    <a
-                        href="/reservas"
-                        className="text-xs font-medium bg-yellow-200 hover:bg-yellow-300 text-yellow-900 px-3 py-1.5 rounded-lg transition-colors"
-                        onClick={() => handleMarkRead()}
+                    <button
+                        onClick={handleGoToReservas}
+                        className="text-xs font-medium bg-yellow-200 hover:bg-yellow-300 text-yellow-900 border border-black dark:bg-yellow-800 dark:hover:bg-yellow-700 dark:text-yellow-100 dark:border-yellow-500 px-3 py-1.5 rounded-lg transition-colors"
                     >
                         Ir a Reservas
-                    </a>
+                    </button>
                 ) : (
                     <button
                         onClick={handleMarkRead}
                         className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                            isError
-                                ? 'bg-red-100 hover:bg-red-200 text-red-800'
-                                : 'bg-green-100 hover:bg-green-200 text-green-700'
+                            isError ? 'bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200'
+                                    : 'bg-green-100 hover:bg-green-200 text-green-800 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200'
                         }`}
                     >
                         Entendido
@@ -109,11 +126,7 @@ function NotificationItem({
                 )}
 
                 {!isError && (
-                    <button
-                        onClick={handleMarkRead}
-                        className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                        title="Cerrar"
-                    >
+                    <button onClick={handleMarkRead} className="text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors ml-1" title="Cerrar">
                         <X className="size-4" />
                     </button>
                 )}
@@ -122,9 +135,8 @@ function NotificationItem({
     );
 }
 
-const TEST_MODE = import.meta.env.VITE_TEST_MODE === 'true';
-
 export function PanelNotificationsBanner() {
+    const { testMode } = usePage().props as { testMode?: boolean };
     const [notifications, setNotifications] = useState<PanelNotification[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -132,13 +144,11 @@ export function PanelNotificationsBanner() {
         try {
             const res = await fetch('/panel-notifications', { headers: { 'Accept': 'application/json' } });
             if (res.ok) setNotifications(await res.json() as PanelNotification[]);
-        } catch {
-            // best-effort — no bloquear la UI
-        }
+        } catch { /* best-effort */ }
     };
 
     useEffect(() => {
-        if (!TEST_MODE) {
+        if (!testMode) {
             fetchNotifications();
             intervalRef.current = setInterval(fetchNotifications, 30_000);
         }
@@ -159,16 +169,12 @@ export function PanelNotificationsBanner() {
         };
     }, []);
 
-    const dismiss = (id: number) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-    };
+    const dismiss = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
 
     if (notifications.length === 0) return null;
 
     return (
-        <div
-            className="fixed top-0 left-0 right-0 z-[100] flex flex-col items-center gap-2 pt-3 px-4 pointer-events-none"
-        >
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 px-4 pointer-events-none">
             {notifications.map(n => (
                 <div key={n.id} className="pointer-events-auto w-full flex justify-center">
                     <NotificationItem notification={n} onDismiss={dismiss} />
