@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class BotMessage extends Model
 {
-    protected $fillable = ['key', 'category', 'label', 'content', 'default_content', 'is_archived'];
+    protected $fillable = ['key', 'category', 'label', 'content', 'is_archived'];
 
     protected $casts = ['is_archived' => 'boolean'];
 

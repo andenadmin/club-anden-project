@@ -12,11 +12,10 @@ return new class extends Migration
         BotMessage::firstOrCreate(
             ['key' => 'MSG_DEPORTES_PRECIOS_CANCHAS'],
             [
-                'category'        => 'deportes',
-                'label'           => 'Lista de precios de canchas',
-                'content'         => $content,
-                'default_content' => $content,
-                'is_archived'     => false,
+                'category'    => 'deportes',
+                'label'       => 'Lista de precios de canchas',
+                'content'     => $content,
+                'is_archived' => false,
             ],
         );
     }
