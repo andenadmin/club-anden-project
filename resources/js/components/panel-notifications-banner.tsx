@@ -46,15 +46,23 @@ function NotificationItem({
         onDismiss(id);
     };
 
-    const icon = tipo === 'auto_confirm' ? '✅' : tipo === 'sector_alerta' ? '⚠️' : 'ℹ️';
+    const isError  = tipo === 'job_error';
+    const isAviso  = tipo === 'aviso_confirmar';
+    const isAlerta = tipo === 'sector_alerta';
+
+    const icon = isError ? '🚨' : isAviso ? '⏳' : tipo === 'auto_confirm' ? '✅' : isAlerta ? '⚠️' : 'ℹ️';
+
+    const borderColor = isError  ? 'border-red-400 bg-red-50'
+                      : isAviso  ? 'border-yellow-400 bg-yellow-50'
+                      : 'border-gray-200 bg-white';
 
     return (
-        <div className="flex items-start gap-3 bg-white border border-gray-200 rounded-xl shadow-md px-4 py-3 w-full max-w-2xl">
+        <div className={`flex items-start gap-3 border rounded-xl shadow-md px-4 py-3 w-full max-w-2xl ${borderColor}`}>
             <span className="text-lg shrink-0 mt-0.5">{icon}</span>
-            <p className="flex-1 text-sm text-gray-800 leading-snug">{mensaje}</p>
+            <p className={`flex-1 text-sm leading-snug ${isError ? 'text-red-800 font-medium' : 'text-gray-800'}`}>{mensaje}</p>
 
             <div className="flex items-center gap-2 shrink-0 ml-2">
-                {tipo === 'sector_alerta' ? (
+                {isAlerta ? (
                     <>
                         <div className="relative group">
                             <button
@@ -79,22 +87,36 @@ function NotificationItem({
                             </div>
                         </div>
                     </>
+                ) : isAviso ? (
+                    <a
+                        href="/reservas"
+                        className="text-xs font-medium bg-yellow-200 hover:bg-yellow-300 text-yellow-900 px-3 py-1.5 rounded-lg transition-colors"
+                        onClick={() => handleMarkRead()}
+                    >
+                        Ir a Reservas
+                    </a>
                 ) : (
                     <button
                         onClick={handleMarkRead}
-                        className="text-xs font-medium bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg transition-colors"
+                        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                            isError
+                                ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                                : 'bg-green-100 hover:bg-green-200 text-green-700'
+                        }`}
                     >
                         Entendido
                     </button>
                 )}
 
-                <button
-                    onClick={handleMarkRead}
-                    className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
-                    title="Cerrar"
-                >
-                    <X className="size-4" />
-                </button>
+                {!isError && (
+                    <button
+                        onClick={handleMarkRead}
+                        className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                        title="Cerrar"
+                    >
+                        <X className="size-4" />
+                    </button>
+                )}
             </div>
         </div>
     );

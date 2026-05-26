@@ -48,12 +48,32 @@ export function TestToolbar() {
             </button>
 
             <button
+                onClick={() => inject('aviso_confirmar', {
+                    mensaje: '⏳ Tenés 2 reserva(s) de restaurante pendiente(s) de confirmación manual (#42, #43). Si no se confirman, se harán automáticamente en la próxima ejecución.',
+                    cantidad: 2,
+                })}
+                className="px-2 py-1 bg-yellow-100 hover:bg-yellow-200 text-yellow-900 rounded-lg transition-colors text-left"
+            >
+                + Aviso confirmar manual
+            </button>
+
+            <button
                 onClick={() => inject('auto_confirm', {
-                    mensaje: '✅ Se confirmaron automáticamente 3 reservas de restaurante para las próximas 24 hs.',
+                    mensaje: '✅ Se confirmaron automáticamente 2 reserva(s) de restaurante tras 20 hs sin confirmación manual (#42, #43).',
+                    cantidad: 2,
                 })}
                 className="px-2 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-lg transition-colors text-left"
             >
-                + Auto-confirmación
+                + Auto-confirmación forzada
+            </button>
+
+            <button
+                onClick={() => inject('job_error', {
+                    mensaje: '🚨 *El job de auto-confirmación de reservas falló.* Revisá los logs del servidor para corregirlo.\n\nError: Connection refused.',
+                })}
+                className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors text-left"
+            >
+                + Error de job
             </button>
 
             <button
