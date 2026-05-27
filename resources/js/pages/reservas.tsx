@@ -223,7 +223,7 @@ const ESTADO_OPTIONS = [
     { value: 'ESCALADA',               label: 'Con asesor' },
 ];
 
-const SECTOR_OPTIONS = ['Salón', 'Galería', 'Terraza', 'Sin preferencia'] as const;
+const SECTOR_OPTIONS = ['Salón', 'Galería', 'Terraza', 'Parrilla', 'Sin preferencia'] as const;
 
 function makeFormData(r: Reserva) {
     return {

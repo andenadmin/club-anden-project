@@ -131,7 +131,7 @@ class ReservasController extends Controller
             'fecha'           => 'required|date_format:Y-m-d',
             'hora'            => 'nullable|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
-            'sector'          => 'nullable|in:Salón,Galería,Terraza,Sin preferencia',
+            'sector'          => 'nullable|in:Salón,Galería,Terraza,Parrilla,Sin preferencia',
             'mail'            => 'nullable|email|max:255',
             'comentarios'     => 'nullable|string|max:2000',
             'estado'          => 'required|in:CONFIRMADA,PENDIENTE_CONFIRMACION,CANCELADA,ESCALADA,COMPLETADA',

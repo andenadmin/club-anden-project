@@ -1,4 +1,4 @@
-import { usePage, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle, Clock, Info, X } from 'lucide-react';
 import {
@@ -39,13 +39,15 @@ function SectorAlertaDialog({
     const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
 
     const handleAction = async (accion: string) => {
-        try {
-            await fetch(`/panel-notifications/${id}/action`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
-                body: JSON.stringify({ accion }),
-            });
-        } catch { /* best-effort */ }
+        if (id < 9000) {
+            try {
+                await fetch(`/panel-notifications/${id}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                    body: JSON.stringify({ accion }),
+                });
+            } catch { /* best-effort */ }
+        }
         onDismiss(id);
     };
 
@@ -100,9 +102,11 @@ function BannerItem({
     const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
 
     const handleMarkRead = async () => {
-        try {
-            await fetch(`/panel-notifications/${id}/read`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': csrf() } });
-        } catch { /* best-effort */ }
+        if (id < 9000) {
+            try {
+                await fetch(`/panel-notifications/${id}/read`, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': csrf() } });
+            } catch { /* best-effort */ }
+        }
         onDismiss(id);
     };
 
@@ -174,8 +178,11 @@ function BannerItem({
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
+function isTestMode(): boolean {
+    return (document.querySelector('meta[name="test-mode"]') as HTMLMetaElement)?.content === 'true';
+}
+
 export function PanelNotificationsBanner() {
-    const { testMode } = usePage().props as { testMode?: boolean };
     const [notifications, setNotifications] = useState<PanelNotification[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -187,7 +194,7 @@ export function PanelNotificationsBanner() {
     };
 
     useEffect(() => {
-        if (!testMode) {
+        if (!isTestMode()) {
             fetchNotifications();
             intervalRef.current = setInterval(fetchNotifications, 30_000);
         }
