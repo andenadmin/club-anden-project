@@ -29,6 +29,20 @@ class InboxController extends Controller
     }
 
     /**
+     * Cuenta de conversaciones que necesitan atención del asesor ahora mismo.
+     * Usado por el poller global para disparar el sonido de alerta en todas las páginas.
+     */
+    public function alertCount(): JsonResponse
+    {
+        $count = BotSession::where('estado_actual', 'PAUSADO')
+            ->where('motivo_pausa', 'SOLICITUD_CLIENTE')
+            ->where('unread_count', '>', 0)
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    /**
      * Vista detalle de una conversación específica.
      */
     public function show(string $numero): Response

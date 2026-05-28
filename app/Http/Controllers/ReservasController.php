@@ -117,6 +117,49 @@ class ReservasController extends Controller
         ]);
     }
 
+    public function store(Request $request): RedirectResponse
+    {
+        $v = $request->validate([
+            'nombre'          => 'required|string|max:255',
+            'telefono'        => 'nullable|string|max:30',
+            'fecha'           => 'required|date_format:Y-m-d',
+            'hora'            => 'nullable|string|max:10',
+            'numero_personas' => 'nullable|string|max:100',
+            'sector'          => 'nullable|in:Salón,Galería,Terraza,Parrilla,Sin preferencia',
+            'comentarios'     => 'nullable|string|max:2000',
+        ]);
+
+        $fechaBot = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
+
+        $horaNorm = null;
+        if (!empty($v['hora'])) {
+            $h = str_replace('.', ':', trim($v['hora']));
+            if (preg_match('/^(\d{1,2}):(\d{2})$/', $h, $hm)) {
+                $h = sprintf('%02d:%02d', (int) $hm[1], (int) $hm[2]);
+            }
+            $horaNorm = $h;
+        }
+
+        Reserva::create([
+            'rama_servicio' => 'RESTAURANTE',
+            'estado_reserva'=> 'CONFIRMADA',
+            'tiene_extras'  => !empty($v['comentarios']),
+            'datos'         => [
+                'nombre_responsable' => $v['nombre'],
+                'telefono'           => $v['telefono'] ?? null,
+                'fecha'              => $fechaBot,
+                'hora'               => $horaNorm,
+                'numero_personas'    => $v['numero_personas'] ?? null,
+                'sector'             => $v['sector'] ?: null,
+                'extras_texto'       => $v['comentarios'] ?: null,
+                'tiene_extras'       => !empty($v['comentarios']),
+                'ingreso_manual'     => true,
+            ],
+        ]);
+
+        return redirect()->back();
+    }
+
     public function update(Request $request, Reserva $reserva): RedirectResponse
     {
         \Log::info('ReservasController@update', [

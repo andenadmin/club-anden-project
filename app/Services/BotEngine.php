@@ -2034,23 +2034,10 @@ class BotEngine
      */
     private function resolvePersonasRestaurante(string $text): ?string
     {
-        $direct = BotMessages::resolveOption('MSG_RES_03', $text);
-        if ($direct) return $direct;
-
-        if (preg_match('/^(\d+)/', trim($text), $m)) {
+        if (preg_match('/(\d+)/', trim($text), $m)) {
             $n = (int)$m[1];
-            $key = match(true) {
-                $n >= 1  && $n <= 2  => 'A',
-                $n >= 3  && $n <= 4  => 'B',
-                $n >= 5  && $n <= 6  => 'C',
-                $n >= 7  && $n <= 8  => 'D',
-                $n >= 9  && $n <= 14 => 'E',
-                $n >= 15             => 'F',
-                default              => null,
-            };
-            if ($key) return BotMessages::resolveOption('MSG_RES_03', $key);
+            return $n >= 1 ? (string)$n : null;
         }
-
         return null;
     }
 

@@ -1,10 +1,11 @@
 import { createInertiaApp, router } from '@inertiajs/react';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { PanelNotificationsBanner } from '@/components/panel-notifications-banner';
 import { TestToolbar } from '@/components/test-toolbar';
+import { playNotificationSound } from '@/hooks/use-notification-sound';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
@@ -72,6 +73,29 @@ router.on('networkError', (event) => {
     );
 });
 
+function GlobalAlertPoller() {
+    const prevCountRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const check = async () => {
+            try {
+                const res = await fetch('/inbox/alert-count', { headers: { Accept: 'application/json' } });
+                if (!res.ok) return;
+                const { count } = await res.json() as { count: number };
+                if (prevCountRef.current !== null && count > prevCountRef.current) {
+                    playNotificationSound();
+                }
+                prevCountRef.current = count;
+            } catch {}
+        };
+        check();
+        const id = setInterval(check, 10_000);
+        return () => clearInterval(id);
+    }, []);
+
+    return null;
+}
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
@@ -98,6 +122,7 @@ createInertiaApp({
                 {app}
                 <Toaster />
                 <PanelNotificationsBanner />
+                <GlobalAlertPoller />
                 <TestToolbar />
             </TooltipProvider>
         );

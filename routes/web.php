@@ -48,12 +48,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Reservas
     Route::get('/reservas',                    [ReservasController::class, 'index'])->name('reservas.index');
-    Route::patch('/reservas/{reserva}',        [ReservasController::class, 'update'])->name('reservas.update');
+    Route::post('/reservas',                   [ReservasController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/confirm-all-today', [ReservasController::class, 'confirmAllToday'])->name('reservas.confirmAllToday');
+    Route::patch('/reservas/{reserva}',        [ReservasController::class, 'update'])->name('reservas.update');
 
     // Inbox
-    Route::get('/inbox',          [InboxController::class, 'index'])->name('inbox.index');
-    Route::get('/inbox/poll',          [InboxController::class, 'poll'])->name('inbox.poll');
+    Route::get('/inbox',                 [InboxController::class, 'index'])->name('inbox.index');
+    Route::get('/inbox/poll',            [InboxController::class, 'poll'])->name('inbox.poll');
+    Route::get('/inbox/alert-count',     [InboxController::class, 'alertCount'])->name('inbox.alertCount');
     Route::get('/inbox/{numero}/poll', [InboxController::class, 'pollChat'])->name('inbox.chat.poll')->where('numero', '[0-9]+');
     Route::get('/inbox/{numero}',      [InboxController::class, 'show'])->name('inbox.show')->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/pause',     [InboxController::class, 'pause'])->name('inbox.pause')->where('numero', '[0-9]+');

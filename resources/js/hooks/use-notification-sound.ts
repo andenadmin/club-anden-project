@@ -3,6 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 const STORAGE_KEY = 'inbox_sound_muted';
 const SOUND_URL   = '/notification.mp3';
 
+export function playNotificationSound(): void {
+    try {
+        const muted = localStorage.getItem(STORAGE_KEY) === 'true';
+        if (!muted) playDing();
+    } catch {}
+}
+
 function playDing(): void {
     try {
         const audio = new Audio(SOUND_URL);

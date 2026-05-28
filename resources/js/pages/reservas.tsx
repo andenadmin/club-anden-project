@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Search, Utensils, Wind, X } from 'lucide-react';
+import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Utensils, Wind, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -91,14 +91,9 @@ function sinAcentos(str: string): string {
     return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-function analyzeNotes(text: string | null): NotasAnalysis {
-    if (!text) return { hasBabyChair: false, celebration: false, allergy: false };
-    const lower = text.toLowerCase();
-    return {
-        hasBabyChair: /beb[eé]|silla alta|sillita/.test(lower),
-        celebration:  /cumplea[ñn]os|aniversario|festejo/.test(lower),
-        allergy:      /cel[ií]aco|alergia|sin gluten|intolerante/.test(lower),
-    };
+function analyzeNotes(_text: string | null): NotasAnalysis {
+    // Comentado — el bot no pregunta sobre alergias/bebés, no mostrar por ahora
+    return { hasBabyChair: false, celebration: false, allergy: false };
 }
 
 function extractPersonasMax(str: string): number {
@@ -360,6 +355,92 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
     );
 }
 
+// ─── Dialog nueva reserva manual ─────────────────────────────────────────────
+
+function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; onClose: () => void; fechaInicial: string }) {
+    const emptyForm = { nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', comentarios: '' };
+    const [form, setForm]     = useState(emptyForm);
+    const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (open) { setForm({ ...emptyForm, fecha: fechaInicial }); setErrors({}); }
+    }, [open, fechaInicial]);
+
+    function set<K extends keyof typeof form>(key: K, value: typeof form[K]) {
+        setForm(f => ({ ...f, [key]: value }));
+    }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setSaving(true);
+        router.post('/reservas', { ...form, hora: normalizeHora(form.hora) }, {
+            preserveScroll: true,
+            onSuccess: () => { setSaving(false); onClose(); },
+            onError: (errs) => { setSaving(false); setErrors(errs as Record<string, string>); },
+        });
+    }
+
+    const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring';
+    const labelCls = 'block text-sm font-medium mb-1';
+    const errCls   = 'mt-1 text-xs text-red-500';
+
+    return (
+        <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Nueva reserva</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-1">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
+                            <label className={labelCls}>Nombre *</label>
+                            <input value={form.nombre} onChange={e => set('nombre', e.target.value)} placeholder="Nombre del responsable" className={inputCls} />
+                            {errors.nombre && <p className={errCls}>{errors.nombre}</p>}
+                        </div>
+                        <div className="col-span-2">
+                            <label className={labelCls}>Teléfono</label>
+                            <input value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="Ej: 1122334455" className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Fecha *</label>
+                            <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputCls} />
+                            {errors.fecha && <p className={errCls}>{errors.fecha}</p>}
+                        </div>
+                        <div>
+                            <label className={labelCls}>Hora</label>
+                            <input value={form.hora} onChange={e => set('hora', e.target.value)} placeholder="Ej: 20:30" className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Personas</label>
+                            <input value={form.numero_personas} onChange={e => set('numero_personas', e.target.value)} placeholder="Ej: 4" className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Sector</label>
+                            <select value={form.sector} onChange={e => set('sector', e.target.value)} className={inputCls}>
+                                <option value="">— Sin especificar —</option>
+                                {SECTOR_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>Comentarios</label>
+                        <textarea value={form.comentarios} onChange={e => set('comentarios', e.target.value)} rows={2} placeholder="Notas adicionales..." className={`${inputCls} resize-none`} />
+                    </div>
+                    <DialogFooter className="pt-1">
+                        <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" disabled={saving} className="rounded-md px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50">
+                            {saving ? 'Guardando…' : 'Crear reserva'}
+                        </button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // ─── Card vista DÍA (completa) ────────────────────────────────────────────────
 
 function ReservaCard({ reserva }: { reserva: Reserva }) {
@@ -416,13 +497,14 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
                 </div>
             </div>
 
+            {/* Badges de notas especiales — comentado hasta que el bot pregunte sobre esto
             {(notas.hasBabyChair || notas.celebration || notas.allergy) && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                     {notas.hasBabyChair && <NotaBadge tipo="bebe" />}
                     {notas.celebration  && <NotaBadge tipo="cumple" />}
                     {notas.allergy      && <NotaBadge tipo="alergia" />}
                 </div>
-            )}
+            )} */}
 
             {reserva.nombre_hijo && (
                 <p className="mt-2 text-sm font-medium text-pink-700 dark:text-pink-400">🎂 {reserva.nombre_hijo}</p>
@@ -882,6 +964,7 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
     const [query, setQuery]           = useState('');
     const [dateHighlight, setDateHighlight] = useState(false);
     const [filtroTipo, setFiltroTipo] = useState<TipoReserva | null>(null);
+    const [nuevaOpen, setNuevaOpen]   = useState(false);
 
     function toggleFiltroTipo(tipo: TipoReserva) {
         setFiltroTipo((prev) => (prev === tipo ? null : tipo));
@@ -981,6 +1064,15 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                     <h1 className="text-2xl font-bold shrink-0">Reservas</h1>
 
                     <div className="flex items-center gap-2">
+                        {/* Nueva reserva */}
+                        <button
+                            onClick={() => setNuevaOpen(true)}
+                            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors whitespace-nowrap"
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span className="hidden sm:inline">Nueva reserva</span>
+                        </button>
+
                         {/* Confirmar todas (solo vista día con pendientes) */}
                         {vista === 'dia' && pendingCount > 0 && (
                             <button
@@ -1094,6 +1186,8 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                     />
                 )}
             </div>
+
+            <NuevaReservaDialog open={nuevaOpen} onClose={() => setNuevaOpen(false)} fechaInicial={fecha} />
         </>
     );
 }
