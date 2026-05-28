@@ -295,6 +295,23 @@ class InboxController extends Controller
         return BotSession::where('numero_contacto', $numero)->firstOrFail();
     }
 
+    private function resolveEventoTipo(BotSession $s): ?string
+    {
+        if ($s->rama_activa !== 'EVENTOS') return null;
+
+        $dp = $s->datos_parciales ?? [];
+
+        return match ($s->subtipo_activo) {
+            'FUTBOL'      => 'Fútbol',
+            'PADEL'       => 'Pádel',
+            'HOCKEY'      => 'Hockey',
+            'GENERAL_EVT' => str_contains(strtolower($dp['tipo_evento'] ?? ''), 'adolesc')
+                                ? 'Adolescentes'
+                                : 'Adultos',
+            default       => 'Privado',
+        };
+    }
+
     /**
      * Lista resumida de conversaciones, ordenada por última actividad.
      */
@@ -311,6 +328,7 @@ class InboxController extends Controller
                 'nombre'           => $s->cliente?->nombre_cliente,
                 'estado_actual'    => $s->estado_actual,
                 'motivo_pausa'     => $s->motivo_pausa,
+                'evento_tipo'      => $this->resolveEventoTipo($s),
                 'last_message_at'  => $s->last_message_at?->toIso8601String(),
                 'unread_count'     => (int) $s->unread_count,
                 'last_message'     => $this->lastMessagePreview($s->id),

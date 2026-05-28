@@ -15,6 +15,7 @@ export interface ConversationListItem {
     nombre: string | null;
     estado_actual: string;
     motivo_pausa: string | null;
+    evento_tipo: string | null;
     last_message_at: string | null;
     unread_count: number;
     last_message: {
@@ -141,10 +142,19 @@ function ConversationItem({
                             </span>
                         )}
                     </div>
-                    {isPaused && (
-                        <span className="inline-block mt-1 text-[9px] uppercase tracking-wider font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 dark:bg-amber-900/40 dark:text-amber-300">
-                            {labelize(c.motivo_pausa, MOTIVO_PAUSA_LABELS)}
-                        </span>
+                    {(isPaused || c.evento_tipo) && (
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                            {isPaused && (
+                                <span className="text-[9px] uppercase tracking-wider font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 dark:bg-amber-900/40 dark:text-amber-300">
+                                    {labelize(c.motivo_pausa, MOTIVO_PAUSA_LABELS)}
+                                </span>
+                            )}
+                            {c.evento_tipo && (
+                                <span className={`text-[9px] uppercase tracking-wider font-semibold bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 dark:bg-violet-900/40 dark:text-violet-300 ${needsAttention ? 'animate-pulse' : ''}`}>
+                                    Evento · {c.evento_tipo}
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
             </Link>
