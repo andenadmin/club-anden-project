@@ -273,6 +273,12 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+                    {/* Tipo (solo lectura) */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">Tipo:</span>
+                        <TipoBadge tipo={reserva.tipo} />
+                    </div>
+
                     {/* Nombre */}
                     <div>
                         <label className={labelCls}>Nombre responsable</label>
@@ -335,11 +341,12 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                         </select>
                     </div>
 
-                    {/* Comentarios */}
+                    {/* Comentarios — oculto por ahora
                     <div>
                         <label className={labelCls}>Comentarios / extras</label>
                         <textarea value={form.comentarios} onChange={e => set('comentarios', e.target.value)} rows={3} placeholder="Sin comentarios" className={`${inputCls} resize-none`} />
                     </div>
+                    */}
 
                     <DialogFooter className="pt-2">
                         <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors">
@@ -473,7 +480,10 @@ function ReservaCard({ reserva }: { reserva: Reserva }) {
                     <span className="text-sm font-mono font-semibold text-muted-foreground shrink-0">#{reserva.id}</span>
                     <p className="text-base font-semibold leading-tight truncate">{reserva.nombre}</p>
                 </div>
-                <EstadoBadge estado={reserva.estado} />
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <TipoBadge tipo={reserva.tipo} />
+                    <EstadoBadge estado={reserva.estado} />
+                </div>
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-2 text-sm text-foreground/60">
@@ -652,6 +662,8 @@ function VistaMultiDia({
     filtroTipo: TipoReserva | null;
     onFiltroToggle: (tipo: TipoReserva) => void;
 }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
     const reservasFiltradas = useMemo(
         () => filtroTipo ? reservas.filter((r) => r.tipo === filtroTipo) : reservas,
         [reservas, filtroTipo],
@@ -794,10 +806,38 @@ function VistaMultiDia({
                     </div>
                 </>
             ) : (
-                <ScrollArea className="w-full">
-                    {renderGrid(false)}
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-end gap-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+                                vp?.scrollBy({ left: -300, behavior: 'smooth' });
+                            }}
+                            className="rounded-md p-1 border border-border bg-background hover:bg-accent/40 transition-colors"
+                            title="Desplazar izquierda"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+                                vp?.scrollBy({ left: 300, behavior: 'smooth' });
+                            }}
+                            className="rounded-md p-1 border border-border bg-background hover:bg-accent/40 transition-colors"
+                            title="Desplazar derecha"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </button>
+                    </div>
+                    <div ref={scrollRef}>
+                        <ScrollArea className="w-full">
+                            {renderGrid(false)}
+                            <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+                    </div>
+                </div>
             )}
         </div>
     );

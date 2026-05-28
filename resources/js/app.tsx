@@ -86,6 +86,7 @@ function GlobalAlertPoller() {
                     playNotificationSound();
                 }
                 prevCountRef.current = count;
+                window.dispatchEvent(new CustomEvent('inbox-alert-count', { detail: { count } }));
             } catch {}
         };
         check();
