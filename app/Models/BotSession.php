@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class BotSession extends Model
 {
     protected $fillable = [
+        'channel_id',
         'numero_contacto',
         'estado_actual',
         'rama_activa',
@@ -49,6 +50,11 @@ class BotSession extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class, 'id_cliente');
+    }
+
+    public function channel(): BelongsTo
+    {
+        return $this->belongsTo(WhatsAppChannel::class, 'channel_id');
     }
 
     public function messages(): HasMany

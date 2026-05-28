@@ -4,9 +4,10 @@ namespace App\Jobs;
 
 use App\Models\BotSession;
 use App\Models\ConversationMessage;
+use App\Models\WhatsAppChannel;
 use App\Services\BotMessages;
 use App\Services\BotEngine;
-use App\Services\Meta\WhatsAppClient;
+use App\Services\Meta\WhatsAppClientFactory;
 use App\Services\Meta\WhatsAppSender;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,9 +33,10 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         public readonly string $body,
         public readonly string $waMessageId,
         public readonly string $messageType = 'text',
+        public readonly ?int $channelId = null,
     ) {}
 
-    public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClient $client): void
+    public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClientFactory $factory): void
     {
         // §8b — Debounce anti-spam: si el mismo número ya fue procesado en los últimos 5s, ignorar.
         if (!Cache::add("debounce:{$this->from}", true, 5)) {
@@ -46,6 +48,11 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
             return;
         }
 
+        // Resolve the WhatsApp client for this channel
+        $client = $this->channelId
+            ? $factory->forChannel(WhatsAppChannel::find($this->channelId))
+            : $factory->default();
+
         // Marcar como leído (doble tilde azul en el lado del usuario)
         $client->markAsRead($this->waMessageId);
 
@@ -53,14 +60,14 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         if (in_array($this->messageType, self::NON_TEXT_TYPES, true)) {
             $session = BotSession::firstOrCreate(
                 ['numero_contacto' => $this->from],
-                ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0]
+                ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $this->channelId]
             );
             $invalidMsg = BotMessages::render('MSG_OPCION_INVALIDA');
             $sender->sendBotResponses($session, [$invalidMsg]);
             return;
         }
 
-        $responses = $engine->process($this->from, $this->body);
+        $responses = $engine->process($this->from, $this->body, $this->channelId);
 
         // Marco el último inbound creado por process() con el wa_message_id de Meta
         // para idempotencia futura. process() crea el row sin wa_message_id porque no lo conoce.

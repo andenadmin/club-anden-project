@@ -33,12 +33,12 @@ class BotEngine
      *
      * @return string[] Las respuestas a enviar al usuario, en orden.
      */
-    public function process(string $from, string $text): array
+    public function process(string $from, string $text, ?int $channelId = null): array
     {
         $text    = trim($text);
         $session = BotSession::firstOrCreate(
             ['numero_contacto' => $from],
-            ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0]
+            ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $channelId]
         );
 
         $this->lastSession = $session;
@@ -145,6 +145,19 @@ class BotEngine
         $cliente = Cliente::firstOrCreate(['numero_contacto' => $session->numero_contacto]);
 
         $session->mergeEstado(['id_cliente' => $cliente->id, 'contador_invalidos' => 0]);
+
+        // If the channel has a default_flow, skip the main menu and jump straight to that flow.
+        if ($session->channel?->default_flow === 'EVENTOS') {
+            $session->mergeEstado([
+                'estado_actual'      => 'RECOLECTANDO_DATOS',
+                'rama_activa'        => 'EVENTOS',
+                'subtipo_activo'     => null,
+                'current_step'       => 'tipo_evento',
+                'contador_invalidos' => 0,
+                'datos_parciales'    => [],
+            ]);
+            return [BotMessages::render('MSG_EVT_01')];
+        }
 
         if ($cliente->nombre_cliente) {
             $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL']);

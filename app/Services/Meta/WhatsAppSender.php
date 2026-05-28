@@ -11,7 +11,7 @@ use Throwable;
 class WhatsAppSender
 {
     public function __construct(
-        private readonly WhatsAppClient $client,
+        private readonly WhatsAppClientFactory $factory,
         private readonly BotEngine $engine,
     ) {}
 
@@ -30,6 +30,40 @@ class WhatsAppSender
     }
 
     /**
+     * Envía una plantilla aprobada por Meta al usuario.
+     * Útil para re-contactar clientes fuera de la ventana de 24 horas.
+     *
+     * @param string[] $variables Variables del body en orden
+     */
+    public function sendTemplate(BotSession $session, string $templateName, string $languageCode, array $variables = []): ConversationMessage
+    {
+        $to     = PhoneNumber::normalize($session->numero_contacto);
+        $client = $this->factory->forSession($session);
+
+        $preview = "[Plantilla: {$templateName}]";
+        if (!empty($variables)) {
+            $preview .= ' ' . implode(' | ', $variables);
+        }
+
+        try {
+            $waId = $client->sendTemplate($to, $templateName, $languageCode, $variables);
+            $msg  = $this->engine->logOutbound($session, $preview, $waId, ConversationMessage::SENDER_ADVISOR);
+            $msg->update(['wa_status' => 'sent']);
+            return $msg;
+        } catch (MetaApiException $e) {
+            $msg = $this->engine->logOutbound($session, $preview, null, ConversationMessage::SENDER_ADVISOR);
+            $msg->update(['wa_status' => $e->asWaStatus()]);
+            report($e);
+            return $msg;
+        } catch (Throwable $e) {
+            $msg = $this->engine->logOutbound($session, $preview, null, ConversationMessage::SENDER_ADVISOR);
+            $msg->update(['wa_status' => 'failed']);
+            report($e);
+            return $msg;
+        }
+    }
+
+    /**
      * Manda una respuesta del asesor humano. Mismo log + send pero con sender = advisor.
      */
     public function sendAdvisorMessage(BotSession $session, string $body): ConversationMessage
@@ -40,7 +74,8 @@ class WhatsAppSender
     private function safeSend(BotSession $session, string $body, string $sender): ConversationMessage
     {
         // Defensa en profundidad — el numero ya debería venir normalizado pero por las dudas.
-        $to = PhoneNumber::normalize($session->numero_contacto);
+        $to     = PhoneNumber::normalize($session->numero_contacto);
+        $client = $this->factory->forSession($session);
 
         $isImage  = str_starts_with($body, '[IMG]');
         $imageUrl = null;
@@ -52,8 +87,8 @@ class WhatsAppSender
 
         try {
             $waId = $isImage
-                ? $this->client->sendImage($to, $imageUrl, $caption)
-                : $this->client->sendText($to, $body);
+                ? $client->sendImage($to, $imageUrl, $caption)
+                : $client->sendText($to, $body);
             $msg = $this->engine->logOutbound($session, $body, $waId, $sender);
             $msg->update(['wa_status' => 'sent']);
             return $msg;

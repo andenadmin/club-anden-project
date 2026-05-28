@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             CostosEventosSeeder::class,
             FeriadosSeeder::class,
             BotMessagesSeeder::class,
+            WhatsAppChannelSeeder::class,
         ]);
     }
 }

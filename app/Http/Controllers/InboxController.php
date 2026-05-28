@@ -318,7 +318,7 @@ class InboxController extends Controller
     private function loadConversations(bool $archived = false): array
     {
         return BotSession::query()
-            ->with('cliente:id,nombre_cliente,numero_contacto')
+            ->with(['cliente:id,nombre_cliente,numero_contacto', 'channel:id,label'])
             ->where('is_archived', $archived)
             ->orderByDesc('last_message_at')
             ->orderByDesc('updated_at')
@@ -335,6 +335,7 @@ class InboxController extends Controller
                 'is_pinned'        => (bool) $s->is_pinned,
                 'is_archived'      => (bool) $s->is_archived,
                 'is_important'     => (bool) $s->is_important,
+                'canal'            => $s->channel?->label,
             ])
             ->values()
             ->all();

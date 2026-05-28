@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Meta\WhatsAppClient;
+use App\Services\Meta\WhatsAppClientFactory;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
                 appSecret:     $cfg['app_secret']      ?? '',
             );
         });
+
+        $this->app->singleton(WhatsAppClientFactory::class, fn () => new WhatsAppClientFactory());
     }
 
     /**
