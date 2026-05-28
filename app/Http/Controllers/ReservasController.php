@@ -36,11 +36,12 @@ class ReservasController extends Controller
                 $datos = $r->datos ?? [];
 
                 $tipo = match (true) {
-                    $r->rama_servicio === 'RESTAURANTE'                  => 'RESTAURANTE',
-                    in_array($r->subtipo, ['NINOS', 'FUTBOL'], true)     => 'FUTBOL',
-                    $r->subtipo === 'PADEL'                              => 'PADEL',
-                    $r->subtipo === 'HOCKEY'                             => 'HOCKEY',
-                    default                                              => 'GENERAL_EVT',
+                    $r->rama_servicio === 'RESTAURANTE' => 'RESTAURANTE',
+                    $r->subtipo === 'NINOS'             => 'NINOS',
+                    $r->subtipo === 'FUTBOL'            => 'FUTBOL',
+                    $r->subtipo === 'PADEL'             => 'PADEL',
+                    $r->subtipo === 'HOCKEY'            => 'HOCKEY',
+                    default                             => 'GENERAL_EVT',
                 };
 
                 // Hora normalizada a "HH:mm"
@@ -120,6 +121,7 @@ class ReservasController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $v = $request->validate([
+            'tipo'            => 'nullable|in:RESTAURANTE,NINOS,FUTBOL,PADEL,HOCKEY,GENERAL_EVT',
             'nombre'          => 'required|string|max:255',
             'telefono'        => 'nullable|string|max:30',
             'fecha'           => 'required|date_format:Y-m-d',
@@ -128,6 +130,10 @@ class ReservasController extends Controller
             'sector'          => 'nullable|in:Salón,Galería,Terraza,Parrilla,Sin preferencia',
             'comentarios'     => 'nullable|string|max:2000',
         ]);
+
+        $tipo = $v['tipo'] ?? 'RESTAURANTE';
+        $ramaServicio = $tipo === 'RESTAURANTE' ? 'RESTAURANTE' : 'EVENTOS';
+        $subtipo      = in_array($tipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true) ? $tipo : null;
 
         $fechaBot = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
 
@@ -141,7 +147,8 @@ class ReservasController extends Controller
         }
 
         Reserva::create([
-            'rama_servicio' => 'RESTAURANTE',
+            'rama_servicio' => $ramaServicio,
+            'subtipo'       => $subtipo,
             'estado_reserva'=> 'CONFIRMADA',
             'tiene_extras'  => !empty($v['comentarios']),
             'datos'         => [

@@ -44,7 +44,7 @@ const TIPO_CONFIG: Record<TipoReserva, { label: string; badge: string; col: stri
         text:  'text-emerald-700 dark:text-emerald-400',
     },
     FUTBOL: {
-        label: 'Cumple Fútbol',
+        label: 'Cumpleaños',
         badge: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
         col:   'border-l-pink-400',
         text:  'text-pink-700 dark:text-pink-400',
@@ -109,7 +109,7 @@ function horaToMinutes(hora: string): number {
     return (h || 0) * 60 + (m || 0);
 }
 
-function isReservaVencida(hora: string | null, ahora: string, ventanaMin = 150): boolean {
+function isReservaVencida(hora: string | null, ahora: string, ventanaMin = 20): boolean {
     if (!hora) return false;
     return horaToMinutes(ahora) - horaToMinutes(hora) >= ventanaMin;
 }
@@ -365,7 +365,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
 // ─── Dialog nueva reserva manual ─────────────────────────────────────────────
 
 function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; onClose: () => void; fechaInicial: string }) {
-    const emptyForm = { nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', comentarios: '' };
+    const emptyForm = { tipo: 'RESTAURANTE' as TipoReserva, nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', comentarios: '' };
     const [form, setForm]     = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -399,6 +399,14 @@ function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; on
                     <DialogTitle>Nueva reserva</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-1">
+                    <div>
+                        <label className={labelCls}>Tipo de reserva *</label>
+                        <select value={form.tipo} onChange={e => set('tipo', e.target.value as TipoReserva)} className={inputCls}>
+                            {(Object.keys(TIPO_CONFIG) as TipoReserva[]).map(t => (
+                                <option key={t} value={t}>{TIPO_CONFIG[t].label}</option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
                             <label className={labelCls}>Nombre *</label>
