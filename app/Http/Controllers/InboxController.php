@@ -6,7 +6,6 @@ use App\Models\BotSession;
 use App\Models\Cliente;
 use App\Models\ConversationMessage;
 use App\Services\BotEngine;
-use App\Services\BotMessages;
 use App\Services\Meta\WhatsAppSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -88,15 +87,12 @@ class InboxController extends Controller
     /**
      * Reanuda el bot: resetea a INICIO y le manda el saludo al usuario.
      */
-    public function resume(string $numero, WhatsAppSender $sender): RedirectResponse
+    public function resume(string $numero): RedirectResponse
     {
         $session = $this->findSessionOrFail($numero);
-        $session->load('cliente');
-
-        $nombre = $session->cliente?->nombre_cliente;
 
         $session->mergeEstado([
-            'estado_actual'          => $nombre ? 'MENU_PRINCIPAL' : 'INICIO',
+            'estado_actual'          => 'INICIO',
             'estado_previo_pausa'    => null,
             'rama_activa'            => null,
             'subtipo_activo'         => null,
@@ -109,11 +105,6 @@ class InboxController extends Controller
             'contador_invalidos'     => 0,
             'unread_count'           => 0,
         ]);
-
-        if ($nombre) {
-            $body = BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
-            $sender->sendBotResponses($session, [$body]);
-        }
 
         return back();
     }

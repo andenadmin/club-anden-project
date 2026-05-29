@@ -304,13 +304,6 @@ class BotEngine
                     $fecha = $parsed->format('d/m/y');
                 }
                 $carbonFecha = Carbon::createFromFormat('d/m/y', $fecha);
-                // No permitir fechas con más de 30 días de anticipación
-                if ($carbonFecha->diffInDays(Carbon::today(), false) < -30) {
-                    return $this->handleInvalid($session, fn () => [
-                        "Solo podemos tomar reservas con hasta 30 días de anticipación. Por favor elegí una fecha dentro de ese período.",
-                        BotMessages::render('MSG_RES_01'),
-                    ]);
-                }
                 $esFutura = $carbonFecha->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
@@ -397,7 +390,7 @@ class BotEngine
                 // Verificar capacidad si elige un sector específico (no "Sin preferencia")
                 $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
                 if ($sectorKey !== null) {
-                    if (RestaurantCapacity::estaCerrado($sectorKey)) {
+                    if (RestaurantCapacity::estaCerrado($sectorKey, $fecha)) {
                         return [
                             "Ese sector no está disponible en este momento. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),
@@ -1442,7 +1435,6 @@ class BotEngine
                     $fecha = $parsed->format('d/m/y');
                 }
                 $carbonFechaC = Carbon::createFromFormat('d/m/y', $fecha);
-                if ($carbonFechaC->diffInDays(Carbon::today(), false) < -30) return false;
                 $esFutura = $carbonFechaC->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);

@@ -46,14 +46,16 @@ class RestaurantCapacity
 
     /**
      * Verifica si un sector está marcado como cerrado manualmente por el admin.
+     * El cierre solo aplica a la fecha en que se cerró — fechas futuras no se ven afectadas.
      * Auto-reabre si la fecha de cierre es anterior a hoy.
      */
-    public static function estaCerrado(string $sectorKey): bool
+    public static function estaCerrado(string $sectorKey, ?string $fechaBotFormat = null): bool
     {
         $config = RestaurantConfig::get();
 
-        // Auto-reopen: si el sector fue cerrado un día anterior, reabrirlo
         $fechaCierre = $config->sectores_cerrado_fecha;
+
+        // Auto-reopen: si el sector fue cerrado un día anterior, reabrirlo
         if ($fechaCierre && Carbon::parse($fechaCierre)->lt(Carbon::today())) {
             RestaurantConfig::clearCache();
             $config->forceFill([
@@ -67,6 +69,16 @@ class RestaurantCapacity
             return false;
         }
 
+        // Si la reserva es para una fecha posterior al día de cierre, el sector está disponible
+        if ($fechaBotFormat && $fechaCierre) {
+            try {
+                $fechaReserva = Carbon::createFromFormat('d/m/y', $fechaBotFormat);
+                if ($fechaReserva && $fechaReserva->gt(Carbon::parse($fechaCierre))) {
+                    return false;
+                }
+            } catch (\Throwable) {}
+        }
+
         return (bool) ($config->{"{$sectorKey}_cerrado"} ?? false);
     }
 
@@ -76,7 +88,7 @@ class RestaurantCapacity
      */
     public static function tieneCapacidad(string $sectorKey, string $fechaBotFormat, int $personasNuevas): bool
     {
-        if (self::estaCerrado($sectorKey)) {
+        if (self::estaCerrado($sectorKey, $fechaBotFormat)) {
             return false;
         }
 

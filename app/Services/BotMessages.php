@@ -172,7 +172,7 @@ class BotMessages
     public static function resolveFechaRestaurante(string $opcion): ?string
     {
         $idx = (int) $opcion - 1;
-        if ($idx < 0 || $idx > 6) return null;
+        if ($idx < 0) return null;
         return Carbon::now()->addDays($idx)->format('d/m/y');
     }
 
