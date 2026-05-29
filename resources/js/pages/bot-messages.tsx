@@ -141,10 +141,10 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                                             onClick={resetDefault}
                                             className="text-xs font-semibold text-black bg-amber-400 rounded-lg px-3 py-1 hover:bg-amber-500 transition-colors"
                                         >
-                                            ↩ Restaurar
+                                            ↩ Revertir al original
                                         </button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Restaurar al texto original del sistema</TooltipContent>
+                                    <TooltipContent>Descartar cambios y volver al texto original del sistema</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}

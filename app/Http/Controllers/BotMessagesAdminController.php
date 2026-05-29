@@ -78,6 +78,7 @@ class BotMessagesAdminController extends Controller
         }
 
         $botMessage->update(['is_archived' => true]);
+        BotMessages::clearCache();
         return back()->with('success', 'Mensaje archivado.');
     }
 
@@ -88,6 +89,7 @@ class BotMessagesAdminController extends Controller
         }
 
         $botMessage->update(['is_archived' => false]);
+        BotMessages::clearCache();
         return back()->with('success', 'Mensaje restaurado.');
     }
 

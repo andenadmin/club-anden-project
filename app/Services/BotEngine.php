@@ -41,6 +41,11 @@ class BotEngine
             ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $channelId]
         );
 
+        // Si la conversación estaba archivada, el usuario volvió a escribir → desarchivar
+        if ($session->is_archived) {
+            $session->update(['is_archived' => false]);
+        }
+
         $this->lastSession = $session;
         $this->logInbound($session, $text);
 

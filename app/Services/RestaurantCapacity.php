@@ -135,10 +135,10 @@ class RestaurantCapacity
         if ($limite <= 0) return;
 
         $alertaPct = $config->sector_alerta_pct ?? 70;
+        $umbral    = (int) floor($limite * $alertaPct / 100);
         $usadas    = self::personasEnSector($sectorKey, $fechaBotFormat);
 
-        $pctOcupado = ($usadas / $limite) * 100;
-        if ($pctOcupado < $alertaPct) return;
+        if ($usadas < $umbral) return;
 
         // No crear notificación duplicada para el mismo sector hoy
         $yaExiste = PanelNotification::where('tipo', 'sector_alerta')

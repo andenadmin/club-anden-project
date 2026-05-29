@@ -7,15 +7,20 @@ use Carbon\Carbon;
 
 class BotMessages
 {
-    private static array $cache  = [];
-    private static bool  $loaded = false;
+    private static array $cache       = [];
+    private static array $archivedKeys = [];
+    private static bool  $loaded      = false;
 
     private static function loadAll(): void
     {
         if (self::$loaded) return;
         self::$loaded = true;
-        BotMessage::where('is_archived', false)->each(function ($row) {
-            self::$cache[$row->key] = $row->content;
+        BotMessage::each(function ($row) {
+            if ($row->is_archived) {
+                self::$archivedKeys[$row->key] = true;
+            } else {
+                self::$cache[$row->key] = $row->content;
+            }
         });
     }
 
@@ -23,6 +28,7 @@ class BotMessages
     public static function render(string $id, array $vars = []): string
     {
         $template = self::template($id);
+        if ($template === '') return '';
         foreach ($vars as $key => $value) {
             $template = str_replace('{{' . $key . '}}', (string) $value, $template);
         }
@@ -37,9 +43,21 @@ class BotMessages
             return self::$cache[$id];
         }
 
+        // Mensaje explícitamente archivado por el admin → no enviar
+        if (isset(self::$archivedKeys[$id])) {
+            return '';
+        }
+
         if ($id === 'MSG_RES_01') return self::buildFechaRestaurante();
 
         return self::hardcodedDefault($id) ?? "Lo siento, ocurrió un error interno. Por favor contactá a un asesor.";
+    }
+
+    public static function clearCache(): void
+    {
+        self::$cache       = [];
+        self::$archivedKeys = [];
+        self::$loaded      = false;
     }
 
     /**

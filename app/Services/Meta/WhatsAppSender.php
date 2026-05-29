@@ -25,6 +25,7 @@ class WhatsAppSender
     public function sendBotResponses(BotSession $session, array $bodies): void
     {
         foreach ($bodies as $body) {
+            if ((string) $body === '') continue;
             $this->safeSend($session, $body, ConversationMessage::SENDER_BOT);
         }
     }
