@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WhatsAppChannel extends Model
 {
+    protected $table = 'whatsapp_channels';
+
     protected $fillable = ['slug', 'label', 'phone_number_id', 'access_token', 'default_flow', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean'];
