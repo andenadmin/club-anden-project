@@ -6,6 +6,7 @@ use App\Models\BotSession;
 use App\Models\Cliente;
 use App\Models\ConversationMessage;
 use App\Services\BotEngine;
+use App\Services\BotMessages;
 use App\Services\Meta\WhatsAppSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -85,21 +86,34 @@ class InboxController extends Controller
     }
 
     /**
-     * Reanuda el bot al estado_previo_pausa (botón "Solucionado" del §6.1.A).
+     * Reanuda el bot: resetea a INICIO y le manda el saludo al usuario.
      */
-    public function resume(string $numero): RedirectResponse
+    public function resume(string $numero, WhatsAppSender $sender): RedirectResponse
     {
         $session = $this->findSessionOrFail($numero);
+        $session->load('cliente');
+
+        $nombre = $session->cliente?->nombre_cliente;
 
         $session->mergeEstado([
-            'estado_actual'          => $session->estado_previo_pausa ?? 'INICIO',
+            'estado_actual'          => $nombre ? 'MENU_PRINCIPAL' : 'INICIO',
             'estado_previo_pausa'    => null,
+            'rama_activa'            => null,
+            'subtipo_activo'         => null,
+            'current_step'           => null,
             'motivo_pausa'           => null,
             'timestamp_pausa'        => null,
             'next_resume_check_at'   => null,
             'resolved_by_advisor_at' => now(),
+            'datos_parciales'        => [],
+            'contador_invalidos'     => 0,
             'unread_count'           => 0,
         ]);
+
+        if ($nombre) {
+            $body = BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
+            $sender->sendBotResponses($session, [$body]);
+        }
 
         return back();
     }
