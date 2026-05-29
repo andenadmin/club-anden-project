@@ -3,6 +3,7 @@ import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, U
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { OnboardingButton } from '@/components/onboarding-modal';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -1111,7 +1112,10 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
 
                 {/* Header */}
                 <div className="flex items-center justify-between gap-2">
-                    <h1 className="text-2xl font-bold shrink-0">Reservas</h1>
+                    <div className="flex items-center gap-1.5">
+                        <h1 className="text-2xl font-bold">Reservas</h1>
+                        <OnboardingButton />
+                    </div>
 
                     <div className="flex items-center gap-2">
                         {/* Nueva reserva */}
