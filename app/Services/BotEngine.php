@@ -398,13 +398,16 @@ class BotEngine
                 $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
                 if ($sectorKey !== null) {
                     if (RestaurantCapacity::estaCerrado($sectorKey)) {
-                        return $this->handleInvalid($session, fn () => [
-                            "El cupo de reservas para este turno ya está completo. De todas formas, te invitamos a que vengas y te atendemos por orden de llegada apenas se libere una mesa.",
+                        return [
+                            "Ese sector no está disponible en este momento. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),
-                        ]);
+                        ];
                     }
                     if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
-                        return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
+                        return [
+                            "Ese sector no tiene lugar para {$numPersonas} personas en esa fecha. ¿Tenés otra preferencia?",
+                            $this->buildSectorMsg($session),
+                        ];
                     }
                 }
 

@@ -48,7 +48,13 @@
       "Bash(xargs ls *)",
       "Bash(git rm *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(grep -E \"\\\\.\\(php|jsx?|tsx?\\)$\")",
+      "Bash(git merge worktree-agent-a71e53a8 --no-ff -m ' *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

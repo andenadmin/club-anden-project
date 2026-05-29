@@ -798,7 +798,35 @@ function VistaMultiDia({
                             })}
                         </div>
                     </div>
-                    <span className="shrink-0 text-muted-foreground">{totalPersonas} personas</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-muted-foreground">{totalPersonas} personas</span>
+                        {!fullWidth && (
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+                                        vp?.scrollBy({ left: -300, behavior: 'smooth' });
+                                    }}
+                                    className="flex items-center justify-center rounded-md w-7 h-7 bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-neutral-200 transition-colors"
+                                    title="Desplazar izquierda"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+                                        vp?.scrollBy({ left: 300, behavior: 'smooth' });
+                                    }}
+                                    className="flex items-center justify-center rounded-md w-7 h-7 bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-neutral-200 transition-colors"
+                                    title="Desplazar derecha"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -814,37 +842,11 @@ function VistaMultiDia({
                     </div>
                 </>
             ) : (
-                <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-end gap-1">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-                                vp?.scrollBy({ left: -300, behavior: 'smooth' });
-                            }}
-                            className="rounded-md p-1 border border-border bg-background hover:bg-accent/40 transition-colors"
-                            title="Desplazar izquierda"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const vp = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-                                vp?.scrollBy({ left: 300, behavior: 'smooth' });
-                            }}
-                            className="rounded-md p-1 border border-border bg-background hover:bg-accent/40 transition-colors"
-                            title="Desplazar derecha"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </button>
-                    </div>
-                    <div ref={scrollRef}>
-                        <ScrollArea className="w-full">
-                            {renderGrid(false)}
-                            <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                    </div>
+                <div ref={scrollRef}>
+                    <ScrollArea className="w-full">
+                        {renderGrid(false)}
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
                 </div>
             )}
         </div>
