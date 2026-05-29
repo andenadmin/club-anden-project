@@ -45,6 +45,7 @@ class BotMessages
 
         // Mensaje explícitamente archivado por el admin → no enviar
         if (isset(self::$archivedKeys[$id])) {
+            \Illuminate\Support\Facades\Log::warning('[BOT][MESSAGES] Mensaje archivado suprimido en flujo', ['key' => $id]);
             return '';
         }
 

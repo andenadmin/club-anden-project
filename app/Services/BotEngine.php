@@ -1577,7 +1577,22 @@ class BotEngine
     {
         $this->pushHistory($session);
         $session->mergeEstado(['current_step' => $step, 'contador_invalidos' => 0]);
-        return [BotMessages::render($msgId, $vars)];
+        $msg = BotMessages::render($msgId, $vars);
+        if ($msg !== '') {
+            return [$msg];
+        }
+        // Mensaje archivado: usar hardcoded default si existe, si no escalar
+        $fallback = BotMessages::hardcodedDefault($msgId);
+        if ($fallback !== null) {
+            foreach ($vars as $k => $v) {
+                $fallback = str_replace('{{' . $k . '}}', (string) $v, $fallback);
+            }
+            return [$fallback];
+        }
+        Log::warning('[BOT][NEXT_STEP] Mensaje crítico archivado sin fallback, escalando', [
+            'msgId' => $msgId, 'step' => $step, 'numero' => $session->numero_contacto,
+        ]);
+        return $this->escalate($session, 'SOLICITUD_CLIENTE');
     }
 
     private function saveDato(BotSession $session, string $key, mixed $value): void
