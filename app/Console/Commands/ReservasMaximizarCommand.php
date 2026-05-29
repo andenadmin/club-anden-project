@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 class ReservasMaximizarCommand extends Command
 {
     protected $signature = 'reservas:maximizar {fecha? : Fecha en formato DD/MM/AAAA (default: hoy)}
+                            {--sector= : Solo rellenar este sector (salon|galeria|terraza|parrilla)}
                             {--personas=2 : Personas por reserva de prueba}';
 
     protected $description = 'Crea reservas de prueba hasta llenar todos los sectores en una fecha específica.';
@@ -34,6 +35,7 @@ class ReservasMaximizarCommand extends Command
     {
         $fechaArg = $this->argument('fecha');
         $personasPorReserva = (int) $this->option('personas');
+        $soloSector         = $this->option('sector');
 
         try {
             $carbon = $fechaArg
@@ -57,13 +59,25 @@ class ReservasMaximizarCommand extends Command
         $rows    = [];
         $total   = 0;
 
-        foreach (self::SECTORES as $key => $label) {
+        $alertaPct = $config->sector_alerta_pct ?? 70;
+
+        if ($soloSector && !array_key_exists($soloSector, self::SECTORES)) {
+            $this->error("Sector inválido. Opciones: " . implode(', ', array_keys(self::SECTORES)));
+            return self::FAILURE;
+        }
+
+        $sectoresAFill = $soloSector
+            ? [$soloSector => self::SECTORES[$soloSector]]
+            : self::SECTORES;
+
+        foreach ($sectoresAFill as $key => $label) {
             $limite  = $config->limiteParaSector($key);
+            $objetivo = (int) floor($limite * $alertaPct / 100);
             $usadas  = RestaurantCapacity::personasEnSector($key, $fechaBot);
-            $hueco   = $limite - $usadas;
+            $hueco   = $objetivo - $usadas;
 
             if ($hueco <= 0) {
-                $rows[] = [$label, $limite, $usadas, 0, '✅ Ya lleno'];
+                $rows[] = [$label, "{$objetivo}/{$limite} ({$alertaPct}%)", $usadas, 0, '✅ Ya cubierto'];
                 continue;
             }
 
@@ -104,12 +118,12 @@ class ReservasMaximizarCommand extends Command
                 $total++;
             }
 
-            $rows[] = [$label, $limite, $usadas, $creadas, '✅ Lleno'];
+            $rows[] = [$label, "{$objetivo}/{$limite} ({$alertaPct}%)", $usadas, $creadas, '✅ Alerta disparada'];
         }
 
-        $this->info("Reservas de prueba creadas para el {$fechaFmt}:");
+        $this->info("Reservas de prueba creadas para el {$fechaFmt} (objetivo: {$alertaPct}% de capacidad):");
         $this->table(
-            ['Sector', 'Límite', 'Ya tenía', 'Personas agregadas', 'Estado'],
+            ['Sector', 'Objetivo/Límite', 'Ya tenía', 'Personas agregadas', 'Estado'],
             $rows,
         );
         $totalPersonas = array_sum(array_column($rows, 3));
@@ -117,7 +131,7 @@ class ReservasMaximizarCommand extends Command
         $this->line("Para borrarlas: <comment>php artisan reservas:limpiar --confirmar</comment>");
 
         // Disparar las alertas de capacidad para que aparezcan los dialogs en el panel
-        foreach (array_keys(self::SECTORES) as $key) {
+        foreach (array_keys($sectoresAFill) as $key) {
             RestaurantCapacity::checkAlertaOcupacion($key, $fechaBot);
         }
 
