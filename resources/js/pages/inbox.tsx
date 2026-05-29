@@ -42,6 +42,12 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
     const { toggleSidebar } = useSidebar();
 
     const { play: playAlert, muted, toggle: toggleMuted } = useNotificationSound();
+    const [alertCount, setAlertCount] = useState(0);
+    useEffect(() => {
+        const handler = (e: Event) => setAlertCount((e as CustomEvent<{ count: number }>).detail.count);
+        window.addEventListener('inbox-alert-count', handler);
+        return () => window.removeEventListener('inbox-alert-count', handler);
+    }, []);
 
     // Polling de la lista (3s) — actualiza conversaciones y trigger toasts en escaladas nuevas.
     const { conversations: polledConversations, unreadTotal } = useInboxPolling(initialConversations, playAlert);
@@ -183,9 +189,14 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                         <button
                             onClick={toggleMuted}
                             title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
-                            className="p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
+                            className="relative p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
                         >
                             {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+                            {!muted && alertCount > 0 && (
+                                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[10px] font-bold text-white">
+                                    {alertCount > 99 ? '99+' : alertCount}
+                                </span>
+                            )}
                         </button>
                     </div>
                     {!tabsCollapsed && <div className="flex">
