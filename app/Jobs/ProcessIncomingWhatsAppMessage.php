@@ -38,8 +38,9 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
 
     public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClientFactory $factory): void
     {
-        // §8b — Debounce anti-spam: si el mismo número ya fue procesado en los últimos 5s, ignorar.
-        if (!Cache::add("debounce:{$this->from}", true, 5)) {
+        // §8b — Debounce anti-spam: evita que Meta reenvíe el mismo webhook dos veces en rápida sucesión.
+        // La clave incluye el wa_message_id para no bloquear mensajes distintos del mismo usuario.
+        if (!Cache::add("debounce:{$this->from}:{$this->waMessageId}", true, 30)) {
             return;
         }
 
