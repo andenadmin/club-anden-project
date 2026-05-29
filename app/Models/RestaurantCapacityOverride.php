@@ -9,7 +9,7 @@ class RestaurantCapacityOverride extends Model
 {
     protected $table = 'restaurant_capacity_overrides';
 
-    protected $fillable = ['fecha', 'salon_max', 'galeria_max', 'terraza_max', 'parrilla_max'];
+    protected $fillable = ['fecha', 'salon_max', 'galeria_max', 'terraza_max', 'parrilla_max', 'patio_max'];
 
     protected $casts = ['fecha' => 'date'];
 
@@ -25,6 +25,7 @@ class RestaurantCapacityOverride extends Model
             'galeria'  => $this->galeria_max,
             'terraza'  => $this->terraza_max,
             'parrilla' => $this->parrilla_max,
+            'patio'    => $this->patio_max,
             default    => null,
         };
     }

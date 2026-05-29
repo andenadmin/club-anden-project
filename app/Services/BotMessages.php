@@ -206,7 +206,8 @@ class BotMessages
             'B' => 'Galería',
             'C' => 'Terraza',
             'D' => 'Parrilla',
-            'E' => 'Sin preferencia',
+            'E' => 'Patio',
+            'F' => 'Sin preferencia',
             default => null,
         };
     }

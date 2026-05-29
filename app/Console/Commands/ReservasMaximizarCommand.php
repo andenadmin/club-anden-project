@@ -22,6 +22,7 @@ class ReservasMaximizarCommand extends Command
         'galeria'  => 'Galería',
         'terraza'  => 'Terraza',
         'parrilla' => 'Parrilla',
+        'patio'    => 'Patio',
     ];
 
     private const HORAS = ['12:00', '13:00', '14:00', '15:00', '20:00', '21:00', '22:00', '23:00'];
