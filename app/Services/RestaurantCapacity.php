@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PanelNotification;
+use App\Models\RestaurantCapacityOverride;
 use App\Models\RestaurantConfig;
 use App\Models\Reserva;
 use Carbon\Carbon;
@@ -79,12 +80,33 @@ class RestaurantCapacity
             return false;
         }
 
-        $config = RestaurantConfig::get();
-        $limite = $config->limiteParaSector($sectorKey);
+        $limite = self::limiteEfectivoParaSector($sectorKey, $fechaBotFormat);
         if ($limite <= 0) return true;
 
         $usadas = self::personasEnSector($sectorKey, $fechaBotFormat);
         return ($usadas + $personasNuevas) <= $limite;
+    }
+
+    /**
+     * Límite efectivo para un sector en una fecha: usa override de fecha si existe,
+     * caso contrario cae al config global con capacidad_pct aplicado.
+     */
+    private static function limiteEfectivoParaSector(string $sectorKey, string $fechaBotFormat): int
+    {
+        try {
+            $carbon   = Carbon::createFromFormat('d/m/y', $fechaBotFormat);
+            $override = $carbon ? RestaurantCapacityOverride::forDate($carbon) : null;
+            if ($override) {
+                $sobreescrito = $override->limiteParaSector($sectorKey);
+                if ($sobreescrito !== null) {
+                    return $sobreescrito;
+                }
+            }
+        } catch (\Throwable) {
+            // fecha mal formateada → caer al config global
+        }
+
+        return RestaurantConfig::get()->limiteParaSector($sectorKey);
     }
 
     /**
