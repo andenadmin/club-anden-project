@@ -13,6 +13,7 @@ use App\Models\Feriado;
 use App\Models\Reserva;
 use App\Services\RestaurantCapacity;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class BotEngine
@@ -383,31 +384,81 @@ class BotEngine
 
             case 'sector':
                 $datos     = $session->datos_parciales ?? [];
-                $fecha     = $datos['fecha'] ?? '';
+                $fecha       = $datos['fecha'] ?? '';
                 $numPersonas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
-                $upper     = strtoupper(trim($text));
+                $upper       = strtoupper(trim($text));
                 $sectorLabel = BotMessages::sectorRestaurante($upper);
 
+                Log::info('[BOT][SECTOR] Entrada', [
+                    'numero'          => $session->numero_contacto,
+                    'input_raw'       => $text,
+                    'input_upper'     => $upper,
+                    'sector_label'    => $sectorLabel,
+                    'fecha_reserva'   => $fecha,
+                    'num_personas_raw'=> $datos['numero_personas'] ?? '',
+                    'num_personas_int'=> $numPersonas,
+                ]);
+
                 if (!$sectorLabel) {
+                    Log::warning('[BOT][SECTOR] Opción no reconocida', [
+                        'numero' => $session->numero_contacto,
+                        'input'  => $text,
+                    ]);
                     return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
                 }
 
                 // Verificar capacidad si elige un sector específico (no "Sin preferencia")
                 $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
                 if ($sectorKey !== null) {
-                    if (RestaurantCapacity::estaCerrado($sectorKey, $fecha)) {
+                    $cerrado  = RestaurantCapacity::estaCerrado($sectorKey, $fecha);
+                    $usadas   = RestaurantCapacity::personasEnSector($sectorKey, $fecha);
+                    $limite   = \App\Models\RestaurantConfig::get()->limiteParaSector($sectorKey);
+
+                    Log::info('[BOT][SECTOR] Chequeo capacidad', [
+                        'numero'      => $session->numero_contacto,
+                        'sector_key'  => $sectorKey,
+                        'fecha'       => $fecha,
+                        'personas'    => $numPersonas,
+                        'usadas'      => $usadas,
+                        'limite'      => $limite,
+                        'cerrado'     => $cerrado,
+                        'tiene_lugar' => ($usadas + $numPersonas) <= $limite,
+                    ]);
+
+                    if ($cerrado) {
+                        Log::warning('[BOT][SECTOR] Sector cerrado manualmente', [
+                            'numero'     => $session->numero_contacto,
+                            'sector_key' => $sectorKey,
+                            'fecha'      => $fecha,
+                        ]);
                         return [
                             "Ese sector no está disponible en este momento. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),
                         ];
                     }
                     if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                        Log::warning('[BOT][SECTOR] Sin capacidad', [
+                            'numero'     => $session->numero_contacto,
+                            'sector_key' => $sectorKey,
+                            'fecha'      => $fecha,
+                            'personas'   => $numPersonas,
+                            'usadas'     => $usadas,
+                            'limite'     => $limite,
+                        ]);
                         return [
                             "Ese sector no tiene lugar para {$numPersonas} personas en esa fecha. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),
                         ];
                     }
                 }
+
+                Log::info('[BOT][SECTOR] Sector confirmado', [
+                    'numero'     => $session->numero_contacto,
+                    'sector_key' => $sectorKey,
+                    'sector'     => $sectorLabel,
+                    'fecha'      => $fecha,
+                    'personas'   => $numPersonas,
+                ]);
 
                 $this->saveDato($session, 'sector', $sectorLabel);
                 $this->saveDato($session, 'sector_key', $sectorKey);
@@ -2216,6 +2267,21 @@ class BotEngine
         $datos    = $session->datos_parciales ?? [];
         $fecha    = $datos['fecha'] ?? '';
         $personas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
+
+        $config   = \App\Models\RestaurantConfig::get();
+        $snapshot = [];
+        foreach (['salon', 'galeria', 'terraza', 'parrilla', 'patio'] as $s) {
+            $usadas = RestaurantCapacity::personasEnSector($s, $fecha);
+            $limite = $config->limiteParaSector($s);
+            $snapshot[$s] = "{$usadas}/{$limite}";
+        }
+
+        Log::info('[BOT][SECTOR_MSG] Generando selector de sector', [
+            'numero'   => $session->numero_contacto,
+            'fecha'    => $fecha,
+            'personas' => $personas,
+            'ocupacion'=> $snapshot,
+        ]);
 
         return RestaurantCapacity::buildSectorMessage($fecha, $personas);
     }
