@@ -116,6 +116,11 @@ class ReservasMaximizarCommand extends Command
         $this->line("  <comment>{$total}</comment> reservas creadas · <comment>{$totalPersonas}</comment> personas en total");
         $this->line("Para borrarlas: <comment>php artisan reservas:limpiar --confirmar</comment>");
 
+        // Disparar las alertas de capacidad para que aparezcan los dialogs en el panel
+        foreach (array_keys(self::SECTORES) as $key) {
+            RestaurantCapacity::checkAlertaOcupacion($key, $fechaBot);
+        }
+
         return self::SUCCESS;
     }
 }
