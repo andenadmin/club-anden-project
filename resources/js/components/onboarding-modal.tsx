@@ -1,6 +1,7 @@
 import { HelpCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const ONBOARDING_MD = `
 # Guía rápida del panel de reservas
@@ -65,11 +66,9 @@ La campana del panel suena en estos casos:
 ## 5. Buenas prácticas ✅
 
 - [ ] Revisar las reservas del día antes de abrir el turno
-- [ ] Leer los comentarios especiales de cada reserva
 - [ ] Confirmar manualmente las reservas de grupos grandes (+8 personas)
-- [ ] Prestar atención a pedidos de sillas de bebé o necesidades especiales
 - [ ] Si el bot escala a asesor, responder en menos de 30 minutos
-- [ ] Reanudar el bot siempre que termines de atender a un cliente
+- [x] Reanudar el bot siempre que termines de atender a un cliente
 - [ ] Avisar al equipo si ves algo raro en las reservas (horarios duplicados, datos incorrectos)
 
 ---
@@ -77,7 +76,7 @@ La campana del panel suena en estos casos:
 ## 6. Para recordar 📌
 
 - [ ] El bot trabaja solo — vos solo intervenís cuando hay alerta 🔔
-- [ ] Siempre presionar **"Reanudar bot"** al terminar una atención
+- [x] Siempre presionar **"Reanudar bot"** al terminar una atención
 - [ ] Los eventos siempre necesitan revisión manual
 - [ ] Podés editar cualquier reserva desde /reservas
 - [ ] Las alertas de capacidad las gestiona el equipo de coordinación
@@ -141,14 +140,17 @@ function renderMarkdown(md: string): React.ReactNode[] {
             }
             nodes.push(
                 <ul key={key++} className="space-y-1 my-2">
-                    {items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2 text-sm">
-                            <span className="mt-0.5 w-4 h-4 rounded border border-border shrink-0 bg-muted/30 flex items-center justify-center text-[10px]">
-                                {item.includes('[x]') ? '✓' : ''}
-                            </span>
-                            <span>{renderInline(item.replace(/^- \[[ x]\] /, ''))}</span>
-                        </li>
-                    ))}
+                    {items.map((item, j) => {
+                        const checked = item.includes('[x]');
+                        return (
+                            <li key={j} className={`flex items-start gap-2 text-sm ${checked ? 'text-emerald-700 dark:text-emerald-400 font-medium' : ''}`}>
+                                <span className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center text-[10px] ${checked ? 'border-emerald-500 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700' : 'border-border bg-muted/30'}`}>
+                                    {checked ? '✓' : ''}
+                                </span>
+                                <span>{renderInline(item.replace(/^- \[[ x]\] /, ''))}</span>
+                            </li>
+                        );
+                    })}
                 </ul>
             );
             continue;
@@ -194,13 +196,21 @@ export function OnboardingButton() {
 
     return (
         <>
-            <button
-                onClick={() => setOpen(true)}
-                title="Guía rápida"
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-                <HelpCircle className="size-4" />
-            </button>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            onClick={() => setOpen(true)}
+                            className="self-end mb-0.5 inline-flex items-center justify-center w-6 h-6 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                            <HelpCircle className="size-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                        <p>Guía rápida para el equipo</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0">
