@@ -80,8 +80,11 @@ function detectNewEscalations(
 
     for (const conv of next) {
         const before = prev.get(conv.numero);
-        const wasEscalated = before?.estado_actual === 'PAUSADO' && (before?.unread_count ?? 0) > 0;
-        const isEscalated  = conv.estado_actual === 'PAUSADO' && conv.unread_count > 0;
+        // ASESOR_TAKEOVER: el asesor ya está en la conversación, no alertar por cada mensaje nuevo
+        const needsAlert = (c: ConversationListItem) =>
+            c.estado_actual === 'PAUSADO' && c.unread_count > 0 && c.motivo_pausa !== 'ASESOR_TAKEOVER';
+        const wasEscalated = before ? needsAlert(before) : false;
+        const isEscalated  = needsAlert(conv);
         const newConversation = !before;
         const newlyEscalated  = !wasEscalated && isEscalated;
 

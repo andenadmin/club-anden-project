@@ -2197,17 +2197,12 @@ class BotEngine
         return null;
     }
 
-    /** Construye el mensaje de sector dinámico y avanza al paso sector (o escala si todo está lleno). */
+    /** Construye el mensaje de sector dinámico y avanza al paso sector. */
     private function buildSectorStep(BotSession $session): array
     {
-        $msg = $this->buildSectorMsg($session);
-        // buildSectorMsg devuelve MSG_RES_SECTOR_LLENO si todo está lleno → escalar
-        if ($msg === BotMessages::render('MSG_RES_SECTOR_LLENO')) {
-            return array_merge([$msg], $this->escalate($session, 'SOLICITUD_CLIENTE'));
-        }
         $this->pushHistory($session);
         $session->mergeEstado(['current_step' => 'sector', 'contador_invalidos' => 0]);
-        return [$msg];
+        return [$this->buildSectorMsg($session)];
     }
 
     /** Genera el texto del mensaje MSG_RES_04 con capacidad actualizada. */
@@ -2216,20 +2211,6 @@ class BotEngine
         $datos    = $session->datos_parciales ?? [];
         $fecha    = $datos['fecha'] ?? '';
         $personas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
-
-        // Verificar si todos los sectores están llenos antes de delegar
-        $sectores = ['salon', 'galeria', 'terraza', 'parrilla'];
-        $todosLlenos = true;
-        foreach ($sectores as $key) {
-            if (RestaurantCapacity::tieneCapacidad($key, $fecha, $personas)) {
-                $todosLlenos = false;
-                break;
-            }
-        }
-
-        if ($todosLlenos) {
-            return BotMessages::render('MSG_RES_SECTOR_LLENO');
-        }
 
         return RestaurantCapacity::buildSectorMessage($fecha, $personas);
     }
