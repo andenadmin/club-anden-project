@@ -1133,7 +1133,12 @@ class BotEngine
             $crm->update($crmUpdate);
         }
 
-        $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'contador_invalidos' => 0]);
+        $unreadDelta = ($rama === 'EVENTOS') ? 1 : 0;
+        $session->mergeEstado([
+            'estado_actual'   => 'COMPLETADO',
+            'contador_invalidos' => 0,
+            'unread_count'    => ($session->unread_count ?? 0) + $unreadDelta,
+        ]);
 
         if (config('services.google.calendar_id')) {
             CreateCalendarEvent::dispatch($reserva);
@@ -1488,6 +1493,7 @@ class BotEngine
             'motivo_pausa'        => $motivo,
             'timestamp_pausa'     => Carbon::now(),
             'contador_invalidos'  => 0,
+            'unread_count'        => ($session->unread_count ?? 0) + 1,
         ]);
 
         $recipient = config('services.advisor.alert_email');

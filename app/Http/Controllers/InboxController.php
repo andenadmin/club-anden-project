@@ -34,12 +34,17 @@ class InboxController extends Controller
      */
     public function alertCount(): JsonResponse
     {
-        $count = BotSession::where('estado_actual', 'PAUSADO')
-            ->where('motivo_pausa', 'SOLICITUD_CLIENTE')
+        $pausados = BotSession::where('estado_actual', 'PAUSADO')
+            ->whereIn('motivo_pausa', ['SOLICITUD_CLIENTE', 'OPCIONES_INVALIDAS_REITERADAS', 'CAPACIDAD_EXCEDIDA'])
             ->where('unread_count', '>', 0)
             ->count();
 
-        return response()->json(['count' => $count]);
+        $eventos = BotSession::where('estado_actual', 'COMPLETADO')
+            ->where('rama_activa', 'EVENTOS')
+            ->where('unread_count', '>', 0)
+            ->count();
+
+        return response()->json(['count' => $pausados + $eventos]);
     }
 
     /**
