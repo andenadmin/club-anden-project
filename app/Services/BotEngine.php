@@ -462,7 +462,7 @@ class BotEngine
 
                 $this->saveDato($session, 'sector', $sectorLabel);
                 $this->saveDato($session, 'sector_key', $sectorKey);
-                return $this->skipMailIfKnown($session, 'MSG_RES_06');
+                return $this->skipMailIfKnown($session, 'MSG_RES_06', fn () => $this->goToConfirmacion($session));
 
             case 'mail_contacto':
                 return $this->handleMailStep(
@@ -972,7 +972,7 @@ class BotEngine
             case 'extras_texto':
                 $tieneExtras = strtolower($text) !== 'ninguno';
                 $this->saveDatos($session, ['extras_texto' => $text, 'tiene_extras' => $tieneExtras]);
-                return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL');
+                return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL', fn () => $this->nextStep($session, 'nombre_responsable', 'MSG_EVT_07'));
 
             case 'mail_contacto':
                 return $this->handleMailStep(
@@ -1056,7 +1056,7 @@ class BotEngine
                 if ($upperG07 === ($keysG07[0] ?? '1')) {
                     $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                     $this->saveDato($session, 'nombre_responsable', $nombre);
-                    return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL');
+                    return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL', fn () => $this->goToConfirmacion($session));
                 }
                 $this->pushHistory($session);
                 $session->mergeEstado(['current_step' => 'nombre_responsable_custom', 'contador_invalidos' => 0]);
@@ -1064,7 +1064,7 @@ class BotEngine
 
             case 'nombre_responsable_custom':
                 $this->saveDato($session, 'nombre_responsable', $text);
-                return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL');
+                return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL', fn () => $this->goToConfirmacion($session));
 
             case 'mail_contacto':
                 return $this->handleMailStep(
@@ -1264,8 +1264,11 @@ class BotEngine
             if ($paso === 'mail_contacto') {
                 $email = Cliente::find($session->id_cliente)?->mail_contacto;
                 if ($email) {
-                    $this->saveDato($session, '_mail_conocido', $email);
-                    return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email])];
+                    $confirmMsg = BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email]);
+                    if ($confirmMsg !== '') {
+                        $this->saveDato($session, '_mail_conocido', $email);
+                        return [$confirmMsg];
+                    }
                 }
                 return [BotMessages::render('MSG_RES_06')];
             }
@@ -1348,8 +1351,11 @@ class BotEngine
             if ($paso === 'mail_contacto') {
                 $email = Cliente::find($session->id_cliente)?->mail_contacto;
                 if ($email) {
-                    $this->saveDato($session, '_mail_conocido', $email);
-                    return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email])];
+                    $confirmMsg = BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email]);
+                    if ($confirmMsg !== '') {
+                        $this->saveDato($session, '_mail_conocido', $email);
+                        return [$confirmMsg];
+                    }
                 }
                 return [BotMessages::render('MSG_EVT_MAIL')];
             }
@@ -1581,15 +1587,7 @@ class BotEngine
         if ($msg !== '') {
             return [$msg];
         }
-        // Mensaje archivado: usar hardcoded default si existe, si no escalar
-        $fallback = BotMessages::hardcodedDefault($msgId);
-        if ($fallback !== null) {
-            foreach ($vars as $k => $v) {
-                $fallback = str_replace('{{' . $k . '}}', (string) $v, $fallback);
-            }
-            return [$fallback];
-        }
-        Log::warning('[BOT][NEXT_STEP] Mensaje crítico archivado sin fallback, escalando', [
+        Log::warning('[BOT][NEXT_STEP] Mensaje archivado, escalando', [
             'msgId' => $msgId, 'step' => $step, 'numero' => $session->numero_contacto,
         ]);
         return $this->escalate($session, 'SOLICITUD_CLIENTE');
@@ -1824,10 +1822,15 @@ class BotEngine
      * Si el cliente ya tiene mail, muestra MSG_CONFIRMAR_MAIL para que confirme o cambie.
      * Si no tiene, muestra el mensaje de pedir mail ($mailMsgId).
      */
-    private function skipMailIfKnown(BotSession $session, string $mailMsgId): array
+    private function skipMailIfKnown(BotSession $session, string $mailMsgId, ?callable $advance = null): array
     {
         $email = Cliente::find($session->id_cliente)?->mail_contacto;
         if ($email) {
+            $confirmMsg = BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $email]);
+            if ($confirmMsg === '' && $advance !== null) {
+                $this->saveMailCliente($session, $email);
+                return $advance();
+            }
             $this->saveDato($session, '_mail_conocido', $email);
             return $this->nextStep($session, 'mail_contacto', 'MSG_CONFIRMAR_MAIL', ['mail' => $email]);
         }
@@ -1866,7 +1869,10 @@ class BotEngine
 
         $errorMsg = $mailConocido
             ? BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $mailConocido])
-            : BotMessages::render('MSG_RES_MAIL_INVALIDO');
+            : '';
+        if ($errorMsg === '') {
+            $errorMsg = BotMessages::render('MSG_RES_MAIL_INVALIDO');
+        }
         return $this->handleInvalid($session, fn () => [$errorMsg]);
     }
 
@@ -2078,7 +2084,11 @@ class BotEngine
             }
         }
         if ($mailConocido) {
-            return [BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $mailConocido])];
+            $confirmMsg = BotMessages::render('MSG_CONFIRMAR_MAIL', ['mail' => $mailConocido]);
+            if ($confirmMsg !== '') {
+                return [$confirmMsg];
+            }
+            $this->saveDato($session, '_mail_conocido', null);
         }
         return [BotMessages::render($fallbackMsgId)];
     }
