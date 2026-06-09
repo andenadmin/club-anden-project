@@ -364,7 +364,7 @@ class BotEngine
                             $ahoraMin    = Carbon::now()->hour * 60 + Carbon::now()->minute;
                             if ($horaMin <= $ahoraMin) {
                                 return [
-                                    'Ese horario ya pasó para hoy. Por favor elegí uno de los disponibles:',
+                                    BotMessages::render('MSG_RES_HORA_PASADA'),
                                     BotMessages::render('MSG_RES_02'),
                                 ];
                             }
