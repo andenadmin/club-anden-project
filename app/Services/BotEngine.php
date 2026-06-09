@@ -359,10 +359,16 @@ class BotEngine
                     if ($fechaGuardada) {
                         $carbonFechaR = Carbon::createFromFormat('d/m/y', $fechaGuardada);
                         if ($carbonFechaR->isSameDay(Carbon::today())) {
-                            [$hh, $mm]   = explode(':', $hora);
-                            $horaMin     = (int)$hh * 60 + (int)$mm;
-                            $ahoraMin    = Carbon::now()->hour * 60 + Carbon::now()->minute;
-                            if ($horaMin <= $ahoraMin) {
+                            // Extraer hora del label ("Turno noche 1: 20 hs", "11.30 hs", etc.)
+                            if (preg_match('/\b(\d{1,2})[.,](\d{2})\s*hs/i', $hora, $hm)) {
+                                $horaMin = (int)$hm[1] * 60 + (int)$hm[2];
+                            } elseif (preg_match('/\b(\d{1,2})\s*hs/i', $hora, $hm)) {
+                                $horaMin = (int)$hm[1] * 60;
+                            } else {
+                                $horaMin = null;
+                            }
+                            $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
+                            if ($horaMin !== null && $horaMin <= $ahoraMin) {
                                 return [
                                     BotMessages::render('MSG_RES_HORA_PASADA'),
                                     BotMessages::render('MSG_RES_02'),
