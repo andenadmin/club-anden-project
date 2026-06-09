@@ -76,12 +76,25 @@ export function ResumePromptModal({
                 </DialogFooter>
 
                 <p className="text-[11px] text-muted-foreground mt-2">
-                    Si no la cerrás, el bot se va a reanudar automáticamente cuando pasen 12 horas
-                    desde la pausa, y le pedirá al usuario que empiece de nuevo.
+                    {autoResumeNote(pausedAt)}
                 </p>
             </DialogContent>
         </Dialog>
     );
+}
+
+function autoResumeNote(pausedAt: string | null): string {
+    if (!pausedAt) {
+        return 'Si no la cerrás, el bot se reanudará automáticamente a las 12 h de pausa.';
+    }
+    const elapsed = Date.now() - new Date(pausedAt).getTime();
+    const capMs = 12 * 60 * 60 * 1000;
+    const remainingMs = capMs - elapsed;
+    if (remainingMs <= 0) {
+        return 'Las 12 h de pausa ya pasaron — el bot se debería haber reanudado automáticamente.';
+    }
+    const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+    return `Si no la cerrás, el bot se va a reanudar automáticamente en ${remainingHours} h, y le pedirá al usuario que empiece de nuevo.`;
 }
 
 function formatRelative(date: Date): string {

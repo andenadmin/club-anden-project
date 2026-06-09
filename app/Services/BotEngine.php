@@ -355,6 +355,21 @@ class BotEngine
                     if (!$hora) {
                         return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_RES_02')]);
                     }
+                    $fechaGuardada = $session->datos_parciales['fecha'] ?? null;
+                    if ($fechaGuardada) {
+                        $carbonFechaR = Carbon::createFromFormat('d/m/y', $fechaGuardada);
+                        if ($carbonFechaR->isSameDay(Carbon::today())) {
+                            [$hh, $mm]   = explode(':', $hora);
+                            $horaMin     = (int)$hh * 60 + (int)$mm;
+                            $ahoraMin    = Carbon::now()->hour * 60 + Carbon::now()->minute;
+                            if ($horaMin <= $ahoraMin) {
+                                return [
+                                    'Ese horario ya pasó para hoy. Por favor elegí uno de los disponibles:',
+                                    BotMessages::render('MSG_RES_02'),
+                                ];
+                            }
+                        }
+                    }
                 }
                 $this->saveDato($session, 'hora', $hora);
                 return $this->nextStep($session, 'numero_personas', 'MSG_RES_03');
@@ -2210,7 +2225,11 @@ class BotEngine
             // dd/mm
             if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $normalized, $m)) {
                 try {
-                    $date = Carbon::createFromDate(now()->year, (int)$m[2], (int)$m[1])->startOfDay();
+                    $date = Carbon::createFromFormat('d/m/Y',
+                        str_pad($m[1], 2, '0', STR_PAD_LEFT) . '/' .
+                        str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
+                        now()->year
+                    )->startOfDay();
                     if ($date->lt(Carbon::today())) $date->addYear();
                     return $date;
                 } catch (\Throwable) { return null; }
@@ -2324,7 +2343,11 @@ class BotEngine
         // dd/mm — infiere año: usa el corriente si es futuro, el siguiente si ya pasó
         if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $text, $m)) {
             try {
-                $date = Carbon::createFromDate(now()->year, (int)$m[2], (int)$m[1])->startOfDay();
+                $date = Carbon::createFromFormat('d/m/Y',
+                    str_pad($m[1], 2, '0', STR_PAD_LEFT) . '/' .
+                    str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
+                    now()->year
+                )->startOfDay();
                 if (!$date->isAfter(Carbon::today())) {
                     $date->addYear();
                 }
