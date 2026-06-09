@@ -75,8 +75,10 @@ class InboxController extends Controller
             ]);
         } else {
             // Ya estaba pausado por otro motivo (ej. SOLICITUD_CLIENTE) — el asesor lo toma.
+            // timestamp_pausa se resetea a ahora para que el sweep de 12h cuente desde la toma.
             $session->mergeEstado([
                 'motivo_pausa'        => 'ASESOR_TAKEOVER',
+                'timestamp_pausa'     => now(),
                 'next_resume_check_at'=> now()->addHour(),
             ]);
         }
