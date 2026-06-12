@@ -44,7 +44,20 @@ class InboxController extends Controller
             ->where('unread_count', '>', 0)
             ->count();
 
-        return response()->json(['count' => $pausados + $eventos]);
+        $noAtendidosSessions = BotSession::where('motivo_pausa', 'SOLICITUD_NO_ATENDIDA')
+            ->where('unread_count', '>', 0)
+            ->with('cliente:id,nombre_cliente')
+            ->get();
+
+        $noAtendidos = $noAtendidosSessions->map(fn ($s) => [
+            'numero' => $s->numero_contacto,
+            'nombre' => $s->cliente?->nombre_cliente,
+        ])->values()->all();
+
+        return response()->json([
+            'count'      => $pausados + $eventos + count($noAtendidos),
+            'unattended' => $noAtendidos,
+        ]);
     }
 
     /**
@@ -235,7 +248,11 @@ class InboxController extends Controller
     {
         $session = BotSession::where('numero_contacto', $numero)->first();
         if ($session && $session->unread_count > 0) {
-            $session->mergeEstado(['unread_count' => 0]);
+            $update = ['unread_count' => 0];
+            if ($session->motivo_pausa === 'SOLICITUD_NO_ATENDIDA') {
+                $update['motivo_pausa'] = null;
+            }
+            $session->mergeEstado($update);
         }
         return response()->json(['ok' => true]);
     }

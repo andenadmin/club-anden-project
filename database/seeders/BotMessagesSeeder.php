@@ -321,7 +321,7 @@ class BotMessagesSeeder extends Seeder
         ];
 
         foreach ($messages as $msg) {
-            BotMessage::updateOrCreate(['key' => $msg['key']], $msg);
+            BotMessage::firstOrCreate(['key' => $msg['key']], $msg);
         }
     }
 }

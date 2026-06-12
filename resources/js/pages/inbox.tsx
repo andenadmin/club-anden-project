@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Bell, BellOff, ChevronDown, Info, Menu, Search, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, ChevronDown, Info, Menu, Search, Volume2, VolumeX, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
@@ -13,6 +13,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useChatPolling } from '@/hooks/use-chat-polling';
 import { useInboxPolling } from '@/hooks/use-inbox-polling';
 import { useNotificationSound } from '@/hooks/use-notification-sound';
+import { useWebNotifications } from '@/hooks/use-web-notifications';
 import { useTitleFlash } from '@/hooks/use-title-flash';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,7 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
     const { toggleSidebar } = useSidebar();
 
     const { play: playAlert, muted, toggle: toggleMuted } = useNotificationSound();
+    const { permission, requestPermission } = useWebNotifications();
     const [alertCount, setAlertCount] = useState(0);
     useEffect(() => {
         const handler = (e: Event) => setAlertCount((e as CustomEvent<{ count: number }>).detail.count);
@@ -185,6 +187,28 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                             title={tabsCollapsed ? 'Expandir' : 'Contraer'}
                         >
                             <ChevronDown className={`size-4 transition-transform duration-200 ${tabsCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+                        <button
+                            onClick={requestPermission}
+                            title={
+                                permission === 'granted'
+                                    ? 'Notificaciones del sistema activas'
+                                    : permission === 'denied'
+                                    ? 'Notificaciones bloqueadas — habilitá el permiso en la configuración del navegador'
+                                    : 'Activar notificaciones del sistema'
+                            }
+                            className={`p-2 rounded-md hover:bg-accent active:bg-accent/80 ${
+                                permission === 'granted'
+                                    ? 'text-green-500'
+                                    : permission === 'denied'
+                                    ? 'text-red-400'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            }`}
+                        >
+                            {permission === 'denied'
+                                ? <VolumeX className="size-4" />
+                                : <Volume2 className="size-4" />
+                            }
                         </button>
                         <button
                             onClick={toggleMuted}

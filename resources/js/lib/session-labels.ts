@@ -40,6 +40,7 @@ export const MOTIVO_PAUSA_LABELS: Record<string, string> = {
     OPCIONES_INVALIDAS_REITERADAS: 'Opciones inválidas reiteradas',
     CAPACIDAD_EXCEDIDA:            'Capacidad excedida',
     ASESOR_TAKEOVER:               'Tomado por asesor',
+    SOLICITUD_NO_ATENDIDA:         'Sin respuesta del asesor',
 };
 
 /**

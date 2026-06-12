@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BotMessage;
 use App\Services\BotMessages;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 
 class BotMessagesAdminController extends Controller
@@ -67,6 +68,8 @@ class BotMessagesAdminController extends Controller
         ]);
 
         $botMessage->update(['content' => $request->content]);
+        BotMessages::clearCache();
+        Artisan::call('queue:restart');
 
         return back()->with('success', 'Mensaje guardado.');
     }

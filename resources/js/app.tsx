@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { PanelNotificationsBanner } from '@/components/panel-notifications-banner';
 import { TestToolbar } from '@/components/test-toolbar';
 import { playNotificationSound } from '@/hooks/use-notification-sound';
+import { fireWebNotification } from '@/hooks/use-web-notifications';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
@@ -74,19 +75,46 @@ router.on('networkError', (event) => {
 });
 
 function GlobalAlertPoller() {
-    const prevCountRef = useRef<number | null>(null);
+    const prevCountRef        = useRef<number | null>(null);
+    const seenUnattendedRef   = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         const check = async () => {
             try {
                 const res = await fetch('/inbox/alert-count', { headers: { Accept: 'application/json' } });
                 if (!res.ok) return;
-                const { count } = await res.json() as { count: number };
+                const data = await res.json() as { count: number; unattended?: { numero: string; nombre: string | null }[] };
+                const { count, unattended = [] } = data;
+
                 if (prevCountRef.current !== null && count > prevCountRef.current) {
                     playNotificationSound();
+                    if (document.visibilityState !== 'visible') {
+                        fireWebNotification('El Andén — Nuevo mensaje', { body: 'Hay conversaciones esperando respuesta.' });
+                    }
                 }
                 prevCountRef.current = count;
                 window.dispatchEvent(new CustomEvent('inbox-alert-count', { detail: { count } }));
+
+                // Fire per-entry notifications for unattended sessions not yet seen
+                for (const { numero, nombre } of unattended) {
+                    if (!seenUnattendedRef.current.has(numero)) {
+                        fireWebNotification('⚠️ Sin respuesta — El Andén', {
+                            body: nombre
+                                ? `${nombre} pidió un asesor y nadie respondió en 12hs.`
+                                : 'Un usuario pidió un asesor y nadie respondió en 12hs.',
+                            url: `/inbox?numero=${numero}`,
+                        });
+                        seenUnattendedRef.current.add(numero);
+                    }
+                }
+
+                // Clean up entries that are no longer in the unattended list (advisor read them)
+                const currentNumeros = new Set(unattended.map(u => u.numero));
+                for (const numero of seenUnattendedRef.current) {
+                    if (!currentNumeros.has(numero)) {
+                        seenUnattendedRef.current.delete(numero);
+                    }
+                }
             } catch {}
         };
         check();

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\BotSession;
+use App\Models\ConversationMessage;
 use App\Services\BotEngine;
 use App\Services\BotMessages;
 use App\Services\Meta\WhatsAppSender;
@@ -60,6 +61,44 @@ class SweepAdvisorTakeoverCommand extends Command
                 $sender->sendBotResponses($session, [$body]);
 
                 $this->line("  · {$session->numero_contacto}: reseteado tras {$waited} sin atender.");
+            } catch (Throwable $e) {
+                report($e);
+                $this->error("  · {$session->numero_contacto}: error procesando — {$e->getMessage()}");
+            }
+        }
+
+        // ── Segunda pasada: SOLICITUD_CLIENTE / OPCIONES_INVALIDAS_REITERADAS / CAPACIDAD_EXCEDIDA sin atender ──
+
+        $unattendedSessions = BotSession::query()
+            ->where('estado_actual', 'PAUSADO')
+            ->whereIn('motivo_pausa', ['SOLICITUD_CLIENTE', 'OPCIONES_INVALIDAS_REITERADAS', 'CAPACIDAD_EXCEDIDA'])
+            ->where('timestamp_pausa', '<=', $cutoff)
+            ->get()
+            ->filter(function (BotSession $session) {
+                // Solo si ningún asesor respondió desde que se pausó
+                return !ConversationMessage::where('bot_session_id', $session->id)
+                    ->where('sender', ConversationMessage::SENDER_ADVISOR)
+                    ->where('created_at', '>=', $session->timestamp_pausa)
+                    ->exists();
+            });
+
+        foreach ($unattendedSessions as $session) {
+            try {
+                $body = BotMessages::render('MSG_TIMEOUT_ASESOR');
+                $sender->sendBotResponses($session, [$body]);
+
+                $session->mergeEstado([
+                    'estado_actual'        => 'INICIO',
+                    'estado_previo_pausa'  => null,
+                    'motivo_pausa'         => 'SOLICITUD_NO_ATENDIDA',
+                    'timestamp_pausa'      => null,
+                    'next_resume_check_at' => null,
+                    'datos_parciales'      => [],
+                    'contador_invalidos'   => 0,
+                    'unread_count'         => 1,
+                ]);
+
+                $this->line("  · {$session->numero_contacto}: reanudado automáticamente por falta de atención.");
             } catch (Throwable $e) {
                 report($e);
                 $this->error("  · {$session->numero_contacto}: error procesando — {$e->getMessage()}");
