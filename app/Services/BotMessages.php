@@ -61,6 +61,12 @@ class BotMessages
         self::$loaded      = false;
     }
 
+    public static function isArchived(string $id): bool
+    {
+        self::loadAll();
+        return isset(self::$archivedKeys[$id]);
+    }
+
     /**
      * Devuelve el contenido hardcodeado del mensaje, sin consultar la DB.
      * Retorna null si el mensaje es dinámico (como MSG_RES_01) o si no existe.
