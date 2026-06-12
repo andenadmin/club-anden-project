@@ -130,6 +130,14 @@ class BotEngine
             return $this->handleSalir($session);
         }
 
+        // Respuestas a botones de plantilla de recordatorio
+        if (strtoupper(trim($text)) === 'INFO') {
+            return $this->handleTemplateInfo($session);
+        }
+        if (strtoupper(trim($text)) === 'CANCELAR') {
+            return $this->handleTemplateCancelar($session);
+        }
+
         return match ($session->estado_actual) {
             'INICIO'               => $this->handleInicio($session),
             'REGISTRO_CLIENTE'     => $this->handleRegistroCliente($session, $text),
@@ -2112,6 +2120,79 @@ class BotEngine
             'contador_invalidos' => 0,
         ]);
         return [BotMessages::render('MSG_DESPEDIDA')];
+    }
+
+    // Responde al botón INFO del template de recordatorio: muestra datos de la reserva más reciente.
+    private function handleTemplateInfo(BotSession $session): array
+    {
+        $cliente = Cliente::find($session->id_cliente);
+        if (!$cliente) {
+            return ["No encontramos una reserva activa asociada a tu número. ¿Querés hacer una nueva? Escribinos y te ayudamos."];
+        }
+
+        $reserva = Reserva::where('id_cliente', $cliente->id)
+            ->whereIn('estado_reserva', ['CONFIRMADA', 'PENDIENTE_CONFIRMACION'])
+            ->latest()
+            ->first();
+
+        if (!$reserva) {
+            return ["No encontramos una reserva activa para tu número. Si creés que es un error, respondé este mensaje y te asistimos."];
+        }
+
+        $datos = $reserva->datos ?? [];
+        $rama  = $reserva->rama_servicio;
+        $lines = ["📋 *Datos de tu reserva:*\n"];
+
+        if ($rama === 'RESTAURANTE') {
+            if (!empty($datos['fecha']))              $lines[] = "📅 Fecha: {$datos['fecha']}";
+            if (!empty($datos['hora']))               $lines[] = "🕐 Horario: {$datos['hora']}";
+            if (!empty($datos['numero_personas']))    $lines[] = "👥 Personas: {$datos['numero_personas']}";
+            if (!empty($datos['sector']))             $lines[] = "🪑 Sector: {$datos['sector']}";
+            if (!empty($datos['nombre_responsable'])) $lines[] = "👤 Responsable: {$datos['nombre_responsable']}";
+        } elseif ($rama === 'EVENTOS') {
+            if (!empty($datos['tipo_evento']))        $lines[] = "🎉 Tipo: {$datos['tipo_evento']}";
+            if (!empty($datos['fecha']))              $lines[] = "📅 Fecha: {$datos['fecha']}";
+            if (!empty($datos['hora_inicio']))        $lines[] = "🕐 Hora inicio: {$datos['hora_inicio']}";
+            if (!empty($datos['nombre_hijo']))        $lines[] = "🎂 Festejado/a: {$datos['nombre_hijo']}";
+            if (!empty($datos['numero_ninos']))       $lines[] = "👦 Chicos: {$datos['numero_ninos']}";
+            if (isset($datos['numero_adultos']))      $lines[] = "🧑 Adultos: {$datos['numero_adultos']}";
+        }
+
+        $estadoLabel = $reserva->estado_reserva === 'CONFIRMADA' ? '✅ Confirmada' : '⏳ Pendiente de confirmación';
+        $lines[] = "\nEstado: {$estadoLabel}";
+        $lines[] = "\nSi necesitás modificar algo, respondé este mensaje y un asesor te va a ayudar.";
+
+        return [implode("\n", $lines)];
+    }
+
+    // Responde al botón CANCELAR del template de recordatorio: cancela la reserva más reciente.
+    private function handleTemplateCancelar(BotSession $session): array
+    {
+        $cliente = Cliente::find($session->id_cliente);
+        if (!$cliente) {
+            return ["No encontramos una reserva activa para cancelar. Si necesitás ayuda, escribinos."];
+        }
+
+        $reserva = Reserva::where('id_cliente', $cliente->id)
+            ->whereIn('estado_reserva', ['CONFIRMADA', 'PENDIENTE_CONFIRMACION'])
+            ->latest()
+            ->first();
+
+        if (!$reserva) {
+            return ["No encontramos una reserva activa para cancelar. Si creés que es un error, respondé este mensaje y te asistimos."];
+        }
+
+        $reserva->update(['estado_reserva' => 'CANCELADA']);
+
+        $datos = $reserva->datos ?? [];
+        $fecha = $datos['fecha'] ?? '';
+        $tipo  = $reserva->rama_servicio === 'EVENTOS'
+            ? ($datos['tipo_evento'] ?? 'evento')
+            : 'reserva';
+
+        return [
+            "✅ Tu *{$tipo}*" . ($fecha ? " del {$fecha}" : '') . " fue cancelada correctamente.\n\nSi fue un error o querés reprogramar, respondé este mensaje y un asesor te va a ayudar. ¡Hasta pronto! 🌿",
+        ];
     }
 
     private function getMessageForStep(BotSession $session): array

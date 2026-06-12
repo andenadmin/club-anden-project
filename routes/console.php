@@ -29,6 +29,13 @@ foreach ([7, 11, 15, 19, 23] as $hora) {
         ->appendOutputTo(storage_path('logs/auto-confirm-restaurante.log'));
 }
 
+// Recordatorios de eventos: corre a las 10 hs todos los días.
+// Busca reservas de EVENTOS en las próximas 48hs que no recibieron recordatorio aún.
+Schedule::command('reservas:recordatorio-eventos', ['--horas=48'])
+    ->dailyAt('10:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/recordatorios-eventos.log'));
+
 // §6.1.C — cap automático a las 12h sobre takeovers de asesor.
 // Cada 10 min escanea sesiones con motivo_pausa = ASESOR_TAKEOVER y timestamp_pausa <= now-12h,
 // las resetea a INICIO y manda MSG_TIMEOUT_ASESOR al usuario.

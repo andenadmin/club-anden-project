@@ -19,6 +19,24 @@
 return [
 
     [
+        'id'          => 'recordatorio_evento',
+        'name'        => 'recordatorio_evento',
+        'language'    => 'es_AR',
+        'label'       => 'Recordatorio de evento',
+        'description' => 'Recordar al cliente su evento próximo con opciones de info o cancelación',
+        'preview'     => 'Hola {{nombre}}, te recordamos que el evento *{{evento}}* es el próximo {{fecha}}. Para confirmar tu lugar o consultar, respondé este mensaje. ¡Te esperamos!',
+        'variables'   => [
+            ['key' => 'nombre', 'label' => 'Nombre del cliente'],
+            ['key' => 'evento', 'label' => 'Nombre del evento'],
+            ['key' => 'fecha',  'label' => 'Fecha (ej: 14 de junio)'],
+        ],
+        'buttons'     => [
+            ['type' => 'QUICK_REPLY', 'text' => 'INFO'],
+            ['type' => 'QUICK_REPLY', 'text' => 'CANCELAR'],
+        ],
+    ],
+
+    [
         'id'          => 'recordatorio_reserva',
         'name'        => 'recordatorio_reserva',   // ← reemplazar con nombre real aprobado
         'language'    => 'es_AR',

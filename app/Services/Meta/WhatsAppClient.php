@@ -80,6 +80,55 @@ class WhatsAppClient
     }
 
     /**
+     * Envía una plantilla aprobada por Meta al número indicado.
+     * $variables puede ser un array asociativo (clave = parameter_name) para plantillas
+     * con variables nombradas, o indexado para plantillas con {{1}}, {{2}}, etc.
+     *
+     * @throws MetaApiException
+     */
+    public function sendTemplate(string $to, string $templateName, string $languageCode, array $variables = []): string
+    {
+        $parameters = [];
+        $isNamed    = !empty($variables) && array_keys($variables) !== range(0, count($variables) - 1);
+
+        foreach ($variables as $key => $value) {
+            $param = ['type' => 'text', 'text' => (string) $value];
+            if ($isNamed) {
+                $param['parameter_name'] = $key;
+            }
+            $parameters[] = $param;
+        }
+
+        $template = [
+            'name'     => $templateName,
+            'language' => ['code' => $languageCode],
+        ];
+        if (!empty($parameters)) {
+            $template['components'] = [
+                ['type' => 'body', 'parameters' => $parameters],
+            ];
+        }
+
+        $response = $this->request('POST', "{$this->phoneNumberId}/messages", [
+            'messaging_product' => 'whatsapp',
+            'to'                => $to,
+            'type'              => 'template',
+            'template'          => $template,
+        ]);
+
+        $waId = data_get($response, 'messages.0.id');
+        if (!$waId) {
+            throw new MetaApiException(
+                'Meta no devolvió wa_message_id: ' . json_encode($response),
+                MetaApiException::KIND_UNKNOWN,
+                rawResponse: $response,
+            );
+        }
+
+        return $waId;
+    }
+
+    /**
      * Marca un mensaje entrante como leído (doble tilde azul en el lado del usuario).
      * Es best-effort: si falla, no interrumpe el procesamiento.
      */
