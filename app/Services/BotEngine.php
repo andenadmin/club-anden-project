@@ -95,6 +95,22 @@ class BotEngine
             return [];
         }
 
+        // Auto-reset tras 24h de inactividad en cualquier flujo activo
+        if ($session->estado_actual !== 'INICIO'
+            && $session->last_message_at
+            && Carbon::now()->diffInHours($session->last_message_at, false) <= -24
+        ) {
+            $session->mergeEstado([
+                'estado_actual'      => 'INICIO',
+                'rama_activa'        => null,
+                'subtipo_activo'     => null,
+                'current_step'       => null,
+                'datos_parciales'    => [],
+                'contador_invalidos' => 0,
+            ]);
+            return $this->handleInicio($session);
+        }
+
         // Trigger global de escalado (prioridad absoluta)
         // Excepción: en pasos donde 0 es una cantidad válida, solo escalar con palabras clave
         $lower = strtolower(trim($text));
