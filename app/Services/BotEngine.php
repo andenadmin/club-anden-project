@@ -612,7 +612,7 @@ class BotEngine
                 if (!$modalidad) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_MODALIDAD')]);
                 }
-                $this->saveDato($session, 'modalidad', strtoupper(trim($text)));
+                $this->saveDato($session, 'modalidad', BotMessages::findOptionKey('MSG_EVT_MODALIDAD', $text) ?? strtoupper(trim($text)));
                 return $this->nextStep($session, 'fecha', 'MSG_EVT_02');
 
             case 'fecha':
@@ -1160,7 +1160,9 @@ class BotEngine
         }
 
         // 2da opción = cambiar
-        if (isset($keys[1]) && $upper === $keys[1]) {
+        $esCambiar = ($upper === ($keys[1] ?? 'CAMBIAR'))
+            || in_array($lower, ['cambiar', 'cambio', 'modificar'], true);
+        if ($esCambiar) {
             $this->saveDato($session, 'cambiando_paso', null);
             $session->mergeEstado(['estado_actual' => 'CAMBIANDO_DATO', 'contador_invalidos' => 0]);
             if ($session->rama_activa === 'RESTAURANTE') {
@@ -2276,6 +2278,15 @@ class BotEngine
         }
 
         if ($normalized !== '') {
+            // dd/mm/yyyy (año 4 dígitos)
+            if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $normalized, $m)) {
+                try {
+                    $date = Carbon::createFromFormat('d/m/Y',
+                        str_pad($m[1],2,'0',STR_PAD_LEFT).'/'.str_pad($m[2],2,'0',STR_PAD_LEFT).'/'.$m[3]
+                    )->startOfDay();
+                    return $date->lt(Carbon::today()) ? null : $date;
+                } catch (\Throwable) { return null; }
+            }
             // dd/mm/yy
             if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $normalized, $m)) {
                 try {
@@ -2293,7 +2304,7 @@ class BotEngine
                         str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
                         now()->year
                     )->startOfDay();
-                    if ($date->lt(Carbon::today())) $date->addYear();
+                    if ($date->lt(Carbon::today()) && now()->month >= 11) $date->addYear();
                     return $date;
                 } catch (\Throwable) { return null; }
             }
@@ -2391,6 +2402,18 @@ class BotEngine
     {
         $text = trim(str_replace(['-', '.'], '/', $raw));
 
+        // dd/mm/yyyy (año 4 dígitos)
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $text, $m)) {
+            try {
+                return Carbon::createFromFormat(
+                    'd/m/Y',
+                    str_pad($m[1], 2, '0', STR_PAD_LEFT) . '/' .
+                    str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
+                    $m[3]
+                )->startOfDay();
+            } catch (\Throwable) { return null; }
+        }
+
         // dd/mm/yy
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/', $text, $m)) {
             try {
@@ -2403,14 +2426,18 @@ class BotEngine
             } catch (\Throwable) { return null; }
         }
 
-        // dd/mm — usa siempre el año corriente; si ya pasó, el llamador informa al usuario
+        // dd/mm — infiere año siguiente solo en noviembre/diciembre
         if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $text, $m)) {
             try {
-                return Carbon::createFromFormat('d/m/Y',
+                $date = Carbon::createFromFormat('d/m/Y',
                     str_pad($m[1], 2, '0', STR_PAD_LEFT) . '/' .
                     str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
                     now()->year
                 )->startOfDay();
+                if ($date->lt(Carbon::today()) && now()->month >= 11) {
+                    $date->addYear();
+                }
+                return $date;
             } catch (\Throwable) { return null; }
         }
 
@@ -2427,7 +2454,7 @@ class BotEngine
                 $month = $monthMap[$m[2]];
                 $year  = isset($m[3]) && $m[3] ? (int)$m[3] : now()->year;
                 $date  = Carbon::createFromDate($year, $month, $day)->startOfDay();
-                if (!$date->isAfter(Carbon::today())) $date->addYear();
+                if (!$date->isAfter(Carbon::today()) && !isset($m[3]) && now()->month >= 11) $date->addYear();
                 return $date;
             } catch (\Throwable) { return null; }
         }

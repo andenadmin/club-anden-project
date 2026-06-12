@@ -183,11 +183,40 @@ class BotMessages
         return $options;
     }
 
-    /** Devuelve el label de la opción o null si no existe. */
+    /** Devuelve el label de la opción o null si no existe. Acepta tanto clave como label (case-insensitive). */
     public static function resolveOption(string $id, string $input, array $vars = []): ?string
     {
-        $opts = self::parseOptions($id, $vars);
-        return $opts[strtoupper(trim($input))] ?? null;
+        $opts  = self::parseOptions($id, $vars);
+        $upper = strtoupper(trim($input));
+
+        if (isset($opts[$upper])) return $opts[$upper];
+
+        // Label match (case-insensitive)
+        $normalInput = mb_strtolower(trim($input));
+        foreach ($opts as $label) {
+            if (mb_strtolower($label) === $normalInput) return $label;
+        }
+
+        return null;
+    }
+
+    /**
+     * Devuelve la CLAVE de la opción coincidente, buscando tanto por clave como por label (case-insensitive).
+     * Útil cuando se necesita guardar la clave, no el label.
+     */
+    public static function findOptionKey(string $id, string $input, array $vars = []): ?string
+    {
+        $opts  = self::parseOptions($id, $vars);
+        $upper = strtoupper(trim($input));
+
+        if (isset($opts[$upper])) return $upper;
+
+        $normalInput = mb_strtolower(trim($input));
+        foreach ($opts as $key => $label) {
+            if (mb_strtolower($label) === $normalInput) return $key;
+        }
+
+        return null;
     }
 
     public static function resolveFechaRestaurante(string $opcion): ?string
@@ -223,12 +252,12 @@ class BotMessages
     public static function sectorRestaurante(string $opcion): ?string
     {
         return match(strtoupper(trim($opcion))) {
-            'A' => 'Salón',
-            'B' => 'Galería',
-            'C' => 'Terraza',
-            'D' => 'Parrilla',
-            'E' => 'Patio',
-            'F' => 'Sin preferencia',
+            'A', 'SALON', 'SALÓN' => 'Salón',
+            'B', 'GALERIA', 'GALERÍA' => 'Galería',
+            'C', 'TERRAZA' => 'Terraza',
+            'D', 'PARRILLA' => 'Parrilla',
+            'E', 'PATIO' => 'Patio',
+            'F', 'SIN PREFERENCIA' => 'Sin preferencia',
             default => null,
         };
     }
