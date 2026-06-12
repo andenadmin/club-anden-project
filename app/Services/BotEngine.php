@@ -2276,6 +2276,7 @@ class BotEngine
 
         [$inputH, $inputM] = array_map('intval', explode(':', $parsed));
 
+        // Intentar matchear con un turno predefinido del mensaje
         $opts = BotMessages::parseOptions('MSG_RES_02');
         foreach ($opts as $key => $label) {
             if ($key === '0') continue;
@@ -2286,7 +2287,10 @@ class BotEngine
             }
         }
 
-        return null;
+        // No coincidió con ningún turno: aceptar la hora libre tal como fue ingresada
+        return $inputM === 0
+            ? "{$inputH}:00 hs"
+            : sprintf('%d:%02d hs', $inputH, $inputM);
     }
 
     private function isCancelOrModifyText(string $text): bool
