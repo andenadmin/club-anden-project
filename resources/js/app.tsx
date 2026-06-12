@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
-import { PanelNotificationsBanner } from '@/components/panel-notifications-banner';
+import { NotificationsPermissionDialog, PanelNotificationsBanner } from '@/components/panel-notifications-banner';
 import { TestToolbar } from '@/components/test-toolbar';
 import { playNotificationSound } from '@/hooks/use-notification-sound';
 import { fireWebNotification } from '@/hooks/use-web-notifications';
@@ -151,6 +151,7 @@ createInertiaApp({
                 {app}
                 <Toaster />
                 <PanelNotificationsBanner />
+                <NotificationsPermissionDialog />
                 <GlobalAlertPoller />
                 <TestToolbar />
             </TooltipProvider>

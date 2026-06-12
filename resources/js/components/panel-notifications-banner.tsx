@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle, Clock, Info, X } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Bell, CheckCircle, Clock, Info, X } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -9,6 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { useWebNotifications } from '@/hooks/use-web-notifications';
 
 interface PanelNotification {
     id: number;
@@ -173,6 +174,79 @@ function BannerItem({
                 )}
             </div>
         </div>
+    );
+}
+
+// ─── Dialog de permisos de notificaciones ────────────────────────────────────
+
+const SUPPORTED = typeof window !== 'undefined' && 'Notification' in window;
+const DISMISS_KEY = 'notif_perm_dismissed';
+const DISMISS_TTL = 24 * 60 * 60 * 1000;
+
+function wasDismissedRecently(): boolean {
+    try {
+        const ts = localStorage.getItem(DISMISS_KEY);
+        return !!ts && Date.now() - parseInt(ts, 10) < DISMISS_TTL;
+    } catch { return false; }
+}
+
+export function NotificationsPermissionDialog() {
+    const [open, setOpen] = useState(false);
+    const { permission, requestPermission } = useWebNotifications();
+
+    useEffect(() => {
+        if (!SUPPORTED || permission === 'granted') return;
+        if (wasDismissedRecently()) return;
+        const t = setTimeout(() => setOpen(true), 800);
+        return () => clearTimeout(t);
+    }, [permission]);
+
+    if (!open || !SUPPORTED || permission === 'granted') return null;
+
+    const isBlocked = permission === 'denied';
+
+    const handleActivar = async () => {
+        await requestPermission();
+        setOpen(false);
+    };
+
+    const handleDismiss = () => {
+        try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
+        setOpen(false);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={handleDismiss}>
+            <DialogContent className="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Bell className="size-5 shrink-0" />
+                        {isBlocked ? 'Notificaciones bloqueadas' : 'Activá las notificaciones'}
+                    </DialogTitle>
+                    <DialogDescription className="pt-2 text-sm leading-relaxed">
+                        {isBlocked
+                            ? 'Bloqueaste las notificaciones en este navegador. Para recibir alertas de nuevas reservas y mensajes sin respuesta, habilitarlas manualmente desde la configuración del sitio en tu navegador.'
+                            : 'Sin notificaciones activadas no vas a recibir alertas de nuevas reservas ni avisos de mensajes sin respuesta, incluso si tenés otra pestaña abierta.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                        onClick={handleDismiss}
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-secondary hover:bg-secondary/80 text-secondary-foreground transition-colors"
+                    >
+                        Ahora no
+                    </button>
+                    {!isBlocked && (
+                        <button
+                            onClick={handleActivar}
+                            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
+                        >
+                            Activar notificaciones
+                        </button>
+                    )}
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
 
