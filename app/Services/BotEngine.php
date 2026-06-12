@@ -617,8 +617,14 @@ class BotEngine
 
             case 'fecha':
                 $dateFut = $this->parseEventDate($text);
-                if (!$dateFut || !$dateFut->isAfter(Carbon::today())) {
+                if (!$dateFut) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                if (!$dateFut->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [
+                        BotMessages::render('MSG_EVT_FECHA_PASADA'),
+                        BotMessages::render('MSG_EVT_02'),
+                    ]);
                 }
                 $fechaStrFut  = $dateFut->format('d/m/y');
                 $esFeriadoFut = Feriado::esFeriado($fechaStrFut);
@@ -762,8 +768,14 @@ class BotEngine
         switch ($step) {
             case 'fecha':
                 $datePad = $this->parseEventDate($text);
-                if (!$datePad || !$datePad->isAfter(Carbon::today())) {
+                if (!$datePad) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                if (!$datePad->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [
+                        BotMessages::render('MSG_EVT_FECHA_PASADA'),
+                        BotMessages::render('MSG_EVT_02'),
+                    ]);
                 }
                 $fechaStrPad  = $datePad->format('d/m/y');
                 $esFeriadoPad = Feriado::esFeriado($fechaStrPad);
@@ -900,8 +912,14 @@ class BotEngine
         switch ($step) {
             case 'fecha':
                 $dateHok = $this->parseEventDate($text);
-                if (!$dateHok || !$dateHok->isAfter(Carbon::today())) {
+                if (!$dateHok) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                if (!$dateHok->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [
+                        BotMessages::render('MSG_EVT_FECHA_PASADA'),
+                        BotMessages::render('MSG_EVT_02'),
+                    ]);
                 }
                 $fechaStrHok  = $dateHok->format('d/m/y');
                 $esFeriadoHok = Feriado::esFeriado($fechaStrHok);
@@ -1050,8 +1068,14 @@ class BotEngine
         switch ($step) {
             case 'fecha':
                 $dateGen = $this->parseEventDate($text);
-                if (!$dateGen || !$dateGen->isAfter(Carbon::today())) {
+                if (!$dateGen) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_02')]);
+                }
+                if (!$dateGen->isAfter(Carbon::today())) {
+                    return $this->handleInvalid($session, fn () => [
+                        BotMessages::render('MSG_EVT_FECHA_PASADA'),
+                        BotMessages::render('MSG_EVT_02'),
+                    ]);
                 }
                 $fechaStrGen  = $dateGen->format('d/m/y');
                 $esFeriadoGen = Feriado::esFeriado($fechaStrGen);
@@ -1420,6 +1444,12 @@ class BotEngine
         }
 
         $result = $this->validateAndSaveCambioEvento($session, $cambiandoPaso, $text);
+        if ($result === 'fecha_pasada') {
+            return $this->handleInvalid($session, fn () => [
+                BotMessages::render('MSG_EVT_FECHA_PASADA'),
+                BotMessages::render('MSG_EVT_02'),
+            ]);
+        }
         if ($result === false) {
             $esSubtipoNinosC = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
             if ($cambiandoPaso === 'hora_inicio' && $esSubtipoNinosC && $subtipo !== 'HOCKEY') {
@@ -1465,7 +1495,8 @@ class BotEngine
         switch ($campo) {
             case 'fecha':
                 $date = $this->parseEventDate($text);
-                if (!$date || !$date->isAfter(Carbon::today())) return false;
+                if (!$date) return false;
+                if (!$date->isAfter(Carbon::today())) return 'fecha_pasada';
                 $fechaStr  = $date->format('d/m/y');
                 $esFeriado = Feriado::esFeriado($fechaStr);
                 $this->saveDato($session, 'fecha', $fechaStr);
@@ -2372,18 +2403,14 @@ class BotEngine
             } catch (\Throwable) { return null; }
         }
 
-        // dd/mm — infiere año: usa el corriente si es futuro, el siguiente si ya pasó
+        // dd/mm — usa siempre el año corriente; si ya pasó, el llamador informa al usuario
         if (preg_match('/^(\d{1,2})\/(\d{1,2})$/', $text, $m)) {
             try {
-                $date = Carbon::createFromFormat('d/m/Y',
+                return Carbon::createFromFormat('d/m/Y',
                     str_pad($m[1], 2, '0', STR_PAD_LEFT) . '/' .
                     str_pad($m[2], 2, '0', STR_PAD_LEFT) . '/' .
                     now()->year
                 )->startOfDay();
-                if (!$date->isAfter(Carbon::today())) {
-                    $date->addYear();
-                }
-                return $date;
             } catch (\Throwable) { return null; }
         }
 

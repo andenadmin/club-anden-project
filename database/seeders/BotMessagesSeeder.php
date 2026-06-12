@@ -198,6 +198,12 @@ class BotMessagesSeeder extends Seeder
                 'content'  => "¿Para qué fecha es el evento?\n\nIngresá la fecha (ejemplos válidos: *15/08/26*, *15-08-26*, *15/08*, *15-08*).\nLa fecha tiene que ser posterior al día de hoy.\n\nEscribí *0* para hablar con un asesor.",
             ],
             [
+                'key'      => 'MSG_EVT_FECHA_PASADA',
+                'category' => 'eventos',
+                'label'    => 'Eventos — fecha ya pasó',
+                'content'  => "Esa fecha ya pasó. Por favor ingresá una fecha posterior al día de hoy.",
+            ],
+            [
                 'key'      => 'MSG_EVT_FERIADO_AVISO',
                 'category' => 'eventos',
                 'label'    => 'Eventos — aviso fecha feriado',
