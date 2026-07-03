@@ -54,7 +54,12 @@
       "Bash(git merge worktree-agent-a71e53a8 --no-ff -m ' *)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3 -c \"import datetime; print\\(datetime.date\\(2026,7,3\\).strftime\\('%A'\\)\\)\")",
+      "PowerShell(cd \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\"; php artisan tinker --execute=\"echo App\\\\Models\\\\Feriado::whereBetween\\('fecha', ['2026-06-25','2026-07-10']\\)->get\\(\\)->map\\(fn\\(\\\\$f\\)=>\\\\$f->fecha.' '.\\\\$f->nombre\\)->implode\\(PHP_EOL\\);\")",
+      "PowerShell(cd \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\"; \\(Get-Command php\\).Source)",
+      "Bash(git rebase *)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
     ]
   }
 }

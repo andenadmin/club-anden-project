@@ -35,6 +35,11 @@ export const STEP_LABELS: Record<string, string> = {
     menu_adultos:               'Menú adultos',
 };
 
+export const MODALIDAD_LABELS: Record<string, string> = {
+    '1': 'Combo Futbolero',
+    '2': 'Combo Animación Deportiva',
+};
+
 export const MOTIVO_PAUSA_LABELS: Record<string, string> = {
     SOLICITUD_CLIENTE:             'Solicitud del cliente',
     OPCIONES_INVALIDAS_REITERADAS: 'Opciones inválidas reiteradas',

@@ -5,6 +5,7 @@ import {
     ESTADO_LABELS,
     labelize,
     labelizeStep,
+    MODALIDAD_LABELS,
     MOTIVO_PAUSA_LABELS,
     RAMA_LABELS,
     SUBTIPO_LABELS,
@@ -61,8 +62,10 @@ function Pill({ children }: { children: React.ReactNode }) {
     );
 }
 
-function formatDato(v: unknown): string {
+function formatDato(key: string, v: unknown): string {
     if (v === null || v === undefined) return '—';
+    if (key === 'modalidad') return MODALIDAD_LABELS[String(v)] ?? String(v);
+    if (key === 'es_feriado') return Number(v) === 1 ? 'Sí' : 'No';
     if (typeof v === 'boolean') return v ? 'Sí' : 'No';
     if (Array.isArray(v)) return v.length === 0 ? '—' : v.map(x => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ');
     if (typeof v === 'object') return JSON.stringify(v);
@@ -211,7 +214,7 @@ export function SessionSummary({
                                 <Row
                                     key={k}
                                     label={labelizeStep(k)}
-                                    value={formatDato(v)}
+                                    value={formatDato(k, v)}
                                 />
                             ))}
                     </>

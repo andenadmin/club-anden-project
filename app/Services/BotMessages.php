@@ -257,13 +257,28 @@ class BotMessages
 
     public static function sectorRestaurante(string $opcion): ?string
     {
-        return match(strtoupper(trim($opcion))) {
-            'A', 'SALON', 'SALÓN' => 'Salón',
-            'B', 'GALERIA', 'GALERÍA' => 'Galería',
-            'C', 'TERRAZA' => 'Terraza',
-            'D', 'PARRILLA' => 'Parrilla',
-            'E', 'PATIO' => 'Patio',
-            'F', 'SIN PREFERENCIA' => 'Sin preferencia',
+        $porLetra = match(strtoupper(trim($opcion))) {
+            'A' => 'Salón',
+            'B' => 'Galería',
+            'C' => 'Terraza',
+            'D' => 'Parrilla',
+            'E' => 'Patio',
+            'F' => 'Sin preferencia',
+            default => null,
+        };
+        if ($porLetra) return $porLetra;
+
+        // Acepta también el nombre del sector escrito en texto libre (sin tilde, cualquier caso).
+        $normalizado = strtr(mb_strtolower(trim($opcion)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+        return match(true) {
+            str_contains($normalizado, 'salon')                                        => 'Salón',
+            str_contains($normalizado, 'galeria')                                       => 'Galería',
+            str_contains($normalizado, 'terraza')                                       => 'Terraza',
+            str_contains($normalizado, 'parrilla')                                      => 'Parrilla',
+            str_contains($normalizado, 'patio')                                         => 'Patio',
+            str_contains($normalizado, 'sin preferencia')
+                || str_contains($normalizado, 'cualquiera')
+                || str_contains($normalizado, 'indistinto')                            => 'Sin preferencia',
             default => null,
         };
     }

@@ -2,11 +2,17 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Heartbeat: confirma en laravel.log que el cron de Forge está efectivamente
+// disparando `schedule:run`, sin depender de si algún comando individual falla.
+Schedule::call(fn () => Log::info('[SCHEDULER] heartbeat — schedule:run se ejecutó'))
+    ->everyMinute();
 
 // Sincroniza feriados el 1ro de cada mes: actualiza el año en curso
 // y el siguiente (por si hay reservas a futuro en diciembre).
@@ -42,4 +48,7 @@ Schedule::command('reservas:recordatorio-eventos', ['--horas=48'])
 Schedule::command('inbox:sweep-takeovers')
     ->everyTenMinutes()
     ->withoutOverlapping()
-    ->appendOutputTo(storage_path('logs/inbox-sweep.log'));
+    ->appendOutputTo(storage_path('logs/inbox-sweep.log'))
+    ->before(fn () => Log::info('[SCHEDULER] inbox:sweep-takeovers — iniciando'))
+    ->after(fn () => Log::info('[SCHEDULER] inbox:sweep-takeovers — finalizado'))
+    ->onFailure(fn () => Log::error('[SCHEDULER] inbox:sweep-takeovers — FALLÓ'));
