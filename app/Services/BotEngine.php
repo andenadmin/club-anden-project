@@ -383,16 +383,11 @@ class BotEngine
                     if ($fechaGuardada) {
                         $carbonFechaR = Carbon::createFromFormat('d/m/y', $fechaGuardada);
                         if ($carbonFechaR->isSameDay(Carbon::today())) {
-                            // Extraer hora del label ("Turno noche 1: 20 hs", "11.30 hs", etc.)
-                            if (preg_match('/\b(\d{1,2})[.,](\d{2})\s*hs/i', $hora, $hm)) {
-                                $horaMin = (int)$hm[1] * 60 + (int)$hm[2];
-                            } elseif (preg_match('/\b(\d{1,2})\s*hs/i', $hora, $hm)) {
-                                $horaMin = (int)$hm[1] * 60;
-                            } else {
-                                $horaMin = null;
-                            }
-                            $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
-                            if ($horaMin !== null && $horaMin <= $ahoraMin) {
+                            // $hora ya viene normalizada como "HH:MM" desde resolveHoraRestaurante().
+                            [$hh, $mm] = array_map('intval', explode(':', $hora));
+                            $horaMin   = $hh * 60 + $mm;
+                            $ahoraMin  = Carbon::now()->hour * 60 + Carbon::now()->minute;
+                            if ($horaMin <= $ahoraMin) {
                                 return $this->filterMsgs([
                                     BotMessages::render('MSG_RES_HORA_PASADA'),
                                     BotMessages::render('MSG_RES_02'),
@@ -2345,33 +2340,38 @@ class BotEngine
 
     /**
      * Resuelve la opción de hora para restaurante.
-     * Acepta clave directa (1-4) o texto libre con hora ("20hs", "20", "20:00").
+     * Acepta la letra de la opción vigente en MSG_RES_02 (cualquiera sea su texto actual)
+     * o cualquier horario en texto libre ("20hs", "20", "20:00", "8pm") dentro del rango de
+     * atención configurado en RestaurantConfig — no depende de que el horario tipeado
+     * coincida con uno de los turnos listados en el mensaje, así el club puede cambiar
+     * los turnos sugeridos (o simplificar el mensaje) sin romper la validación.
      */
     private function resolveHoraRestaurante(string $text): ?string
     {
         $direct = BotMessages::resolveOption('MSG_RES_02', $text);
-        if ($direct) return $direct;
+        if ($direct) return $this->extractHoraDeLabel($direct) ?? $direct;
 
         $parsed = $this->parseEventTime($text);
         if (!$parsed) return null;
 
-        [$inputH, $inputM] = array_map('intval', explode(':', $parsed));
+        [$h, $m] = array_map('intval', explode(':', $parsed));
+        $config  = \App\Models\RestaurantConfig::get();
+        if ($h < $config->reserva_hora_desde || $h > $config->reserva_hora_hasta) return null;
+        if ($h === $config->reserva_hora_hasta && $m > 0) return null;
 
-        // Intentar matchear con un turno predefinido del mensaje
-        $opts = BotMessages::parseOptions('MSG_RES_02');
-        foreach ($opts as $key => $label) {
-            if ($key === '0') continue;
-            if (preg_match('/(\d{1,2})[.,](\d{2})\s*hs/i', $label, $m)) {
-                if ((int)$m[1] === $inputH && (int)$m[2] === $inputM) return $label;
-            } elseif (preg_match('/(\d{1,2})\s*hs/i', $label, $m)) {
-                if ((int)$m[1] === $inputH && $inputM === 0) return $label;
-            }
+        return $parsed;
+    }
+
+    /** Extrae "HH:MM" de un label de opción de horario (ej. "Turno noche 1: 20 hs" → "20:00"). */
+    private function extractHoraDeLabel(string $label): ?string
+    {
+        if (preg_match('/(\d{1,2})[.,:](\d{2})\s*hs/i', $label, $m)) {
+            return sprintf('%02d:%02d', (int)$m[1], (int)$m[2]);
         }
-
-        // No coincidió con ningún turno: aceptar la hora libre tal como fue ingresada
-        return $inputM === 0
-            ? "{$inputH}:00 hs"
-            : sprintf('%d:%02d hs', $inputH, $inputM);
+        if (preg_match('/(\d{1,2})\s*hs/i', $label, $m)) {
+            return sprintf('%02d:00', (int)$m[1]);
+        }
+        return null;
     }
 
     private function isCancelOrModifyText(string $text): bool

@@ -16,6 +16,8 @@ class RestaurantConfig extends Model
         'patio_capacidad',
         'capacidad_pct',
         'sector_alerta_pct',
+        'reserva_hora_desde',
+        'reserva_hora_hasta',
         'salon_cerrado',
         'galeria_cerrado',
         'terraza_cerrado',
@@ -45,6 +47,8 @@ class RestaurantConfig extends Model
                 'patio_capacidad'    => 79,
                 'capacidad_pct'      => 100,
                 'sector_alerta_pct'  => 70,
+                'reserva_hora_desde' => 9,
+                'reserva_hora_hasta' => 22,
             ]);
         }
         return self::$cached;
