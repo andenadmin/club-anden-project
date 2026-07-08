@@ -7,15 +7,12 @@ use App\Models\ConversationMessage;
 use App\Services\BotEngine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BotSimulatorController extends Controller
 {
-    /**
-     * Número fijo del simulador. Se usa para hidratar la conversación de prueba al cargar la vista.
-     * En producción (bot real) cada usuario tiene su propio número y la inbox los muestra agrupados.
-     */
     private const SIMULATOR_FROM = '5491100000001';
 
     public function index(): Response
@@ -52,13 +49,23 @@ class BotSimulatorController extends Controller
             'message'         => 'required|string|max:1000',
         ]);
 
-        $from     = $request->input('numero_contacto');
-        $text     = $request->input('message');
-        $messages = $engine->process($from, $text);
+        $from = $request->input('numero_contacto');
+        $text = $request->input('message');
+
+        try {
+            $messages = $engine->process($from, $text);
+        } catch (\Throwable $e) {
+            Log::error('@BotSimulatorController-message: error en BotEngine::process', [
+                'from'  => $from,
+                'text'  => $text,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'Error interno al procesar el mensaje. Revisá los logs.'], 500);
+        }
 
         $session = BotSession::where('numero_contacto', $from)->first();
 
-        // El simulador loguea outbound directamente (no pasa por Meta, no hay wa_message_id).
         if ($session) {
             foreach ($messages as $body) {
                 $engine->logOutbound($session, $body);
@@ -84,7 +91,6 @@ class BotSimulatorController extends Controller
         $session = BotSession::where('numero_contacto', $from)->first();
 
         if ($session) {
-            // Borra mensajes primero por la FK con cascade (igual lo hacemos explícito por claridad).
             $session->messages()->delete();
             $session->delete();
         }

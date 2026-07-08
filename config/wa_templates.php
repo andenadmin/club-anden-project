@@ -75,4 +75,17 @@ return [
         ],
     ],
 
+    [
+        'id'          => 'saludo_inicial',
+        'name'        => 'saludo_inicial',
+        'language'    => 'es_AR',
+        'label'       => 'Saludo inicial',
+        'description' => 'Iniciar contacto con un usuario nuevo o retomar después de más de 24 horas',
+        'preview'     => "¡Hola! 👋 Un asesor quiere comunicarse con vos,",
+        'variables'   => [],
+        'buttons'     => [
+            ['type' => 'QUICK_REPLY', 'text' => '¡Charlemos!'],
+        ],
+    ],
+
 ];

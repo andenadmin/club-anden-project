@@ -79,7 +79,7 @@ class CrmController extends Controller
                     $crm?->fecha_ultimo_evento?->format('d/m/Y') ?? '',
                     $etiquetas,
                     $crm?->notas ?? '',
-                    $c->created_at->format('d/m/Y'),
+                    $c->created_at?->format('d/m/Y') ?? '',
                 ]);
             }
 

@@ -7,6 +7,7 @@ use App\Services\BotMessageOptionsRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class BotMessageOptionsController extends Controller
@@ -20,13 +21,6 @@ class BotMessageOptionsController extends Controller
         return $ts && now()->diffInMinutes($ts, true) < self::LOCK_MINUTES;
     }
 
-    /**
-     * Guarda todas las opciones editadas de un mensaje de una — un solo botón en el
-     * panel, un solo request. Solo acepta label/orden/activo por opción — nunca
-     * `value` ni `options_key`. Eso es lo que impide técnicamente que el admin invente
-     * una rama de negocio nueva desde acá: el `value` (de lo que rutea el bot) queda
-     * siempre fijo, pase lo que pase.
-     */
     public function update(Request $request): RedirectResponse
     {
         if (!$this->isUnlocked()) {
@@ -44,20 +38,32 @@ class BotMessageOptionsController extends Controller
         $options = BotMessageOption::whereIn('id', collect($data['options'])->pluck('id'))->get()->keyBy('id');
 
         foreach ($data['options'] as $o) {
-            if (BotMessageOptionsRegistry::get($options[$o['id']]->options_key) === null) {
-                abort(404);
+            $optionsKey = $options[$o['id']]->options_key ?? null;
+            if (BotMessageOptionsRegistry::get($optionsKey) === null) {
+                Log::warning('@BotMessageOptionsController-update: options_key no encontrado en registry', [
+                    'option_id'   => $o['id'],
+                    'options_key' => $optionsKey,
+                ]);
+                abort(422, 'Opción con options_key inválido.');
             }
         }
 
-        DB::transaction(function () use ($data) {
-            foreach ($data['options'] as $o) {
-                BotMessageOption::where('id', $o['id'])->update([
-                    'label'  => $o['label'],
-                    'orden'  => $o['orden'],
-                    'activo' => $o['activo'],
-                ]);
-            }
-        });
+        try {
+            DB::transaction(function () use ($data) {
+                foreach ($data['options'] as $o) {
+                    BotMessageOption::where('id', $o['id'])->update([
+                        'label'  => $o['label'],
+                        'orden'  => $o['orden'],
+                        'activo' => $o['activo'],
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('@BotMessageOptionsController-update: error en transacción al guardar opciones', [
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['error' => 'No se pudieron guardar las opciones. Intentá de nuevo.']);
+        }
 
         return back()->with('success', 'Opciones actualizadas.');
     }

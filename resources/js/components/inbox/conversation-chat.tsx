@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Info, Send } from 'lucide-react';
+import { CheckCheck, Info, LayoutTemplate, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 export interface ChatMessage {
     id: number;
@@ -9,6 +17,22 @@ export interface ChatMessage {
     body: string;
     wa_status: string | null;
     created_at: string | null;
+}
+
+export interface WaTemplateVariable {
+    key: string;
+    label: string;
+}
+
+export interface WaTemplate {
+    id: string;
+    name: string;
+    language: string;
+    label: string;
+    description: string;
+    preview: string;
+    variables: WaTemplateVariable[];
+    buttons?: { type: string; text: string }[];
 }
 
 const fmtTime = (iso: string | null): string => {
@@ -80,12 +104,178 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     );
 }
 
+function TemplatePicker({
+    open,
+    onClose,
+    templates,
+    numero,
+    onMessageSent,
+}: {
+    open: boolean;
+    onClose: () => void;
+    templates: WaTemplate[];
+    numero: string;
+    onMessageSent: (msg: ChatMessage) => void;
+}) {
+    const [selected, setSelected]   = useState<WaTemplate | null>(null);
+    const [variables, setVariables] = useState<Record<string, string>>({});
+    const [sending, setSending]     = useState(false);
+    const [error, setError]         = useState<string | null>(null);
+
+    const resetAndClose = () => {
+        setSelected(null);
+        setVariables({});
+        setError(null);
+        onClose();
+    };
+
+    const handleSelect = (t: WaTemplate) => {
+        setSelected(t);
+        setVariables({});
+        setError(null);
+    };
+
+    const preview = selected
+        ? selected.preview.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
+            const val = variables[key];
+            return val ? `*${val}*` : `[${key}]`;
+        })
+        : '';
+
+    const send = async () => {
+        if (!selected || sending) return;
+
+        const missing = selected.variables.filter(v => !variables[v.key]?.trim());
+        if (missing.length > 0) {
+            setError(`Completá los campos: ${missing.map(v => v.label).join(', ')}`);
+            return;
+        }
+
+        setSending(true);
+        setError(null);
+        try {
+            const r = await fetch(`/inbox/${numero}/template`, {
+                method:  'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept':       'application/json',
+                    'X-CSRF-TOKEN': csrf(),
+                },
+                body: JSON.stringify({ template_id: selected.id, variables }),
+            });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const data = await r.json() as { message: { id: number; sender: 'user' | 'bot' | 'advisor'; body: string; wa_status: string | null; created_at: string | null } };
+            onMessageSent({
+                id:         data.message.id,
+                direction:  'outbound',
+                sender:     data.message.sender,
+                body:       data.message.body,
+                wa_status:  data.message.wa_status,
+                created_at: data.message.created_at,
+            });
+            resetAndClose();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'No se pudo enviar la plantilla');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={v => !v && resetAndClose()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Enviar plantilla de WhatsApp</DialogTitle>
+                    <DialogDescription>
+                        Usá una plantilla aprobada para contactar al usuario fuera de la ventana de 24 horas.
+                    </DialogDescription>
+                </DialogHeader>
+
+                {!selected ? (
+                    <div className="flex flex-col gap-2">
+                        {templates.map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => handleSelect(t)}
+                                className="text-left border rounded-lg px-4 py-3 hover:bg-accent transition-colors"
+                            >
+                                <p className="text-sm font-medium">{t.label}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{t.description}</p>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        <button
+                            onClick={() => { setSelected(null); setVariables({}); }}
+                            className="self-start flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            ← Elegir otra plantilla
+                        </button>
+
+                        <p className="text-sm font-semibold">{selected.label}</p>
+
+                        {selected.variables.length > 0 && (
+                            <div className="flex flex-col gap-3">
+                                {selected.variables.map(v => (
+                                    <div key={v.key}>
+                                        <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                                            {v.label}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={variables[v.key] ?? ''}
+                                            onChange={e => setVariables(prev => ({ ...prev, [v.key]: e.target.value }))}
+                                            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                                            placeholder={v.label}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="rounded-lg bg-[#dcf8c6] px-4 py-3">
+                            <p className="text-[10px] text-gray-500 mb-1.5 font-medium uppercase tracking-wide">Vista previa</p>
+                            <p
+                                className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed"
+                                dangerouslySetInnerHTML={{ __html: waMd(preview) }}
+                            />
+                        </div>
+
+                        {error && <p className="text-xs text-red-600">{error}</p>}
+                    </div>
+                )}
+
+                <DialogFooter>
+                    <button
+                        onClick={resetAndClose}
+                        className="text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    {selected && (
+                        <button
+                            onClick={() => void send()}
+                            disabled={sending}
+                            className="flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 transition-colors"
+                        >
+                            <Send className="size-3.5" />
+                            {sending ? 'Enviando...' : 'Enviar plantilla'}
+                        </button>
+                    )}
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export function ConversationChat({
     numero,
     nombre,
     messages,
     canReply,
     estadoActual,
+    templates,
     onMessageSent,
     onInfoClick,
 }: {
@@ -94,13 +284,15 @@ export function ConversationChat({
     messages: ChatMessage[];
     canReply: boolean;
     estadoActual: string;
+    templates: WaTemplate[];
     onMessageSent: (msg: ChatMessage) => void;
     onInfoClick?: () => void;
 }) {
-    const [draft, setDraft]     = useState('');
-    const [sending, setSending] = useState(false);
-    const [error, setError]     = useState<string | null>(null);
-    const bottomRef             = useRef<HTMLDivElement>(null);
+    const [draft, setDraft]           = useState('');
+    const [sending, setSending]       = useState(false);
+    const [error, setError]           = useState<string | null>(null);
+    const [templateOpen, setTemplateOpen] = useState(false);
+    const bottomRef                   = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,7 +316,7 @@ export function ConversationChat({
                 body: JSON.stringify({ message: text }),
             });
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            const data = await r.json();
+            const data = await r.json() as { message: { id: number; sender: 'user' | 'bot' | 'advisor'; body: string; wa_status: string | null; created_at: string | null } };
             onMessageSent({
                 id:        data.message.id,
                 direction: 'outbound',
@@ -214,7 +406,26 @@ export function ConversationChat({
                         Pausá el bot para escribirle vos.
                     </p>
                 )}
+                {templates.length > 0 && (
+                    <div className="mt-1.5 flex justify-center">
+                        <button
+                            onClick={() => setTemplateOpen(true)}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-emerald-700 transition-colors"
+                        >
+                            <LayoutTemplate className="size-3.5" />
+                            Enviar plantilla de WhatsApp
+                        </button>
+                    </div>
+                )}
             </div>
+
+            <TemplatePicker
+                open={templateOpen}
+                onClose={() => setTemplateOpen(false)}
+                templates={templates}
+                numero={numero}
+                onMessageSent={msg => { onMessageSent(msg); }}
+            />
         </div>
     );
 }

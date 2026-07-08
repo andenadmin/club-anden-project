@@ -6,12 +6,10 @@ use App\Models\PanelNotification;
 use App\Models\RestaurantConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class PanelNotificationsController extends Controller
 {
-    /**
-     * Retorna todas las notificaciones no leídas, ordenadas por más reciente.
-     */
     public function index(): JsonResponse
     {
         $notifications = PanelNotification::where('leida', false)
@@ -21,9 +19,6 @@ class PanelNotificationsController extends Controller
         return response()->json($notifications);
     }
 
-    /**
-     * Marca una notificación como leída.
-     */
     public function markRead(PanelNotification $notification): JsonResponse
     {
         $notification->update(['leida' => true]);
@@ -31,12 +26,6 @@ class PanelNotificationsController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /**
-     * Ejecuta una acción sobre la notificación según su tipo.
-     * Para tipo `sector_alerta`:
-     *   - accion = 'informar' → cierra el sector en RestaurantConfig y marca como leída.
-     *   - accion = 'mantener' → solo marca como leída.
-     */
     public function action(Request $request, PanelNotification $notification): JsonResponse
     {
         $accion = $request->input('accion');
@@ -44,14 +33,34 @@ class PanelNotificationsController extends Controller
         if ($notification->tipo === 'sector_alerta' && $accion === 'informar') {
             $sector = $notification->payload['sector_key'] ?? null;
 
-            if ($sector && in_array($sector, ['salon', 'galeria', 'terraza', 'parrilla', 'patio'], true)) {
+            if (!$sector) {
+                Log::warning('@PanelNotificationsController-action: sector_key ausente en payload', [
+                    'notification_id' => $notification->id,
+                    'payload'         => $notification->payload,
+                ]);
+            } elseif (!in_array($sector, ['salon', 'galeria', 'terraza', 'parrilla', 'patio'], true)) {
+                Log::warning('@PanelNotificationsController-action: sector_key inválido', [
+                    'notification_id' => $notification->id,
+                    'sector'          => $sector,
+                ]);
+            } else {
                 $config = RestaurantConfig::first();
-                if ($config) {
-                    $config->update([
-                        "{$sector}_cerrado"      => true,
-                        'sectores_cerrado_fecha' => now()->toDateString(),
-                    ]);
-                    RestaurantConfig::clearCache();
+
+                if (!$config) {
+                    Log::error('@PanelNotificationsController-action: RestaurantConfig no existe en BD');
+                } else {
+                    try {
+                        $config->update([
+                            "{$sector}_cerrado"      => true,
+                            'sectores_cerrado_fecha' => now()->toDateString(),
+                        ]);
+                        RestaurantConfig::clearCache();
+                    } catch (\Throwable $e) {
+                        Log::error('@PanelNotificationsController-action: error al cerrar sector', [
+                            'sector' => $sector,
+                            'error'  => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
         }

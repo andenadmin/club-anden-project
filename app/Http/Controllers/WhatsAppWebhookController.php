@@ -28,6 +28,12 @@ class WhatsAppWebhookController extends Controller
             return response((string) $challenge, 200)->header('Content-Type', 'text/plain');
         }
 
+        Log::warning('@WhatsAppWebhookController-verify: verificación fallida', [
+            'mode'        => $mode,
+            'token_match' => $token === $expectedToken,
+            'challenge'   => $challenge,
+        ]);
+
         return response('forbidden', 403);
     }
 
@@ -35,6 +41,7 @@ class WhatsAppWebhookController extends Controller
      * Recibe mensajes entrantes de WhatsApp. Meta espera 200 en <5s, así que
      * hacemos lo mínimo en sincronía (validar firma + parsear) y delegamos
      * el procesamiento real a un job en cola.
+     * IMPORTANTE: siempre devolvemos 200 en errores internos para que Meta no reintente.
      */
     public function receive(Request $request, WhatsAppClient $client): Response
     {
@@ -42,7 +49,10 @@ class WhatsAppWebhookController extends Controller
         $signature = $request->header('X-Hub-Signature-256');
 
         if (!$client->verifyWebhookSignature($rawBody, $signature)) {
-            Log::warning('WhatsApp webhook con firma inválida', ['signature' => $signature]);
+            Log::warning('@WhatsAppWebhookController-receive: firma inválida', [
+                'signature' => $signature,
+                'ip'        => $request->ip(),
+            ]);
             return response('invalid signature', 403);
         }
 
@@ -52,16 +62,31 @@ class WhatsAppWebhookController extends Controller
             return response('ignored', 200);
         }
 
-        $channelMap = WhatsAppChannel::where('is_active', true)->pluck('id', 'phone_number_id');
+        try {
+            $channelMap = WhatsAppChannel::where('is_active', true)->pluck('id', 'phone_number_id');
+        } catch (\Throwable $e) {
+            Log::error('@WhatsAppWebhookController-receive: error cargando canales desde BD', [
+                'error' => $e->getMessage(),
+            ]);
+            return response('ok', 200);
+        }
 
         foreach ($this->extractMessages($payload, $channelMap) as $msg) {
-            ProcessIncomingWhatsAppMessage::dispatch(
-                from:        $msg['from'],
-                body:        $msg['body'],
-                waMessageId: $msg['id'],
-                messageType: $msg['type'] ?? 'text',
-                channelId:   $msg['channel_id'],
-            );
+            try {
+                ProcessIncomingWhatsAppMessage::dispatch(
+                    from:        $msg['from'],
+                    body:        $msg['body'],
+                    waMessageId: $msg['id'],
+                    messageType: $msg['type'] ?? 'text',
+                    channelId:   $msg['channel_id'],
+                );
+            } catch (\Throwable $e) {
+                Log::error('@WhatsAppWebhookController-receive: error despachando job', [
+                    'from'  => $msg['from'],
+                    'wa_id' => $msg['id'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return response('ok', 200);
@@ -79,7 +104,6 @@ class WhatsAppWebhookController extends Controller
     {
         $out = [];
 
-        // Backward compat: if no channels in DB, fall back to single-number config
         $fallbackPhoneNumberId = $channelMap->isEmpty()
             ? config('services.whatsapp.phone_number_id')
             : null;
@@ -89,17 +113,15 @@ class WhatsAppWebhookController extends Controller
                 if (($change['field'] ?? null) !== 'messages') {
                     continue;
                 }
-                $value             = $change['value'] ?? [];
-                $incomingPhoneId   = $value['metadata']['phone_number_id'] ?? null;
+                $value           = $change['value'] ?? [];
+                $incomingPhoneId = $value['metadata']['phone_number_id'] ?? null;
 
-                // Determine channel_id for this message batch
                 if ($channelMap->isNotEmpty()) {
                     if (!$channelMap->has($incomingPhoneId)) {
-                        continue; // not one of our registered channels
+                        continue;
                     }
                     $channelId = $channelMap->get($incomingPhoneId);
                 } else {
-                    // Fallback mode: only accept the single configured number
                     if ($fallbackPhoneNumberId && $incomingPhoneId !== $fallbackPhoneNumberId) {
                         continue;
                     }
@@ -123,8 +145,6 @@ class WhatsAppWebhookController extends Controller
                         continue;
                     }
 
-                    // Para mensajes no-texto: body vacío es aceptable — el job los maneja.
-                    // Para mensajes de texto/button/interactive: descartar si no hay body.
                     $isNonText = !in_array($type, ['text', 'button', 'interactive'], true);
                     if (!$isNonText && $body === '') {
                         continue;

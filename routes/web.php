@@ -69,6 +69,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:30,1')
         ->name('inbox.reply')
         ->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/template',  [InboxController::class, 'sendTemplate'])
+        ->middleware('throttle:10,1')
+        ->name('inbox.template')
+        ->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/read',      [InboxController::class, 'markRead'])->name('inbox.read')->where('numero', '[0-9]+');
     Route::patch('/inbox/{numero}/cliente',  [InboxController::class, 'updateCliente'])->name('inbox.cliente.update')->where('numero', '[0-9]+');
     Route::get('/inbox/archived-list',       [InboxController::class, 'archivedList'])->name('inbox.archived-list');

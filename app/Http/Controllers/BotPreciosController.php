@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CostoEvento;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BotPreciosController extends Controller
@@ -37,6 +38,11 @@ class BotPreciosController extends Controller
         }
 
         $output = fopen('php://temp', 'r+');
+        if (!$output) {
+            Log::error('@BotPreciosController-template: no se pudo abrir php://temp');
+            return back()->withErrors(['error' => 'No se pudo generar el archivo.']);
+        }
+
         foreach ($rows as $row) {
             fputcsv($output, $row);
         }
@@ -56,12 +62,19 @@ class BotPreciosController extends Controller
             'archivo' => ['required', 'file', 'mimes:csv,txt', 'max:512'],
         ]);
 
-        $path    = $request->file('archivo')->getRealPath();
-        $handle  = fopen($path, 'r');
-        $header  = fgetcsv($handle); // saltar encabezado
+        $path   = $request->file('archivo')->getRealPath();
+        $handle = fopen($path, 'r');
+
+        if (!$handle) {
+            Log::error('@BotPreciosController-import: no se pudo abrir el archivo subido', ['path' => $path]);
+            return back()->withErrors(['archivo' => 'No se pudo leer el archivo subido.']);
+        }
+
+        $header = fgetcsv($handle);
 
         if (!$header || !in_array('concepto', $header) || !in_array('precio', $header)) {
             fclose($handle);
+            Log::warning('@BotPreciosController-import: archivo sin columnas requeridas', ['header' => $header]);
             return back()->withErrors(['archivo' => 'El archivo no tiene las columnas "concepto" y "precio".']);
         }
 
@@ -89,6 +102,7 @@ class BotPreciosController extends Controller
                 $actualizados++;
             } else {
                 $errores[] = "Concepto no encontrado: «{$concepto}»";
+                Log::warning('@BotPreciosController-import: concepto no encontrado en BD', ['concepto' => $concepto]);
             }
         }
 

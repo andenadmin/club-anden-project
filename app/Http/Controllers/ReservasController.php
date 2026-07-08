@@ -8,6 +8,7 @@ use App\Models\RestaurantSector;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -17,9 +18,16 @@ class ReservasController extends Controller
 {
     public function index(Request $request): Response
     {
-        $vista  = $request->input('vista', 'dia');
-        $fecha  = $request->input('fecha', Carbon::today()->format('Y-m-d'));
-        $inicio = Carbon::createFromFormat('Y-m-d', $fecha)->startOfDay();
+        $vista = $request->input('vista', 'dia');
+        $fecha = $request->input('fecha', Carbon::today()->format('Y-m-d'));
+
+        try {
+            $inicio = Carbon::createFromFormat('Y-m-d', $fecha)->startOfDay();
+        } catch (\Exception $e) {
+            Log::warning('@ReservasController-index: fecha con formato inválido, usando hoy', ['fecha' => $fecha]);
+            $fecha  = Carbon::today()->format('Y-m-d');
+            $inicio = Carbon::today()->startOfDay();
+        }
 
         $dias = match ($vista) {
             'semana'   => 7,
@@ -93,7 +101,13 @@ class ReservasController extends Controller
                     $fechaNorm = $fechaBot
                         ? Carbon::createFromFormat('d/m/y', $fechaBot)->format('Y-m-d')
                         : null;
-                } catch (\Exception) {}
+                } catch (\Exception $e) {
+                    Log::warning('@ReservasController-index: error parseando fecha de reserva', [
+                        'reserva_id' => $r->id,
+                        'fecha_bot'  => $datos['fecha'] ?? '',
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
 
                 // Los clientes de alta manual sin teléfono real quedan con un numero_contacto
                 // placeholder interno (ver store()) — nunca mostrarlo como si fuera un teléfono.
@@ -192,11 +206,11 @@ class ReservasController extends Controller
 
     public function update(Request $request, Reserva $reserva): RedirectResponse
     {
-        \Log::info('ReservasController@update', [
+        Log::info('@ReservasController-update', [
             'reserva_id'    => $reserva->id,
             'rama_servicio' => $reserva->rama_servicio,
             'subtipo'       => $reserva->subtipo,
-            'input'         => $request->only(['nombre','fecha','hora','numero_personas','mail','estado']),
+            'input'         => $request->only(['nombre', 'fecha', 'hora', 'numero_personas', 'mail', 'estado']),
         ]);
 
         // Además de los sectores activos, se acepta el sector que la reserva ya tenía

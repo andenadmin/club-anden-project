@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
-import { ConversationChat, type ChatMessage } from '@/components/inbox/conversation-chat';
+import { ConversationChat, type ChatMessage, type WaTemplate } from '@/components/inbox/conversation-chat';
 import { ConversationList, type ConversationListItem } from '@/components/inbox/conversation-list';
 import { ResumePromptModal } from '@/components/inbox/resume-prompt-modal';
 import { SessionSummary, type ClienteData, type SessionData } from '@/components/inbox/session-summary';
@@ -28,9 +28,10 @@ interface SelectedConversation {
 interface Props {
     conversations: ConversationListItem[];
     selected:      SelectedConversation | null;
+    templates:     WaTemplate[];
 }
 
-function InboxBody({ conversations: initialConversations, selected }: Props) {
+function InboxBody({ conversations: initialConversations, selected, templates }: Props) {
     const [summaryOpen, setSummaryOpen] = useState(false);
     const [summaryDesktopVisible, setSummaryDesktopVisible] = useState(true);
     const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
@@ -306,6 +307,7 @@ function InboxBody({ conversations: initialConversations, selected }: Props) {
                             messages={messages}
                             canReply={canReply}
                             estadoActual={liveSession?.estado_actual ?? selected.session.estado_actual}
+                            templates={templates}
                             onMessageSent={msg => setOptimisticMessages(p => [...p, msg])}
                             onInfoClick={!summaryDesktopVisible ? () => setSummaryDesktopVisible(true) : undefined}
                         />

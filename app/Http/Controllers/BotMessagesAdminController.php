@@ -10,12 +10,13 @@ use App\Services\BotMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BotMessagesAdminController extends Controller
 {
-    private const SESSION_KEY    = 'bot_messages_unlocked_at';
-    private const LOCK_MINUTES   = 120; // 2 horas
+    private const SESSION_KEY  = 'bot_messages_unlocked_at';
+    private const LOCK_MINUTES = 120;
 
     private function isUnlocked(): bool
     {
@@ -37,6 +38,9 @@ class BotMessagesAdminController extends Controller
         $request->validate(['password' => ['required', 'string']]);
 
         if (trim($request->password) !== trim(config('bot.messages_password', ''))) {
+            Log::warning('@BotMessagesAdminController-unlock: contraseña incorrecta', [
+                'ip' => $request->ip(),
+            ]);
             return back()->withErrors(['password' => 'Contraseña incorrecta.']);
         }
 
@@ -72,7 +76,6 @@ class BotMessagesAdminController extends Controller
         ]);
     }
 
-    /** Guarda todos los sectores editados de una — un solo botón en el panel, un solo request. */
     public function updateSectores(Request $request)
     {
         if (!$this->isUnlocked()) {
@@ -87,15 +90,22 @@ class BotMessagesAdminController extends Controller
             'sectores.*.activo'   => ['required', 'boolean'],
         ]);
 
-        DB::transaction(function () use ($data) {
-            foreach ($data['sectores'] as $s) {
-                RestaurantSector::where('id', $s['id'])->update([
-                    'label'  => $s['label'],
-                    'orden'  => $s['orden'],
-                    'activo' => $s['activo'],
-                ]);
-            }
-        });
+        try {
+            DB::transaction(function () use ($data) {
+                foreach ($data['sectores'] as $s) {
+                    RestaurantSector::where('id', $s['id'])->update([
+                        'label'  => $s['label'],
+                        'orden'  => $s['orden'],
+                        'activo' => $s['activo'],
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('@BotMessagesAdminController-updateSectores: error en transacción', [
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors(['error' => 'No se pudieron guardar los sectores. Intentá de nuevo.']);
+        }
 
         return back()->with('success', 'Sectores actualizados.');
     }
@@ -112,7 +122,14 @@ class BotMessagesAdminController extends Controller
 
         $botMessage->update(['content' => $request->content]);
         BotMessages::clearCache();
-        Artisan::call('queue:restart');
+
+        try {
+            Artisan::call('queue:restart');
+        } catch (\Throwable $e) {
+            Log::warning('@BotMessagesAdminController-update: no se pudo reiniciar la cola', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return back()->with('success', 'Mensaje guardado.');
     }
@@ -148,6 +165,9 @@ class BotMessagesAdminController extends Controller
         $default = BotMessages::hardcodedDefault($botMessage->key);
 
         if ($default === null) {
+            Log::warning('@BotMessagesAdminController-resetDefault: mensaje sin valor por defecto', [
+                'key' => $botMessage->key,
+            ]);
             return back()->with('error', 'Este mensaje es dinámico y no tiene un valor por defecto fijo.');
         }
 

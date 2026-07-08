@@ -10,6 +10,7 @@ use App\Services\Meta\WhatsAppSender;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +26,7 @@ class InboxController extends Controller
         return Inertia::render('inbox', [
             'conversations' => $this->loadConversations(),
             'selected'      => $selected ? $this->loadConversation($selected) : null,
+            'templates'     => config('wa_templates'),
         ]);
     }
 
@@ -68,6 +70,7 @@ class InboxController extends Controller
         return Inertia::render('inbox', [
             'conversations' => $this->loadConversations(),
             'selected'      => $this->loadConversation($numero),
+            'templates'     => config('wa_templates'),
         ]);
     }
 
@@ -187,6 +190,49 @@ class InboxController extends Controller
     }
 
     /**
+     * El asesor envía una plantilla aprobada por Meta al usuario.
+     * Disponible incluso fuera de la ventana de 24 horas (no requiere que el bot esté pausado).
+     */
+    public function sendTemplate(Request $request, string $numero, WhatsAppSender $sender): JsonResponse
+    {
+        $request->validate([
+            'template_id' => 'required|string',
+            'variables'   => 'nullable|array',
+            'variables.*' => 'nullable|string|min:1|max:500',
+        ]);
+
+        $templateId = $request->input('template_id');
+        $templates  = config('wa_templates');
+        $template   = collect($templates)->firstWhere('id', $templateId);
+
+        if (!$template) {
+            Log::warning('@InboxController-sendTemplate: template_id no encontrado', ['template_id' => $templateId]);
+            return response()->json(['error' => 'Plantilla no encontrada'], 422);
+        }
+
+        $session   = $this->findSessionOrFail($numero);
+        $varValues = $request->input('variables', []);
+
+        // Orden posicional: {{1}}, {{2}}, ... según la definición de la plantilla.
+        $variables = array_values(array_map(
+            fn ($v) => $varValues[$v['key']] ?? '',
+            $template['variables'] ?? []
+        ));
+
+        $msg = $sender->sendTemplate($session, $template['name'], $template['language'], $variables);
+
+        return response()->json([
+            'message' => [
+                'id'         => $msg->id,
+                'sender'     => $msg->sender,
+                'body'       => $msg->body,
+                'wa_status'  => $msg->wa_status,
+                'created_at' => $msg->created_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
      * El asesor edita el nombre del cliente desde el panel.
      */
     public function updateCliente(Request $request, string $numero): RedirectResponse
@@ -195,7 +241,15 @@ class InboxController extends Controller
 
         $session = $this->findSessionOrFail($numero);
         $cliente = Cliente::find($session->id_cliente);
-        $cliente?->update(['nombre_cliente' => trim($request->input('nombre'))]);
+
+        if (!$cliente) {
+            Log::warning('@InboxController-updateCliente: sesión sin cliente asociado', [
+                'numero'     => $numero,
+                'id_cliente' => $session->id_cliente,
+            ]);
+        } else {
+            $cliente->update(['nombre_cliente' => trim($request->input('nombre'))]);
+        }
 
         return back();
     }
