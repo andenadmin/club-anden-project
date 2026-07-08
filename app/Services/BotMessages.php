@@ -92,7 +92,11 @@ class BotMessages
             'MSG_RES_HORA_PASADA' => "Ese horario ya pasó para hoy. Por favor elegí uno de los disponibles:",
             'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
             'MSG_RES_15PLUS' => "ℹ️ Para grupos de *15 o más personas*, la reserva requiere coordinación previa con nuestro equipo.\n\n⚠️ Los sábados y domingos al mediodía, grupos de 15 o más personas tienen *menú fijo completo obligatorio*.\n\nUn asesor se va a comunicar con vos para coordinar todos los detalles.",
-            'MSG_RES_04' => "¿En qué sector preferís sentarte?\n\n*A.* Salón\n*B.* Galería\n*C.* Terraza\n*D.* Sin preferencia\n\n*0.* Hablar con un asesor",
+            // MSG_RES_04 es solo la pregunta — la lista de sectores (letra + nombre) se arma
+            // dinámicamente desde RestaurantSector y se agrega después, ver
+            // RestaurantCapacity::buildSectorMessage(). No incluir acá la lista de opciones:
+            // quedaría duplicada con la que arma el bot.
+            'MSG_RES_04' => "¿Tenés preferencia de sector?",
             'MSG_RES_05' => "¿A nombre de quién reservamos la mesa?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
             'MSG_RES_05_CUSTOM' => "Por favor ingresá el nombre del responsable de la reserva:",
             'MSG_RES_06' => "¿Cuál es tu mail? Lo usamos para enviarte la confirmación y un recordatorio de tu reserva.\n\nIngresá tu dirección de correo electrónico.",
@@ -255,32 +259,43 @@ class BotMessages
         };
     }
 
+    /**
+     * Resuelve la respuesta del cliente al mensaje de sector (MSG_RES_04) contra los
+     * sectores tal cual están configurados HOY en RestaurantSector — ni la letra ni el
+     * texto libre están hardcodeados, así que renombrar/reordenar sectores desde el
+     * panel no puede desincronizar mensaje y parser (ver RestaurantCapacity::buildSectorMessage).
+     */
     public static function sectorRestaurante(string $opcion): ?string
     {
-        $porLetra = match(strtoupper(trim($opcion))) {
-            'A' => 'Salón',
-            'B' => 'Galería',
-            'C' => 'Terraza',
-            'D' => 'Parrilla',
-            'E' => 'Patio',
-            'F' => 'Sin preferencia',
-            default => null,
-        };
-        if ($porLetra) return $porLetra;
+        $sectores = \App\Models\RestaurantSector::activos();
+        $trimmed  = trim($opcion);
+        $upper    = strtoupper($trimmed);
 
-        // Acepta también el nombre del sector escrito en texto libre (sin tilde, cualquier caso).
-        $normalizado = strtr(mb_strtolower(trim($opcion)), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
-        return match(true) {
-            str_contains($normalizado, 'salon')                                        => 'Salón',
-            str_contains($normalizado, 'galeria')                                       => 'Galería',
-            str_contains($normalizado, 'terraza')                                       => 'Terraza',
-            str_contains($normalizado, 'parrilla')                                      => 'Parrilla',
-            str_contains($normalizado, 'patio')                                         => 'Patio',
-            str_contains($normalizado, 'sin preferencia')
-                || str_contains($normalizado, 'cualquiera')
-                || str_contains($normalizado, 'indistinto')                            => 'Sin preferencia',
-            default => null,
-        };
+        // Selección por letra: misma posición con la que se armó el mensaje (A=1er sector activo, B=2do...).
+        if (preg_match('/^[A-Z]$/', $upper)) {
+            $pos = ord($upper) - 65;
+            return $sectores[$pos]->label ?? null;
+        }
+
+        // Texto libre: compara contra el label ACTUAL de cada sector (lo que haya escrito
+        // el admin en el panel), sin tildes y sin importar mayúsculas/minúsculas.
+        $normalizado = strtr(mb_strtolower($trimmed), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+        if ($normalizado === '') return null;
+
+        foreach ($sectores as $sector) {
+            $labelNorm = strtr(mb_strtolower($sector->label), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+            if ($labelNorm !== '' && (str_contains($normalizado, $labelNorm) || str_contains($labelNorm, $normalizado))) {
+                return $sector->label;
+            }
+        }
+
+        // Aliases genéricos de "sin preferencia" que no dependen del label configurado.
+        if (str_contains($normalizado, 'sin preferencia') || str_contains($normalizado, 'cualquiera') || str_contains($normalizado, 'indistinto')) {
+            $sinPreferencia = $sectores->firstWhere('requiere_capacidad', false);
+            if ($sinPreferencia) return $sinPreferencia->label;
+        }
+
+        return null;
     }
 
     public static function packLabel(string $opcion): string

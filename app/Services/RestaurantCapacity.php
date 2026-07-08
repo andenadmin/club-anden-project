@@ -5,28 +5,12 @@ namespace App\Services;
 use App\Models\PanelNotification;
 use App\Models\RestaurantCapacityOverride;
 use App\Models\RestaurantConfig;
+use App\Models\RestaurantSector;
 use App\Models\Reserva;
 use Carbon\Carbon;
 
 class RestaurantCapacity
 {
-    private const SECTOR_KEY = [
-        'Salón'           => 'salon',
-        'Galería'         => 'galeria',
-        'Terraza'         => 'terraza',
-        'Parrilla'        => 'parrilla',
-        'Patio'           => 'patio',
-        'Sin preferencia' => null,
-    ];
-
-    private const SECTOR_LABEL = [
-        'salon'   => 'Salón',
-        'galeria' => 'Galería',
-        'terraza' => 'Terraza',
-        'parrilla'=> 'Parrilla',
-        'patio'   => 'Patio',
-    ];
-
     /**
      * Personas ya reservadas en un sector para una fecha dada.
      * Solo cuenta reservas CONFIRMADA y PENDIENTE_CONFIRMACION.
@@ -149,7 +133,7 @@ class RestaurantCapacity
 
         if ($yaExiste) return;
 
-        $sectorLabel = self::SECTOR_LABEL[$sectorKey] ?? $sectorKey;
+        $sectorLabel = RestaurantSector::where('key', $sectorKey)->value('label') ?? $sectorKey;
 
         PanelNotification::create([
             'tipo'    => 'sector_alerta',
@@ -163,32 +147,31 @@ class RestaurantCapacity
     }
 
     /**
-     * Construye el texto del mensaje de selección de sector (MSG_RES_04 dinámico),
+     * Construye el texto del mensaje de selección de sector (MSG_RES_04),
      * marcando con "(sin capacidad)" los sectores llenos o cerrados.
+     *
+     * Los sectores (label, orden, activo) salen de RestaurantSector — editables
+     * desde el panel — y la letra se asigna acá según ese mismo orden, así el
+     * mensaje que se muestra y el parser que interpreta la respuesta (ver
+     * BotMessages::sectorRestaurante) siempre están sincronizados por construcción.
      */
     public static function buildSectorMessage(string $fecha, int $personas): string
     {
-        $opciones = [
-            'A' => ['label' => 'Salón',   'key' => 'salon'],
-            'B' => ['label' => 'Galería', 'key' => 'galeria'],
-            'C' => ['label' => 'Terraza', 'key' => 'terraza'],
-            'D' => ['label' => 'Parrilla','key' => 'parrilla'],
-            'E' => ['label' => 'Patio',   'key' => 'patio'],
-        ];
+        $sectores = RestaurantSector::activos();
+        $lines    = [];
 
-        $lines      = [];
-        $todosLlenos = true;
-
-        foreach ($opciones as $letra => $opt) {
-            $disponible = self::tieneCapacidad($opt['key'], $fecha, $personas);
-            if ($disponible) $todosLlenos = false;
-            $suffix = $disponible ? '' : ' _(sin capacidad)_';
-            $lines[] = "*{$letra}.* {$opt['label']}{$suffix}";
+        foreach ($sectores as $i => $sector) {
+            $letra = chr(65 + $i); // A, B, C...
+            if ($sector->requiere_capacidad) {
+                $disponible = self::tieneCapacidad($sector->key, $fecha, $personas);
+                $suffix     = $disponible ? '' : ' _(sin capacidad)_';
+            } else {
+                $suffix = '';
+            }
+            $lines[] = "*{$letra}.* {$sector->label}{$suffix}";
         }
 
-        $lines[] = '*F.* Sin preferencia';
-
-        $intro = "¿En qué sector preferís sentarte?";
+        $intro = BotMessages::render('MSG_RES_04');
 
         return $intro . "\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";
     }
@@ -205,10 +188,14 @@ class RestaurantCapacity
     }
 
     /**
-     * Devuelve la clave interna del sector a partir de su etiqueta.
+     * Devuelve la clave interna (fija) del sector a partir de su etiqueta actual.
+     * Los sectores con requiere_capacidad=false (ej. "Sin preferencia") devuelven null:
+     * no tienen cupo propio, así que no se chequea capacidad para ellos.
      */
     public static function sectorKey(string $label): ?string
     {
-        return self::SECTOR_KEY[$label] ?? null;
+        $sector = RestaurantSector::where('label', $label)->first();
+        if (!$sector) return null;
+        return $sector->requiere_capacidad ? $sector->key : null;
     }
 }

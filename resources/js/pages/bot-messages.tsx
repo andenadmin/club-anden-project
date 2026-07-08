@@ -14,9 +14,19 @@ interface BotMessage {
     default_content: string | null;
 }
 
+interface RestaurantSector {
+    id: number;
+    key: string;
+    label: string;
+    orden: number;
+    activo: boolean;
+    requiere_capacidad: boolean;
+}
+
 interface Props {
     messages: BotMessage[];
     archived: BotMessage[];
+    sectores: RestaurantSector[];
 }
 
 const CATEGORIES = [
@@ -216,6 +226,69 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
     );
 }
 
+// ─── Sector Row ───────────────────────────────────────────────────────────────
+function SectorRow({ sector }: { sector: RestaurantSector }) {
+    const [label, setLabel]   = useState(sector.label);
+    const [orden, setOrden]   = useState(sector.orden);
+    const [activo, setActivo] = useState(sector.activo);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved]   = useState(false);
+    const dirty = label !== sector.label || orden !== sector.orden || activo !== sector.activo;
+
+    const save = () => {
+        setSaving(true);
+        router.put(
+            `/bot/sectores/${sector.id}`,
+            { label, orden, activo },
+            {
+                preserveScroll: true,
+                onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000); },
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
+
+    return (
+        <div className="flex items-center gap-3 border border-sidebar-border/70 rounded-xl bg-white px-4 py-3 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
+            <div className="w-20 shrink-0">
+                <label className="block text-[10px] text-gray-400 dark:text-neutral-500 mb-1">Orden</label>
+                <input
+                    type="number"
+                    min={1}
+                    value={orden}
+                    onChange={e => setOrden(Number(e.target.value))}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#25d366]/40 focus:border-[#25d366] dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
+                />
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <label className="block text-[10px] text-gray-400 dark:text-neutral-500 mb-1">
+                    Nombre que ve el cliente {!sector.requiere_capacidad && <span className="opacity-60">(sin control de cupo)</span>}
+                </label>
+                <input
+                    type="text"
+                    value={label}
+                    onChange={e => setLabel(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1 outline-none focus:ring-2 focus:ring-[#25d366]/40 focus:border-[#25d366] dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
+                />
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-neutral-400 shrink-0 select-none">
+                <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} className="size-4" />
+                Activo
+            </label>
+
+            <button
+                onClick={save}
+                disabled={saving || !dirty}
+                className="shrink-0 text-xs font-semibold text-white bg-[#075e54] rounded-lg px-4 py-1.5 hover:bg-[#0a7060] transition-colors disabled:opacity-50"
+            >
+                {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
+            </button>
+        </div>
+    );
+}
+
 // ─── Archived Card ────────────────────────────────────────────────────────────
 function ArchivedCard({ msg }: { msg: BotMessage }) {
     const [expanded, setExpanded] = useState(false);
@@ -265,7 +338,7 @@ function ArchivedCard({ msg }: { msg: BotMessage }) {
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
-export default function BotMessagesPage({ messages, archived }: Props) {
+export default function BotMessagesPage({ messages, archived, sectores }: Props) {
     const [activeTab, setActiveTab] = useState('general');
     const [collapsed, setCollapsed] = useState<Set<number>>(readCollapsed);
 
@@ -279,6 +352,7 @@ export default function BotMessagesPage({ messages, archived }: Props) {
     };
 
     const isArchived = activeTab === '__archived__';
+    const isSectores = activeTab === '__sectores__';
     const filtered   = isArchived ? archived : messages.filter(m => m.category === activeTab);
 
     return (
@@ -306,6 +380,19 @@ export default function BotMessagesPage({ messages, archived }: Props) {
                         );
                     })}
 
+                    {/* Tab Sectores */}
+                    <button
+                        onClick={() => setActiveTab('__sectores__')}
+                        className={`text-sm font-medium rounded-full px-4 py-1.5 border transition-colors ${
+                            isSectores
+                                ? 'bg-orange-100 text-orange-700 border-orange-300 shadow-sm'
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-600'
+                        }`}
+                    >
+                        Sectores (Restaurante)
+                        <span className="ml-1.5 text-[11px] opacity-60">({sectores.length})</span>
+                    </button>
+
                     {/* Tab Archivados */}
                     <button
                         onClick={() => setActiveTab('__archived__')}
@@ -324,7 +411,17 @@ export default function BotMessagesPage({ messages, archived }: Props) {
 
                 {/* Cards */}
                 <div className="space-y-3 max-w-3xl mx-auto w-full pb-6">
-                    {isArchived ? (
+                    {isSectores ? (
+                        <>
+                            <p className="text-xs text-gray-500 dark:text-neutral-400 -mt-1 mb-1">
+                                El nombre de cada sector es libre — cambialo cuando quieras, la letra (A, B, C…) se recalcula sola
+                                según el orden. Desactivá un sector para que deje de ofrecerse como opción.
+                            </p>
+                            {sectores.map(sector => (
+                                <SectorRow key={sector.id} sector={sector} />
+                            ))}
+                        </>
+                    ) : isArchived ? (
                         filtered.length === 0 ? (
                             <p className="text-sm text-gray-400 text-center py-8">No hay mensajes archivados.</p>
                         ) : (

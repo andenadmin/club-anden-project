@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Utensils, Wind, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -33,6 +33,7 @@ interface Props {
     es_hoy: boolean;
     vista: Vista;
     fechas_rango: string[]; // ["Y-m-d", ...]
+    sectores: string[];     // labels de RestaurantSector activos, en orden — ver bot-messages > Sectores
 }
 
 // ─── Configuración de tipos y estados ────────────────────────────────────────
@@ -219,8 +220,6 @@ const ESTADO_OPTIONS = [
     { value: 'ESCALADA',               label: 'Con asesor' },
 ];
 
-const SECTOR_OPTIONS = ['Salón', 'Galería', 'Terraza', 'Parrilla', 'Sin preferencia'] as const;
-
 function makeFormData(r: Reserva) {
     return {
         nombre:          r.nombre,
@@ -235,9 +234,16 @@ function makeFormData(r: Reserva) {
 }
 
 function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open: boolean; onClose: () => void }) {
+    const { sectores } = usePage().props as unknown as { sectores: string[] };
     const [form, setForm]         = useState(() => makeFormData(reserva));
     const [saving, setSaving]     = useState(false);
     const [errors, setErrors]     = useState<Record<string, string>>({});
+
+    // Si la reserva quedó con un sector que ya no está activo (renombrado o desactivado
+    // desde el panel), lo agregamos igual a la lista para no perder el dato al editar.
+    const sectorOptions = reserva.sector && !sectores.includes(reserva.sector)
+        ? [...sectores, reserva.sector]
+        : sectores;
 
     // Reinicializar el form cada vez que se abre el dialog
     useEffect(() => {
@@ -322,7 +328,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                             <label className={labelCls}>Sector</label>
                             <select value={form.sector} onChange={e => set('sector', e.target.value)} className={inputCls}>
                                 <option value="">— Sin especificar —</option>
-                                {SECTOR_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                {sectorOptions.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     )}
@@ -366,6 +372,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
 // ─── Dialog nueva reserva manual ─────────────────────────────────────────────
 
 function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; onClose: () => void; fechaInicial: string }) {
+    const { sectores } = usePage().props as unknown as { sectores: string[] };
     const emptyForm = { tipo: 'RESTAURANTE' as TipoReserva, nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', comentarios: '' };
     const [form, setForm]     = useState(emptyForm);
     const [saving, setSaving] = useState(false);
@@ -435,7 +442,7 @@ function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; on
                             <label className={labelCls}>Sector</label>
                             <select value={form.sector} onChange={e => set('sector', e.target.value)} className={inputCls}>
                                 <option value="">— Sin especificar —</option>
-                                {SECTOR_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                {sectores.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>

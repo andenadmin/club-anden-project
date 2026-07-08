@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Reserva;
+use App\Models\RestaurantSector;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -115,6 +117,7 @@ class ReservasController extends Controller
             'es_hoy'       => $fecha === Carbon::today()->format('Y-m-d'),
             'vista'        => $vista,
             'fechas_rango' => $fechasRango->map(fn ($f) => $f->format('Y-m-d'))->values(),
+            'sectores'     => RestaurantSector::activos()->pluck('label')->values(),
         ]);
     }
 
@@ -127,7 +130,7 @@ class ReservasController extends Controller
             'fecha'           => 'required|date_format:Y-m-d',
             'hora'            => 'nullable|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
-            'sector'          => 'nullable|in:Salón,Galería,Terraza,Parrilla,Sin preferencia',
+            'sector'          => ['nullable', Rule::in(RestaurantSector::activos()->pluck('label'))],
             'comentarios'     => 'nullable|string|max:2000',
         ]);
 
@@ -176,12 +179,20 @@ class ReservasController extends Controller
             'input'         => $request->only(['nombre','fecha','hora','numero_personas','mail','estado']),
         ]);
 
+        // Además de los sectores activos, se acepta el sector que la reserva ya tenía
+        // guardado: si se renombró/desactivó después de hecha la reserva, no debe romper
+        // el guardado de otros campos (ej. "marcar llegada").
+        $sectoresValidos = RestaurantSector::activos()->pluck('label')
+            ->push($reserva->datos['sector'] ?? null)
+            ->filter()
+            ->unique();
+
         $v = $request->validate([
             'nombre'          => 'required|string|max:255',
             'fecha'           => 'required|date_format:Y-m-d',
             'hora'            => 'nullable|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
-            'sector'          => 'nullable|in:Salón,Galería,Terraza,Parrilla,Sin preferencia',
+            'sector'          => ['nullable', Rule::in($sectoresValidos)],
             'mail'            => 'nullable|email|max:255',
             'comentarios'     => 'nullable|string|max:2000',
             'estado'          => 'required|in:CONFIRMADA,PENDIENTE_CONFIRMACION,CANCELADA,ESCALADA,COMPLETADA',

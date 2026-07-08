@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BotMessage;
+use App\Models\RestaurantSector;
 use App\Services\BotMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -54,7 +55,25 @@ class BotMessagesAdminController extends Controller
         return Inertia::render('bot-messages', [
             'messages' => BotMessage::where('is_archived', false)->orderBy('category')->orderBy('id')->get()->map($decorate),
             'archived' => BotMessage::where('is_archived', true)->orderBy('category')->orderBy('id')->get()->map($decorate),
+            'sectores' => RestaurantSector::orderBy('orden')->get(),
         ]);
+    }
+
+    public function updateSector(Request $request, RestaurantSector $sector)
+    {
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
+
+        $data = $request->validate([
+            'label'  => ['required', 'string', 'max:255'],
+            'orden'  => ['required', 'integer', 'min:1'],
+            'activo' => ['required', 'boolean'],
+        ]);
+
+        $sector->update($data);
+
+        return back()->with('success', 'Sector actualizado.');
     }
 
     public function update(Request $request, BotMessage $botMessage)
