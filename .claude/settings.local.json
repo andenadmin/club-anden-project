@@ -60,7 +60,13 @@
       "PowerShell(cd \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\"; \\(Get-Command php\\).Source)",
       "Bash(git rebase *)",
       "Bash(GIT_EDITOR=true git rebase --continue)",
-      "PowerShell(php -l app\\\\Jobs\\\\ProcessIncomingWhatsAppMessage.php; php -l app\\\\Services\\\\BotEngine.php)"
+      "PowerShell(php -l app\\\\Jobs\\\\ProcessIncomingWhatsAppMessage.php; php -l app\\\\Services\\\\BotEngine.php)",
+      "PowerShell(php -l app\\\\Http\\\\Controllers\\\\BotMessagesAdminController.php; php -l app\\\\Services\\\\RestaurantCapacity.php; php -l app\\\\Services\\\\BotMessages.php; php -l app\\\\Models\\\\RestaurantSector.php; php -l routes\\\\web.php)",
+      "PowerShell(php artisan migrate --path=database/migrations/2026_07_07_000001_create_restaurant_sectores_table.php --force 2>&1; php artisan migrate --path=database/migrations/2026_07_07_000002_fix_msg_res_04_orphaned_content.php --force 2>&1)",
+      "PowerShell(php -l app\\\\Http\\\\Controllers\\\\ReservasController.php)",
+      "Bash(grep -oE \"'MSG_[A-Z0-9_]+' => \\\\\"[^\\\\\"]*\\\\\\\\\\\\\\\\n\\\\\\\\\\\\\\\\n\\\\\\\\*[A-Za-z0-9]+\\\\.\\\\*\" app/Services/BotMessages.php)",
+      "Bash(read -r line)",
+      "Bash(:)"
     ]
   }
 }

@@ -223,6 +223,7 @@ const ESTADO_OPTIONS = [
 function makeFormData(r: Reserva) {
     return {
         nombre:          r.nombre,
+        telefono:        r.telefono ?? '',
         fecha:           r.fecha ?? '',
         hora:            r.hora ?? '',
         numero_personas: r.numero_personas,
@@ -232,6 +233,20 @@ function makeFormData(r: Reserva) {
         estado:          r.estado,
     };
 }
+
+// "?" con recomendación al lado de un label (para campos opcionales que conviene pedir).
+function LabelHint({ text }: { text: string }) {
+    return (
+        <span
+            title={text}
+            className="ml-1 inline-flex size-4 cursor-help items-center justify-center rounded-full border border-border text-[10px] font-semibold text-muted-foreground align-middle"
+        >
+            ?
+        </span>
+    );
+}
+
+const EMAIL_HINT = 'Opcional. Conviene pedirlo para poder enviar promociones y novedades en el futuro, pero no es obligatorio.';
 
 function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open: boolean; onClose: () => void }) {
     const { sectores } = usePage().props as unknown as { sectores: string[] };
@@ -288,22 +303,30 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
 
                     {/* Nombre */}
                     <div>
-                        <label className={labelCls}>Nombre responsable</label>
-                        <input type="text" value={form.nombre} onChange={e => set('nombre', e.target.value)} className={inputCls} />
+                        <label className={labelCls}>Nombre responsable *</label>
+                        <input type="text" required value={form.nombre} onChange={e => set('nombre', e.target.value)} className={inputCls} />
                         {errors.nombre && <p className={errCls}>{errors.nombre}</p>}
+                    </div>
+
+                    {/* Teléfono */}
+                    <div>
+                        <label className={labelCls}>Teléfono *</label>
+                        <input type="text" required value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="Ej: 1122334455" className={inputCls} />
+                        {errors.telefono && <p className={errCls}>{errors.telefono}</p>}
                     </div>
 
                     {/* Fecha + Hora */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className={labelCls}>Fecha</label>
-                            <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputCls} />
+                            <label className={labelCls}>Fecha *</label>
+                            <input type="date" required value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputCls} />
                             {errors.fecha && <p className={errCls}>{errors.fecha}</p>}
                         </div>
                         <div>
-                            <label className={labelCls}>Hora</label>
+                            <label className={labelCls}>Hora *</label>
                             <input
                                 type="text"
+                                required
                                 value={form.hora}
                                 onChange={e => set('hora', e.target.value)}
                                 onBlur={e => set('hora', normalizeHora(e.target.value))}
@@ -335,7 +358,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
 
                     {/* Mail */}
                     <div>
-                        <label className={labelCls}>Email de contacto</label>
+                        <label className={labelCls}>Email de contacto<LabelHint text={EMAIL_HINT} /></label>
                         <input type="email" value={form.mail} onChange={e => set('mail', e.target.value)} placeholder="Sin email" className={inputCls} />
                         {errors.mail && <p className={errCls}>{errors.mail}</p>}
                     </div>
@@ -348,12 +371,11 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                         </select>
                     </div>
 
-                    {/* Comentarios — oculto por ahora
+                    {/* Comentarios */}
                     <div>
                         <label className={labelCls}>Comentarios / extras</label>
                         <textarea value={form.comentarios} onChange={e => set('comentarios', e.target.value)} rows={3} placeholder="Sin comentarios" className={`${inputCls} resize-none`} />
                     </div>
-                    */}
 
                     <DialogFooter className="pt-2">
                         <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors">
@@ -373,7 +395,7 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
 
 function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; onClose: () => void; fechaInicial: string }) {
     const { sectores } = usePage().props as unknown as { sectores: string[] };
-    const emptyForm = { tipo: 'RESTAURANTE' as TipoReserva, nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', comentarios: '' };
+    const emptyForm = { tipo: 'RESTAURANTE' as TipoReserva, nombre: '', telefono: '', fecha: fechaInicial, hora: '', numero_personas: '', sector: '', mail: '', comentarios: '' };
     const [form, setForm]     = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -422,17 +444,19 @@ function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; on
                             {errors.nombre && <p className={errCls}>{errors.nombre}</p>}
                         </div>
                         <div className="col-span-2">
-                            <label className={labelCls}>Teléfono</label>
-                            <input value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="Ej: 1122334455" className={inputCls} />
+                            <label className={labelCls}>Teléfono *</label>
+                            <input required value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="Ej: 1122334455" className={inputCls} />
+                            {errors.telefono && <p className={errCls}>{errors.telefono}</p>}
                         </div>
                         <div>
                             <label className={labelCls}>Fecha *</label>
-                            <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputCls} />
+                            <input type="date" required value={form.fecha} onChange={e => set('fecha', e.target.value)} className={inputCls} />
                             {errors.fecha && <p className={errCls}>{errors.fecha}</p>}
                         </div>
                         <div>
-                            <label className={labelCls}>Hora</label>
-                            <input value={form.hora} onChange={e => set('hora', e.target.value)} placeholder="Ej: 20:30" className={inputCls} />
+                            <label className={labelCls}>Hora *</label>
+                            <input required value={form.hora} onChange={e => set('hora', e.target.value)} placeholder="Ej: 20:30" className={inputCls} />
+                            {errors.hora && <p className={errCls}>{errors.hora}</p>}
                         </div>
                         <div>
                             <label className={labelCls}>Personas</label>
@@ -444,6 +468,11 @@ function NuevaReservaDialog({ open, onClose, fechaInicial }: { open: boolean; on
                                 <option value="">— Sin especificar —</option>
                                 {sectores.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
+                        </div>
+                        <div className="col-span-2">
+                            <label className={labelCls}>Email de contacto<LabelHint text={EMAIL_HINT} /></label>
+                            <input type="email" value={form.mail} onChange={e => set('mail', e.target.value)} placeholder="Sin email" className={inputCls} />
+                            {errors.mail && <p className={errCls}>{errors.mail}</p>}
                         </div>
                     </div>
                     <div>

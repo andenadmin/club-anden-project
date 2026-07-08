@@ -95,11 +95,18 @@ class ReservasController extends Controller
                         : null;
                 } catch (\Exception) {}
 
+                // Los clientes de alta manual sin teléfono real quedan con un numero_contacto
+                // placeholder interno (ver store()) — nunca mostrarlo como si fuera un teléfono.
+                $telefonoCliente = $r->cliente?->numero_contacto ?? '';
+                if (str_starts_with($telefonoCliente, 'manual-')) {
+                    $telefonoCliente = '';
+                }
+
                 return [
                     'id'                    => $r->id,
                     'tipo'                  => $tipo,
                     'nombre'                => $datos['nombre_responsable'] ?? $r->cliente?->nombre_cliente ?? 'Sin nombre',
-                    'telefono'              => $r->cliente?->numero_contacto ?? '',
+                    'telefono'              => $telefonoCliente,
                     'fecha'                 => $fechaNorm,
                     'hora'                  => $hora,
                     'numero_personas'       => $personas,
@@ -128,11 +135,12 @@ class ReservasController extends Controller
         $v = $request->validate([
             'tipo'            => 'nullable|in:RESTAURANTE,NINOS,FUTBOL,PADEL,HOCKEY,GENERAL_EVT',
             'nombre'          => 'required|string|max:255',
-            'telefono'        => 'nullable|string|max:30',
+            'telefono'        => 'required|string|max:30',
             'fecha'           => 'required|date_format:Y-m-d',
-            'hora'            => 'nullable|string|max:10',
+            'hora'            => 'required|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
             'sector'          => ['nullable', Rule::in(RestaurantSector::activos()->pluck('label'))],
+            'mail'            => 'nullable|email|max:255',
             'comentarios'     => 'nullable|string|max:2000',
         ]);
 
@@ -164,16 +172,17 @@ class ReservasController extends Controller
             'rama_servicio' => $ramaServicio,
             'subtipo'       => $subtipo,
             'estado_reserva'=> 'CONFIRMADA',
-            'tiene_extras'  => !empty($v['comentarios']),
+            'tiene_extras'  => !empty($v['comentarios'] ?? null),
             'datos'         => [
                 'nombre_responsable' => $v['nombre'],
                 'telefono'           => $v['telefono'] ?? null,
                 'fecha'              => $fechaBot,
                 'hora'               => $horaNorm,
                 'numero_personas'    => $v['numero_personas'] ?? null,
-                'sector'             => $v['sector'] ?: null,
-                'extras_texto'       => $v['comentarios'] ?: null,
-                'tiene_extras'       => !empty($v['comentarios']),
+                'sector'             => ($v['sector'] ?? null) ?: null,
+                'mail_contacto'      => ($v['mail'] ?? null) ?: null,
+                'extras_texto'       => ($v['comentarios'] ?? null) ?: null,
+                'tiene_extras'       => !empty($v['comentarios'] ?? null),
                 'ingreso_manual'     => true,
             ],
         ]);
@@ -200,8 +209,9 @@ class ReservasController extends Controller
 
         $v = $request->validate([
             'nombre'          => 'required|string|max:255',
+            'telefono'        => 'required|string|max:30',
             'fecha'           => 'required|date_format:Y-m-d',
-            'hora'            => 'nullable|string|max:10',
+            'hora'            => 'required|string|max:10',
             'numero_personas' => 'nullable|string|max:100',
             'sector'          => ['nullable', Rule::in($sectoresValidos)],
             'mail'            => 'nullable|email|max:255',
@@ -209,13 +219,21 @@ class ReservasController extends Controller
             'estado'          => 'required|in:CONFIRMADA,PENDIENTE_CONFIRMACION,CANCELADA,ESCALADA,COMPLETADA',
         ]);
 
+        // Vincular la reserva al cliente de ese teléfono (mismo criterio que el alta manual):
+        // si ya existe lo reusa, si no lo crea. Evita colisiones con la constraint única.
+        $cliente = Cliente::firstOrCreate(
+            ['numero_contacto' => $v['telefono']],
+            ['nombre_cliente' => $v['nombre']]
+        );
+
         $datos = $reserva->datos ?? [];
         $datos['nombre_responsable'] = $v['nombre'];
+        $datos['telefono']           = $v['telefono'];
         $datos['fecha']              = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
-        $datos['sector']             = $v['sector'] ?: null;
-        $datos['mail_contacto']      = $v['mail'] ?: null;
-        $datos['extras_texto']       = $v['comentarios'] ?: null;
-        $datos['tiene_extras']       = !empty($v['comentarios']);
+        $datos['sector']             = ($v['sector'] ?? null) ?: null;
+        $datos['mail_contacto']      = ($v['mail'] ?? null) ?: null;
+        $datos['extras_texto']       = ($v['comentarios'] ?? null) ?: null;
+        $datos['tiene_extras']       = !empty($v['comentarios'] ?? null);
 
         $horaNorm = null;
         if (!empty($v['hora'])) {
@@ -237,9 +255,10 @@ class ReservasController extends Controller
         }
 
         $reserva->update([
+            'id_cliente'     => $cliente->id,
             'datos'          => $datos,
             'estado_reserva' => $v['estado'],
-            'tiene_extras'   => !empty($v['comentarios']),
+            'tiene_extras'   => !empty($v['comentarios'] ?? null),
         ]);
 
         return redirect()->back();

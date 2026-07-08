@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 export interface BotMessageOptionRow {
@@ -23,6 +23,13 @@ function OptionRow({ option }: { option: BotMessageOptionRow }) {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved]   = useState(false);
     const dirty = label !== option.label || orden !== option.orden || activo !== option.activo;
+
+    // Sincronizar con el valor real guardado cuando el server recarga los props.
+    useEffect(() => {
+        setLabel(option.label);
+        setOrden(option.orden);
+        setActivo(option.activo);
+    }, [option.label, option.orden, option.activo]);
 
     const save = () => {
         setSaving(true);

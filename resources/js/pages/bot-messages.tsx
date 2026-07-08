@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { Archive, Pencil } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -239,6 +239,15 @@ function SectorRow({ sector }: { sector: RestaurantSector }) {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved]   = useState(false);
     const dirty = label !== sector.label || orden !== sector.orden || activo !== sector.activo;
+
+    // Sincronizar con el valor real guardado cuando el server recarga los props: si un
+    // cambio no llegó a guardarse, el campo vuelve a mostrar lo que hay en la base
+    // (en vez de quedar mostrando texto editado que nunca se persistió).
+    useEffect(() => {
+        setLabel(sector.label);
+        setOrden(sector.orden);
+        setActivo(sector.activo);
+    }, [sector.label, sector.orden, sector.activo]);
 
     const save = () => {
         setSaving(true);
