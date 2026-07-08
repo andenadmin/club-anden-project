@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\CreateCalendarEvent;
 use App\Mail\AdvisorAlertMail;
+use App\Models\BotMessageOption;
 use App\Models\BotSession;
 use App\Models\Cliente;
 use App\Models\ConversationMessage;
@@ -241,31 +242,11 @@ class BotEngine
 
     private function handleMenuPrincipal(BotSession $session, string $text): array
     {
-        $nombre  = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-        $opts    = BotMessages::parseOptions('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
-        // Excluir opción 0 (escalado global)
-        $keys    = array_values(array_filter(array_keys($opts), fn ($k) => $k !== '0'));
-        $choice  = strtoupper(trim($text));
+        $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
+        $value  = BotMessages::resolveOptionValue('MENU_PRINCIPAL', $text, 'letter')
+            ?? $this->resolveMenuAlias($text);
 
-        // Intentar resolver texto libre ("restaurante", "eventos", "deportes", etc.)
-        if (!isset($opts[$choice])) {
-            $aliasPos = $this->resolveMenuAlias($text);
-            if ($aliasPos !== null && isset($keys[$aliasPos])) {
-                $choice = $keys[$aliasPos];
-            }
-        }
-
-        if (!isset($opts[$choice])) {
-            return $this->handleInvalid(
-                $session,
-                fn () => [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])]
-            );
-        }
-
-        // Posición 0 = deportes, 1 = restaurante, 2 = eventos; resto → inválido
-        $pos = array_search($choice, $keys, true);
-
-        if ($pos === 0) {
+        if ($value === 'deportes') {
             Cliente::find($session->id_cliente)?->increment('contador_reservas_deportes');
             $session->mergeEstado([
                 'estado_actual'  => 'COMPLETADO',
@@ -275,7 +256,7 @@ class BotEngine
             return [BotMessages::render('MSG_DEP_01')];
         }
 
-        if ($pos === 1) {
+        if ($value === 'restaurante') {
             $session->mergeEstado([
                 'estado_actual'      => 'RECOLECTANDO_DATOS',
                 'rama_activa'        => 'RESTAURANTE',
@@ -287,7 +268,7 @@ class BotEngine
             return [BotMessages::render('MSG_RES_01')];
         }
 
-        if ($pos === 2) {
+        if ($value === 'eventos') {
             $session->mergeEstado([
                 'estado_actual'      => 'RECOLECTANDO_DATOS',
                 'rama_activa'        => 'EVENTOS',
@@ -529,42 +510,26 @@ class BotEngine
 
         // Paso universal: tipo_evento
         if ($step === 'tipo_evento') {
-            $optsEvt = BotMessages::parseOptions('MSG_EVT_01');
-            $keysEvt = array_values(array_filter(array_keys($optsEvt), fn ($k) => $k !== '0'));
-            $upper   = strtoupper(trim($text));
+            $value = BotMessages::resolveOptionValue('EVT_TIPO', $text, 'number')
+                ?? $this->resolveTipoEventoAlias($text);
 
-            // Resolver aliases de texto para tipo de evento
-            $tipoAliases = [
-                '1' => ['privado', 'evento privado', 'asesor'],
-                '2' => ['futbol', 'fútbol', 'soccer', 'niños', 'ninos', 'chicos', 'kids', 'infantil'],
-                '3' => ['padel', 'pádel', 'tenis'],
-                '4' => ['hockey'],
-                '5' => ['adolescentes', 'adolescente', 'jovenes', 'jóvenes', 'teen', 'teens'],
-                '6' => ['adultos', 'adulto', 'grande', 'grandes', 'mayores'],
-            ];
-            $lower = strtolower(trim($text));
-            foreach ($tipoAliases as $key => $words) {
-                foreach ($words as $word) {
-                    if ($lower === $word || str_contains($lower, $word)) {
-                        $upper = $key;
-                        break 2;
-                    }
-                }
-            }
-
-            if (!isset($optsEvt[$upper])) {
+            if ($value === null) {
                 return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_01')]);
             }
-            $this->saveDato($session, 'tipo_evento', $optsEvt[$upper]);
-            // 1 = evento privado → asesor
-            if ($upper === '1') {
+
+            $label = BotMessageOption::where('options_key', 'EVT_TIPO')->where('value', $value)->value('label') ?? $value;
+            $this->saveDato($session, 'tipo_evento', $label);
+            $this->saveDato($session, 'tipo_evento_value', $value);
+
+            // privado → asesor
+            if ($value === 'privado') {
                 return $this->escalate($session, 'SOLICITUD_CLIENTE');
             }
-            $nuevoSubtipo = match($upper) {
-                '2' => 'FUTBOL',
-                '3' => 'PADEL',
-                '4' => 'HOCKEY',
-                default => 'GENERAL_EVT',
+            $nuevoSubtipo = match($value) {
+                'futbol' => 'FUTBOL',
+                'padel'  => 'PADEL',
+                'hockey' => 'HOCKEY',
+                default  => 'GENERAL_EVT',
             };
             $this->pushHistory($session);
             $session->mergeEstado(['subtipo_activo' => $nuevoSubtipo, 'contador_invalidos' => 0]);
@@ -592,10 +557,10 @@ class BotEngine
                     BotMessages::render('MSG_EVT_02'),
                 ]);
             }
-            // GENERAL_EVT (adolescentes=5, adultos=6)
+            // GENERAL_EVT (adolescentes / adultos)
             $session->mergeEstado(['current_step' => 'fecha']);
             $responses = [];
-            if ($upper === '5') {
+            if ($value === 'adolescentes') {
                 $responses[] = BotMessages::render('MSG_LINK_CUMPLE_ADOLESCENTES');
             }
             $responses[] = BotMessages::render('MSG_EVT_02');
@@ -1045,13 +1010,11 @@ class BotEngine
                 );
 
             case 'nombre_responsable':
-                $opts07  = BotMessages::parseOptions('MSG_EVT_07');
-                $keys07  = array_values(array_filter(array_map('strval', array_keys($opts07)), fn ($k) => $k !== '0'));
-                $upper07 = strtoupper(trim($text));
-                if (!in_array($upper07, array_map('strval', array_keys($opts07)), true)) {
+                $valorResp = BotMessages::resolveOptionValue('EVT_NOMBRE_RESPONSABLE', $text, 'number');
+                if ($valorResp === null) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_07')]);
                 }
-                if ($upper07 === ($keys07[0] ?? '1')) {
+                if ($valorResp === 'mi_nombre') {
                     $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                     $this->saveDato($session, 'nombre_responsable', $nombre);
                     return $this->goToConfirmacion($session);
@@ -1121,13 +1084,11 @@ class BotEngine
                 return array_merge($msgs, $this->nextStep($session, 'nombre_responsable', 'MSG_EVT_07'));
 
             case 'nombre_responsable':
-                $optsG07  = BotMessages::parseOptions('MSG_EVT_07');
-                $keysG07  = array_values(array_filter(array_map('strval', array_keys($optsG07)), fn ($k) => $k !== '0'));
-                $upperG07 = strtoupper(trim($text));
-                if (!in_array($upperG07, array_map('strval', array_keys($optsG07)), true)) {
+                $valorRespG = BotMessages::resolveOptionValue('EVT_NOMBRE_RESPONSABLE', $text, 'number');
+                if ($valorRespG === null) {
                     return $this->handleInvalid($session, fn () => [BotMessages::render('MSG_EVT_07')]);
                 }
-                if ($upperG07 === ($keysG07[0] ?? '1')) {
+                if ($valorRespG === 'mi_nombre') {
                     $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                     $this->saveDato($session, 'nombre_responsable', $nombre);
                     return $this->skipMailIfKnown($session, 'MSG_EVT_MAIL', fn () => $this->goToConfirmacion($session));
@@ -1311,62 +1272,31 @@ class BotEngine
 
     // ─── CAMBIAR DATO ─────────────────────────────────────────────────────────
 
-    private function resCambiarSteps(): array
+    /** @return \Illuminate\Support\Collection<int,BotMessageOption> */
+    private function resCambiarSteps()
     {
-        $all = [
-            ['label' => 'Fecha',                  'paso' => 'fecha',              'msgKey' => 'MSG_RES_01'],
-            ['label' => 'Horario',                'paso' => 'hora',               'msgKey' => 'MSG_RES_02'],
-            ['label' => 'Cantidad de personas',   'paso' => 'numero_personas',    'msgKey' => 'MSG_RES_03'],
-            ['label' => 'Nombre del responsable', 'paso' => 'nombre_responsable', 'msgKey' => 'MSG_RES_05_CUSTOM'],
-            ['label' => 'Mail',                   'paso' => 'mail_contacto',      'msgKey' => 'MSG_RES_06'],
-        ];
-        return array_values(array_filter($all, fn($s) => !BotMessages::isArchived($s['msgKey'])));
+        return BotMessageOption::activos('RES_CAMBIAR_MENU');
     }
 
     private function buildCambiarRestauranteMsg(): string
     {
-        $steps = $this->resCambiarSteps();
-        $lines = [];
-        foreach ($steps as $i => $s) {
-            $lines[] = '*' . ($i + 1) . '.* ' . $s['label'];
-        }
-        $lines[] = '';
-        $lines[] = '*0.* Hablar con un asesor';
-        return "¿Qué dato querés cambiar?\n\n" . implode("\n", $lines);
+        return BotMessages::render('MSG_RES_CAMBIAR');
     }
 
-    private function evtCambiarSteps(BotSession $session): array
+    private function evtCambiarSubtipoEsNinos(BotSession $session): bool
     {
-        $subtipo  = $session->subtipo_activo;
-        $esNinos  = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
-        $horaKey  = ($esNinos && $subtipo !== 'HOCKEY') ? 'MSG_EVT_03_ENTERO' : 'MSG_EVT_03_HHMM';
+        return in_array($session->subtipo_activo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
+    }
 
-        $all = $esNinos ? [
-            ['label' => 'Fecha',                   'paso' => 'fecha',              'msgKey' => 'MSG_EVT_02'],
-            ['label' => 'Hora de inicio',           'paso' => 'hora_inicio',        'msgKey' => $horaKey],
-            ['label' => 'Nombre del/la festejado/a','paso' => 'nombre_hijo',        'msgKey' => 'MSG_EVT_NOMBRE_HIJO'],
-            ['label' => 'Nombre del responsable',   'paso' => 'nombre_responsable', 'msgKey' => 'MSG_EVT_07'],
-            ['label' => 'Mail',                     'paso' => 'mail_contacto',      'msgKey' => 'MSG_EVT_MAIL'],
-        ] : [
-            ['label' => 'Fecha',                  'paso' => 'fecha',              'msgKey' => 'MSG_EVT_02'],
-            ['label' => 'Hora de inicio',          'paso' => 'hora_inicio',        'msgKey' => $horaKey],
-            ['label' => 'Cantidad de personas',    'paso' => 'numero_personas',    'msgKey' => 'MSG_EVT_PERSONAS'],
-            ['label' => 'Nombre del responsable',  'paso' => 'nombre_responsable', 'msgKey' => 'MSG_EVT_07'],
-            ['label' => 'Mail',                    'paso' => 'mail_contacto',      'msgKey' => 'MSG_EVT_MAIL'],
-        ];
-        return array_values(array_filter($all, fn($s) => !BotMessages::isArchived($s['msgKey'])));
+    /** @return \Illuminate\Support\Collection<int,BotMessageOption> */
+    private function evtCambiarSteps(BotSession $session)
+    {
+        return BotMessageOption::activos($this->evtCambiarSubtipoEsNinos($session) ? 'EVT_NINOS_CAMBIAR_MENU' : 'EVT_CAMBIAR_MENU');
     }
 
     private function buildCambiarEventoMsg(BotSession $session): string
     {
-        $steps = $this->evtCambiarSteps($session);
-        $lines = [];
-        foreach ($steps as $i => $s) {
-            $lines[] = '*' . ($i + 1) . '.* ' . $s['label'];
-        }
-        $lines[] = '';
-        $lines[] = '*0.* Hablar con un asesor';
-        return "¿Qué dato querés cambiar?\n\n" . implode("\n", $lines);
+        return BotMessages::render($this->evtCambiarSubtipoEsNinos($session) ? 'MSG_EVT_NINOS_CAMBIAR' : 'MSG_EVT_CAMBIAR');
     }
 
     /** Elimina strings vacíos (mensajes archivados) de un array de mensajes a enviar. */
@@ -1396,7 +1326,7 @@ class BotEngine
                 return $this->handleInvalid($session, fn () => [$this->buildCambiarRestauranteMsg()]);
             }
             $pos  = (int)$upperText - 1;
-            $paso = $steps[$pos]['paso'] ?? null;
+            $paso = $steps[$pos]->value ?? null;
             if ($paso === null) {
                 return $this->handleInvalid($session, fn () => [$this->buildCambiarRestauranteMsg()]);
             }
@@ -1479,7 +1409,7 @@ class BotEngine
                 return $this->handleInvalid($session, fn () => [$this->buildCambiarEventoMsg($session)]);
             }
             $pos  = (int)$upper - 1;
-            $paso = $steps[$pos]['paso'] ?? null;
+            $paso = $steps[$pos]->value ?? null;
             if ($paso === null) {
                 return $this->handleInvalid($session, fn () => [$this->buildCambiarEventoMsg($session)]);
             }
@@ -1603,11 +1533,9 @@ class BotEngine
                 return true;
 
             case 'nombre_responsable':
-                $optsE  = BotMessages::parseOptions('MSG_EVT_07');
-                $keysE  = array_values(array_filter(array_map('strval', array_keys($optsE)), fn ($k) => $k !== '0'));
-                $upperE = strtoupper(trim($text));
-                if (!in_array($upperE, array_map('strval', array_keys($optsE)), true)) return false;
-                if ($upperE === ($keysE[0] ?? '1')) {
+                $valorRespE = BotMessages::resolveOptionValue('EVT_NOMBRE_RESPONSABLE', $text, 'number');
+                if ($valorRespE === null) return false;
+                if ($valorRespE === 'mi_nombre') {
                     $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
                     $this->saveDato($session, 'nombre_responsable', $nombre);
                     return true;
@@ -2314,20 +2242,44 @@ class BotEngine
      * Mapea texto libre a posición del menú principal (0=deportes, 1=restaurante, 2=eventos).
      * Devuelve null si no hay coincidencia.
      */
-    private function resolveMenuAlias(string $text): ?int
+    private function resolveMenuAlias(string $text): ?string
     {
         $lower = strtolower(trim($text));
 
         $aliases = [
-            0 => ['deporte', 'deportes', 'cancha', 'canchas', 'futbol', 'fútbol', 'padel', 'pádel', 'tenis', 'sport', 'sports'],
-            1 => ['restaurante', 'restaurantes', 'mesa', 'comer', 'almorzar', 'cenar', 'comida'],
-            2 => ['evento', 'eventos', 'cumpleaños', 'cumpleanos', 'fiesta', 'fiestas', 'cumple', 'birthday'],
+            'deportes'    => ['deporte', 'deportes', 'cancha', 'canchas', 'futbol', 'fútbol', 'padel', 'pádel', 'tenis', 'sport', 'sports'],
+            'restaurante' => ['restaurante', 'restaurantes', 'mesa', 'comer', 'almorzar', 'cenar', 'comida'],
+            'eventos'     => ['evento', 'eventos', 'cumpleaños', 'cumpleanos', 'fiesta', 'fiestas', 'cumple', 'birthday'],
         ];
 
-        foreach ($aliases as $pos => $words) {
+        foreach ($aliases as $value => $words) {
             foreach ($words as $word) {
                 if ($lower === $word || str_contains($lower, $word)) {
-                    return $pos;
+                    return $value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveTipoEventoAlias(string $text): ?string
+    {
+        $lower = strtolower(trim($text));
+
+        $aliases = [
+            'privado'      => ['privado', 'evento privado', 'asesor'],
+            'futbol'       => ['futbol', 'fútbol', 'soccer', 'niños', 'ninos', 'chicos', 'kids', 'infantil'],
+            'padel'        => ['padel', 'pádel', 'tenis'],
+            'hockey'       => ['hockey'],
+            'adolescentes' => ['adolescentes', 'adolescente', 'jovenes', 'jóvenes', 'teen', 'teens'],
+            'adultos'      => ['adultos', 'adulto', 'grande', 'grandes', 'mayores'],
+        ];
+
+        foreach ($aliases as $value => $words) {
+            foreach ($words as $word) {
+                if ($lower === $word || str_contains($lower, $word)) {
+                    return $value;
                 }
             }
         }

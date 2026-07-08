@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BotMessage;
+use App\Models\BotMessageOption;
 use Carbon\Carbon;
 
 class BotMessages
@@ -32,7 +33,31 @@ class BotMessages
         foreach ($vars as $key => $value) {
             $template = str_replace('{{' . $key . '}}', (string) $value, $template);
         }
+
+        // Si este mensaje tiene un menú de opciones registrado (ver
+        // BotMessageOptionsRegistry), se le agregan las líneas dinámicamente acá,
+        // así NINGÚN call site (actual o futuro) puede olvidarse de traerlas.
+        $optionsKey = \App\Services\BotMessageOptionsRegistry::optionsKeyForMessage($id);
+        if ($optionsKey !== null) {
+            $style = \App\Services\BotMessageOptionsRegistry::get($optionsKey)['style'] ?? 'letter';
+            $template = self::appendOptions($template, $optionsKey, $style);
+        }
+
         return $template;
+    }
+
+    /** Agrega las líneas "*A.* label" (o "*1.* label") de $optionsKey al final de $intro. */
+    private static function appendOptions(string $intro, string $optionsKey, string $style): string
+    {
+        $opciones = BotMessageOption::activos($optionsKey);
+        $lines    = [];
+
+        foreach ($opciones as $i => $opcion) {
+            $marcador = $style === 'letter' ? chr(65 + $i) : (string) ($i + 1);
+            $lines[]  = "*{$marcador}.* {$opcion->label}";
+        }
+
+        return $intro . "\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";
     }
 
     private static function template(string $id): string
@@ -74,10 +99,12 @@ class BotMessages
     public static function hardcodedDefault(string $id): ?string
     {
         return match($id) {
-            'MSG_BIENVENIDA_CONOCIDO' => "¡Hola, {{nombre}}! Bienvenido de nuevo a El Anden 🌿\n\nSoy Andy. ¿En qué puedo ayudarte hoy?\n\n*A.* Reserva tu cancha 🏅\n*B.* Reserva tu mesa 🍽️\n*C.* Eventos / Cumpleaños 🎉\n\n*0.* Hablar con un asesor\n\nRespondé con la letra de tu elección.",
+            // Lista de opciones (deportes/restaurante/eventos) se agrega automáticamente
+            // en render() desde bot_message_options (ver BotMessageOptionsRegistry).
+            'MSG_BIENVENIDA_CONOCIDO' => "¡Hola, {{nombre}}! Bienvenido de nuevo a El Anden 🌿\n\nSoy Andy. ¿En qué puedo ayudarte hoy?",
             'MSG_REGISTRO_PEDIR_NOMBRE' => "¡Hola! Bienvenido a El Anden 🌿\nSoy Andy, el asistente de reservas.\n\nPara empezar, ¿cómo te llamás?",
             'MSG_REGISTRO_CONFIRMAR_NOMBRE' => "¿Tu nombre es *{{nombre}}*?\n\nRespondé *SI* para confirmar, o escribí tu nombre correcto.",
-            'MSG_REGISTRO_BIENVENIDA' => "¡Mucho gusto, {{nombre}}! Ya te registré en nuestro sistema.\n\n¿En qué puedo ayudarte hoy?\n\n*A.* Reserva tu cancha 🏅\n*B.* Reserva tu mesa 🍽️\n*C.* Eventos / Cumpleaños 🎉\n\n*0.* Hablar con un asesor\n\nRespondé con la letra de tu elección.",
+            'MSG_REGISTRO_BIENVENIDA' => "¡Mucho gusto, {{nombre}}! Ya te registré en nuestro sistema.\n\n¿En qué puedo ayudarte hoy?",
             'MSG_OPCION_INVALIDA' => "No reconocí esa opción. Por favor elegí una de las opciones disponibles e intentá nuevamente.",
             'MSG_ESCALADO_HUMANO' => "Entendido. En breve un asesor de El Anden se va a comunicar con vos. 🙌\n\nMientras tanto, el asistente automático queda en pausa.\n\nSi preferís continuar sin esperar, escribí *reactivar bot* en cualquier momento.\n¡Hasta pronto! 😊",
             'MSG_TIMEOUT_ASESOR' => "¡Disculpá la demora! 🙏\n\nPasaron varias horas desde tu última consulta sin que pudiéramos terminarla. Para asegurarnos de tener tus datos al día, vamos a empezar de nuevo.\n\n¿En qué te ayudamos?",
@@ -104,10 +131,12 @@ class BotMessages
             'MSG_CONFIRMAR_MAIL' => "Tu mail registrado es {{mail}}.\n\n¿Es correcto?\n\nRespondé *SI* para confirmar, o ingresá uno nuevo para actualizarlo.",
             'MSG_RES_CONFIRMACION' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n¿Confirmamos?\n\n*SI* — Confirmar reserva (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
             'MSG_RES_CONFIRMACION_FUTURA' => "Perfecto, revisá el resumen de tu reserva:\n\n{{resumen}}\n\n⚠️ Tu reserva es para una fecha fuera de nuestro período habitual de reservas (próximos 7 días). La tomamos como *pre-confirmada*, pero un asesor deberá confirmarla. Te vamos a avisar.\n\n¿Pre-confirmamos?\n\n*SI* — Pre-confirmar (al confirmar aceptás los T&C)\n*CAMBIAR* — Modificar un dato\n\n*0.* Hablar con un asesor (para cancelar u otras consultas)",
-            'MSG_RES_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Horario\n*3.* Cantidad de personas\n*4.* Sector\n*5.* Nombre del responsable\n*6.* Mail\n\n*0.* Hablar con un asesor",
+            // Lista de opciones se arma aparte desde bot_message_options (RES_CAMBIAR_MENU).
+            'MSG_RES_CAMBIAR' => '¿Qué dato querés cambiar?',
 
             // Eventos
-            'MSG_EVT_01' => "¡Genial! Vamos a organizar tu cumpleaños 🎉\n\n¿Qué tipo de festejo estás planeando?\n\n*1.* Evento privado\n*2.* Fútbol (6 a 13 años)\n*3.* Pádel (hasta 16 años)\n*4.* Hockey\n*5.* Cumpleaños adolescentes (14 a 17 años)\n*6.* Cumpleaños adultos\n\n*0.* Hablar con un asesor",
+            // Lista de opciones se arma aparte desde bot_message_options (EVT_TIPO).
+            'MSG_EVT_01' => "¡Genial! Vamos a organizar tu cumpleaños 🎉\n\n¿Qué tipo de festejo estás planeando?",
             'MSG_EVT_MODALIDAD' => "¿Qué modalidad querés para el cumple?\n\n*1.* Combo Futbolero — solo fútbol\n*2.* Combo Animación Deportiva — fútbol + juegos + competencias\n\n*0.* Hablar con un asesor",
             'MSG_EVT_NOMBRE_HIJO' => "¿Cuál es el nombre del/la festejado/a y qué edad va a cumplir?\n\nEscribilo así: *Nombre, edad* (ejemplo: *Lucas, 8*)",
             'MSG_EVT_COLEGIO' => "¿En qué colegio está?",
@@ -122,8 +151,9 @@ class BotMessages
             'MSG_EVT_FERIADO_AVISO' => "⚠️ *La fecha elegida es feriado nacional.*\n\nSe aplicará un recargo del *30%* sobre el costo total del evento. El presupuesto final ya incluye este recargo.",
             'MSG_EVT_03_ENTERO' => "¿A qué hora comienza el evento?\n\nHorario disponible: *{{rango_horario}}*\nFormatos válidos: *20*, *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_03_HHMM' => "¿A qué hora comienza el evento?\n\nIngresá la hora de inicio.\nFormatos válidos: *20:00*, *20.00*, *20hs*, *8pm*.\n\nEscribí *0* para hablar con un asesor.",
-            'MSG_EVT_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Cantidad de personas\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
-            'MSG_EVT_NINOS_CAMBIAR' => "¿Qué dato querés cambiar?\n\n*1.* Fecha\n*2.* Hora de inicio\n*3.* Nombre del/la festejado/a\n*4.* Nombre del responsable\n*5.* Mail\n\n*0.* Hablar con un asesor",
+            // Lista de opciones se arma aparte desde bot_message_options (EVT_CAMBIAR_MENU / EVT_NINOS_CAMBIAR_MENU).
+            'MSG_EVT_CAMBIAR' => '¿Qué dato querés cambiar?',
+            'MSG_EVT_NINOS_CAMBIAR' => '¿Qué dato querés cambiar?',
             'MSG_EVT_05' => "¿Cuántos niños van a participar?\n\nIngresá un número entre 1 y 50.\nSi son más de 50, escribí *0* para hablar con un asesor.",
             'MSG_EVT_COSTO_MENU' => "Para {{numero_ninos}} niños, el costo estimado del menú es de \${{costo_menu_calculado}}. 🧮\n\nA continuación te hacemos algunas preguntas más para completar tu presupuesto.",
             'MSG_EVT_MENU' => "¿Qué menú preferís para los chicos?\n\n*1.* 2 porciones de pizza\n*2.* Pancho\n*3.* Hamburguesa\n\n*0.* Hablar con un asesor",
@@ -133,7 +163,8 @@ class BotMessages
             'MSG_EVT_ADICIONAL_QTY' => "¿Cuántas {{item_name}} querés agregar?\n\nIngresá un número entero.",
             'MSG_EVT_EXTRAS' => "¿Hay algo especial que quieras agregar o consultar para el evento?\n\nPodés escribirlo libremente. Un asesor lo va a revisar y confirmar.\nSi no tenés extras, respondé *ninguno*.",
             'MSG_EVT_MAIL' => "¿Cuál es tu mail de contacto? Lo usamos para enviarte la confirmación del evento.\n\nIngresá tu dirección de correo, o escribí *no* para omitir.",
-            'MSG_EVT_07' => "¿A nombre de quién registramos el evento?\n\n*1.* Mi nombre (uso el nombre con el que estoy registrado)\n*2.* Ingresar otro nombre\n\n*0.* Hablar con un asesor",
+            // Lista de opciones se arma aparte desde bot_message_options (EVT_NOMBRE_RESPONSABLE).
+            'MSG_EVT_07' => '¿A nombre de quién registramos el evento?',
             'MSG_EVT_07_CUSTOM' => "Por favor ingresá el nombre del responsable del evento:",
             'MSG_EVT_PERSONAS' => "¿Cuántas personas van a asistir?\n\nIngresá un número entero (1 a 999).\n\nEscribí *0* para hablar con un asesor.",
             'MSG_EVT_PERSONAS_AVISO_MENU' => "ℹ️ Para eventos de *más de 15 personas* contamos con opciones de menú especiales (menú fijo completo). Un asesor te va a detallar las opciones disponibles una vez que confirmemos tu reserva.",
@@ -298,38 +329,39 @@ class BotMessages
         return null;
     }
 
-    public static function packLabel(string $opcion): string
+    /**
+     * Resuelve la respuesta del cliente contra las opciones ACTIVAS de $optionsKey en
+     * este momento: letra/número por posición, o texto libre contra el label actual.
+     * Devuelve el `value` estable (nunca el label ni la posición) — de esto rutea
+     * BotEngine, así que renombrar/reordenar/ocultar opciones desde el panel jamás
+     * puede hacer que el bot ejecute la rama equivocada.
+     */
+    public static function resolveOptionValue(string $optionsKey, string $input, string $style = 'letter'): ?string
     {
-        return match($opcion) {
-            '1' => 'Pack 1',
-            '2' => 'Pack 2',
-            '3' => 'Pack 3',
-            '4' => 'Pack 4',
-            default => 'Pack ' . $opcion,
-        };
-    }
+        $opciones = BotMessageOption::activos($optionsKey);
+        $trimmed  = trim($input);
+        $upper    = strtoupper($trimmed);
 
-    public static function menuNinosLabel(string $opcion): string
-    {
-        return match($opcion) {
-            '1' => '2 porciones de pizza',
-            '2' => 'Pancho',
-            '3' => 'Hamburguesa',
-            default => 'Opción ' . $opcion,
-        };
-    }
+        if ($style === 'letter' && preg_match('/^[A-Z]$/', $upper)) {
+            $pos = ord($upper) - 65;
+            return $opciones[$pos]->value ?? null;
+        }
+        if ($style === 'number' && preg_match('/^\d+$/', $trimmed)) {
+            $pos = ((int) $trimmed) - 1;
+            return $opciones[$pos]->value ?? null;
+        }
 
-    public static function tipoEventoLabel(string $opcion): string
-    {
-        return match($opcion) {
-            '1' => 'Evento privado',
-            '2' => 'Cumpleaños fútbol (6 a 13 años)',
-            '3' => 'Cumpleaños pádel (hasta 16 años)',
-            '4' => 'Cumpleaños hockey',
-            '5' => 'Cumpleaños adolescentes (14 a 17 años)',
-            '6' => 'Cumpleaños adultos',
-            default => 'Tipo ' . $opcion,
-        };
+        $normalizado = strtr(mb_strtolower($trimmed), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+        if ($normalizado === '') return null;
+
+        foreach ($opciones as $opcion) {
+            $labelNorm = strtr(mb_strtolower($opcion->label), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+            if ($labelNorm !== '' && (str_contains($normalizado, $labelNorm) || str_contains($labelNorm, $normalizado))) {
+                return $opcion->value;
+            }
+        }
+
+        return null;
     }
 
     public static function modalidadLabel(string $opcion): string

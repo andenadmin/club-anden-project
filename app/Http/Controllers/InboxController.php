@@ -334,7 +334,10 @@ class InboxController extends Controller
             'FUTBOL'      => 'Fútbol',
             'PADEL'       => 'Pádel',
             'HOCKEY'      => 'Hockey',
-            'GENERAL_EVT' => str_contains(strtolower($dp['tipo_evento'] ?? ''), 'adolesc')
+            // tipo_evento_value es estable (no depende del label editable); fallback por
+            // texto solo para sesiones viejas creadas antes de que existiera ese campo.
+            'GENERAL_EVT' => ($dp['tipo_evento_value'] ?? null) === 'adolescentes'
+                                || (!isset($dp['tipo_evento_value']) && str_contains(strtolower($dp['tipo_evento'] ?? ''), 'adolesc'))
                                 ? 'Adolescentes'
                                 : 'Adultos',
             default       => 'Privado',

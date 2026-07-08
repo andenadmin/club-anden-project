@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BotMessageOptionsController;
 use App\Http\Controllers\BotMessagesAdminController;
 use App\Http\Controllers\BotPreciosController;
 use App\Http\Controllers\BotSimulatorController;
@@ -35,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/bot/messages/{botMessage}/restore', [BotMessagesAdminController::class, 'restore'])->name('bot.messages.restore');
     Route::patch('/bot/messages/{botMessage}/reset-default', [BotMessagesAdminController::class, 'resetDefault'])->name('bot.messages.reset-default');
     Route::put('/bot/sectores/{sector}', [BotMessagesAdminController::class, 'updateSector'])->name('bot.sectores.update');
+    Route::put('/bot/message-options/{option}', [BotMessageOptionsController::class, 'update'])->name('bot.message-options.update');
 
     // CRM — solo super admins
     Route::middleware('super_admin')->group(function () {

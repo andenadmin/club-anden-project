@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\BotMessage;
+use App\Models\BotMessageOption;
 use App\Models\RestaurantSector;
+use App\Services\BotMessageOptionsRegistry;
 use App\Services\BotMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -48,9 +50,19 @@ class BotMessagesAdminController extends Controller
             return redirect()->route('bot.messages.unlock');
         }
 
-        $decorate = fn ($msg) => array_merge($msg->toArray(), [
-            'default_content' => BotMessages::hardcodedDefault($msg->key),
-        ]);
+        $decorate = function ($msg) {
+            $optionsKey = BotMessageOptionsRegistry::optionsKeyForMessage($msg->key);
+            $config     = $optionsKey ? BotMessageOptionsRegistry::get($optionsKey) : null;
+
+            return array_merge($msg->toArray(), [
+                'default_content' => BotMessages::hardcodedDefault($msg->key),
+                'options_key'      => $optionsKey,
+                'options_config'   => $config,
+                'options'          => $optionsKey
+                    ? BotMessageOption::where('options_key', $optionsKey)->orderBy('orden')->get()
+                    : null,
+            ]);
+        };
 
         return Inertia::render('bot-messages', [
             'messages' => BotMessage::where('is_archived', false)->orderBy('category')->orderBy('id')->get()->map($decorate),

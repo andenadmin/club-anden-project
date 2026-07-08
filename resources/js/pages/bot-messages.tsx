@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { Archive, Pencil } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import botMessages from '@/routes/bot/messages';
+import { OptionsEditor, type BotMessageOptionRow } from '@/components/bot-messages/options-editor';
 
 interface BotMessage {
     id: number;
@@ -12,6 +13,9 @@ interface BotMessage {
     content: string;
     is_archived: boolean;
     default_content: string | null;
+    options_key: string | null;
+    options_config: { style: 'letter' | 'number'; allowAddRemove: boolean; metaFields: string[] } | null;
+    options: BotMessageOptionRow[] | null;
 }
 
 interface RestaurantSector {
@@ -201,6 +205,7 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                                 {content}
                             </pre>
                         )}
+                        {msg.options && <OptionsEditor options={msg.options} config={msg.options_config} />}
                     </div>
 
                     {editing && (
