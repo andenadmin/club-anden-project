@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Reserva;
 use App\Models\RestaurantSector;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -149,7 +151,16 @@ class ReservasController extends Controller
             $horaNorm = $h;
         }
 
+        // Reserva.id_cliente es obligatoria — el form de alta manual solo pide nombre/teléfono
+        // libres, sin ligar a un Cliente existente. Si dan teléfono, reusamos el cliente de esa
+        // conversación si ya existe (o lo creamos); si no, creamos uno de solo-lectura para el panel.
+        $cliente = Cliente::firstOrCreate(
+            ['numero_contacto' => $v['telefono'] ?: 'manual-' . Str::uuid()],
+            ['nombre_cliente' => $v['nombre']]
+        );
+
         Reserva::create([
+            'id_cliente'    => $cliente->id,
             'rama_servicio' => $ramaServicio,
             'subtipo'       => $subtipo,
             'estado_reserva'=> 'CONFIRMADA',
