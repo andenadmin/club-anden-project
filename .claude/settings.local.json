@@ -59,7 +59,8 @@
       "PowerShell(cd \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\"; php artisan tinker --execute=\"echo App\\\\Models\\\\Feriado::whereBetween\\('fecha', ['2026-06-25','2026-07-10']\\)->get\\(\\)->map\\(fn\\(\\\\$f\\)=>\\\\$f->fecha.' '.\\\\$f->nombre\\)->implode\\(PHP_EOL\\);\")",
       "PowerShell(cd \"C:\\\\Users\\\\GuidoPawluk\\\\Desktop\\\\Guido\\\\club-anden-project\"; \\(Get-Command php\\).Source)",
       "Bash(git rebase *)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "PowerShell(php -l app\\\\Jobs\\\\ProcessIncomingWhatsAppMessage.php; php -l app\\\\Services\\\\BotEngine.php)"
     ]
   }
 }

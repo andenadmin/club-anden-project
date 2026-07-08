@@ -13,6 +13,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 
@@ -35,6 +36,16 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         public readonly string $messageType = 'text',
         public readonly ?int $channelId = null,
     ) {}
+
+    /**
+     * Serializa el procesamiento por número: evita que dos mensajes del mismo
+     * contacto se procesen en paralelo (workers concurrentes) y corrompan
+     * current_step/contador_invalidos con un "último que guarda gana".
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping($this->from))->releaseAfter(3)->expireAfter(30)];
+    }
 
     public function handle(BotEngine $engine, WhatsAppSender $sender, WhatsAppClientFactory $factory): void
     {

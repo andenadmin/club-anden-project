@@ -511,6 +511,11 @@ class BotEngine
                 );
 
             default:
+                Log::warning('[BOT][STEP_RESTAURANTE] current_step desconocido, escalando', [
+                    'numero'       => $session->numero_contacto,
+                    'current_step' => $step,
+                    'text'         => $text,
+                ]);
                 return $this->escalate($session, 'SOLICITUD_CLIENTE');
         }
     }
@@ -1060,6 +1065,11 @@ class BotEngine
                 return $this->goToConfirmacion($session);
 
             default:
+                Log::warning('[BOT][STEP_EVENTO] current_step desconocido, escalando', [
+                    'numero'       => $session->numero_contacto,
+                    'current_step' => $step,
+                    'text'         => $text,
+                ]);
                 return $this->escalate($session, 'SOLICITUD_CLIENTE');
         }
     }
@@ -1138,6 +1148,11 @@ class BotEngine
                 );
 
             default:
+                Log::warning('[BOT][STEP_GENERAL_EVT] current_step desconocido, escalando', [
+                    'numero'       => $session->numero_contacto,
+                    'current_step' => $step,
+                    'text'         => $text,
+                ]);
                 return $this->escalate($session, 'SOLICITUD_CLIENTE');
         }
     }
