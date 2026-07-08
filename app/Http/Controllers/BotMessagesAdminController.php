@@ -9,6 +9,7 @@ use App\Services\BotMessageOptionsRegistry;
 use App\Services\BotMessages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class BotMessagesAdminController extends Controller
@@ -71,21 +72,32 @@ class BotMessagesAdminController extends Controller
         ]);
     }
 
-    public function updateSector(Request $request, RestaurantSector $sector)
+    /** Guarda todos los sectores editados de una — un solo botón en el panel, un solo request. */
+    public function updateSectores(Request $request)
     {
         if (!$this->isUnlocked()) {
             return redirect()->route('bot.messages.unlock');
         }
 
         $data = $request->validate([
-            'label'  => ['required', 'string', 'max:255'],
-            'orden'  => ['required', 'integer', 'min:1'],
-            'activo' => ['required', 'boolean'],
+            'sectores'            => ['required', 'array', 'min:1'],
+            'sectores.*.id'       => ['required', 'integer', 'exists:restaurant_sectores,id'],
+            'sectores.*.label'    => ['required', 'string', 'max:255'],
+            'sectores.*.orden'    => ['required', 'integer', 'min:1'],
+            'sectores.*.activo'   => ['required', 'boolean'],
         ]);
 
-        $sector->update($data);
+        DB::transaction(function () use ($data) {
+            foreach ($data['sectores'] as $s) {
+                RestaurantSector::where('id', $s['id'])->update([
+                    'label'  => $s['label'],
+                    'orden'  => $s['orden'],
+                    'activo' => $s['activo'],
+                ]);
+            }
+        });
 
-        return back()->with('success', 'Sector actualizado.');
+        return back()->with('success', 'Sectores actualizados.');
     }
 
     public function update(Request $request, BotMessage $botMessage)

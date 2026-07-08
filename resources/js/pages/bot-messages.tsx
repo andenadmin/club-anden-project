@@ -231,37 +231,18 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
     );
 }
 
-// ─── Sector Row ───────────────────────────────────────────────────────────────
-function SectorRow({ sector }: { sector: RestaurantSector }) {
-    const [label, setLabel]   = useState(sector.label);
-    const [orden, setOrden]   = useState(sector.orden);
-    const [activo, setActivo] = useState(sector.activo);
-    const [saving, setSaving] = useState(false);
-    const [saved, setSaved]   = useState(false);
-    const dirty = label !== sector.label || orden !== sector.orden || activo !== sector.activo;
+// ─── Sectores (Restaurante) ───────────────────────────────────────────────────
+interface SectorRowState {
+    label: string;
+    orden: number;
+    activo: boolean;
+}
 
-    // Sincronizar con el valor real guardado cuando el server recarga los props: si un
-    // cambio no llegó a guardarse, el campo vuelve a mostrar lo que hay en la base
-    // (en vez de quedar mostrando texto editado que nunca se persistió).
-    useEffect(() => {
-        setLabel(sector.label);
-        setOrden(sector.orden);
-        setActivo(sector.activo);
-    }, [sector.label, sector.orden, sector.activo]);
+function makeSectorRowState(s: RestaurantSector): SectorRowState {
+    return { label: s.label, orden: s.orden, activo: s.activo };
+}
 
-    const save = () => {
-        setSaving(true);
-        router.put(
-            `/bot/sectores/${sector.id}`,
-            { label, orden, activo },
-            {
-                preserveScroll: true,
-                onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000); },
-                onFinish: () => setSaving(false),
-            },
-        );
-    };
-
+function SectorRow({ sector, row, onChange }: { sector: RestaurantSector; row: SectorRowState; onChange: (patch: Partial<SectorRowState>) => void }) {
     return (
         <div className="flex items-center gap-3 border border-sidebar-border/70 rounded-xl bg-white px-4 py-3 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
             <div className="w-20 shrink-0">
@@ -269,8 +250,8 @@ function SectorRow({ sector }: { sector: RestaurantSector }) {
                 <input
                     type="number"
                     min={1}
-                    value={orden}
-                    onChange={e => setOrden(Number(e.target.value))}
+                    value={row.orden}
+                    onChange={e => onChange({ orden: Number(e.target.value) })}
                     className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-[#25d366]/40 focus:border-[#25d366] dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
                 />
             </div>
@@ -281,25 +262,69 @@ function SectorRow({ sector }: { sector: RestaurantSector }) {
                 </label>
                 <input
                     type="text"
-                    value={label}
-                    onChange={e => setLabel(e.target.value)}
+                    value={row.label}
+                    onChange={e => onChange({ label: e.target.value })}
                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-1 outline-none focus:ring-2 focus:ring-[#25d366]/40 focus:border-[#25d366] dark:bg-neutral-800 dark:border-neutral-600 dark:text-neutral-200"
                 />
             </div>
 
             <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-neutral-400 shrink-0 select-none">
-                <input type="checkbox" checked={activo} onChange={e => setActivo(e.target.checked)} className="size-4" />
+                <input type="checkbox" checked={row.activo} onChange={e => onChange({ activo: e.target.checked })} className="size-4" />
                 Activo
             </label>
-
-            <button
-                onClick={save}
-                disabled={saving || !dirty}
-                className="shrink-0 text-xs font-semibold text-white bg-[#075e54] rounded-lg px-4 py-1.5 hover:bg-[#0a7060] transition-colors disabled:opacity-50"
-            >
-                {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
-            </button>
         </div>
+    );
+}
+
+function SectoresEditor({ sectores }: { sectores: RestaurantSector[] }) {
+    const [rows, setRows] = useState<Record<number, SectorRowState>>(() =>
+        Object.fromEntries(sectores.map(s => [s.id, makeSectorRowState(s)])),
+    );
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved]   = useState(false);
+
+    // Sincronizar con los valores reales guardados cuando el server recarga los props.
+    useEffect(() => {
+        setRows(Object.fromEntries(sectores.map(s => [s.id, makeSectorRowState(s)])));
+    }, [sectores]);
+
+    const dirty = sectores.some(s => {
+        const r = rows[s.id];
+        return r && (r.label !== s.label || r.orden !== s.orden || r.activo !== s.activo);
+    });
+
+    const patch = (id: number, p: Partial<SectorRowState>) => {
+        setRows(prev => ({ ...prev, [id]: { ...prev[id], ...p } }));
+    };
+
+    const saveAll = () => {
+        setSaving(true);
+        router.put(
+            '/bot/sectores',
+            { sectores: sectores.map(s => ({ id: s.id, ...rows[s.id] })) },
+            {
+                preserveScroll: true,
+                onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2000); },
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
+
+    return (
+        <>
+            {sectores.map(sector => (
+                <SectorRow key={sector.id} sector={sector} row={rows[sector.id] ?? makeSectorRowState(sector)} onChange={p => patch(sector.id, p)} />
+            ))}
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={saveAll}
+                    disabled={saving || !dirty}
+                    className="text-xs font-semibold text-white bg-[#075e54] rounded-lg px-4 py-1.5 hover:bg-[#0a7060] transition-colors disabled:opacity-50"
+                >
+                    {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+                </button>
+            </div>
+        </>
     );
 }
 
@@ -429,11 +454,10 @@ export default function BotMessagesPage({ messages, archived, sectores }: Props)
                         <>
                             <p className="text-xs text-gray-500 dark:text-neutral-400 -mt-1 mb-1">
                                 El nombre de cada sector es libre — cambialo cuando quieras, la letra (A, B, C…) se recalcula sola
-                                según el orden. Desactivá un sector para que deje de ofrecerse como opción.
+                                según el orden. Desactivá un sector para que deje de ofrecerse como opción. Los cambios se guardan
+                                todos juntos con el botón de abajo.
                             </p>
-                            {sectores.map(sector => (
-                                <SectorRow key={sector.id} sector={sector} />
-                            ))}
+                            <SectoresEditor sectores={sectores} />
                         </>
                     ) : isArchived ? (
                         filtered.length === 0 ? (
