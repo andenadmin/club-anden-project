@@ -278,6 +278,13 @@ class ReservasController extends Controller
         return redirect()->back();
     }
 
+    public function destroy(Reserva $reserva): RedirectResponse
+    {
+        $reserva->delete();
+
+        return redirect()->back();
+    }
+
     public function confirmAllToday(Request $request): RedirectResponse
     {
         $v = $request->validate(['fecha' => 'required|date_format:Y-m-d']);

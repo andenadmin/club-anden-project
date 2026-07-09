@@ -12,6 +12,16 @@ class BotMessages
     private static array $archivedKeys = [];
     private static bool  $loaded      = false;
 
+    /**
+     * Limpia una respuesta de opción (letra/número) antes de resolverla: recorta espacios
+     * y signos de puntuación que un teclado agrega solo (punto, coma, paréntesis, etc.)
+     * sin cambiar el significado de la respuesta — así "C.", "C)" o " c " valen igual que "C".
+     */
+    private static function limpiarRespuesta(string $input): string
+    {
+        return trim(trim($input), " \t\n\r\0\x0B.,;:!¡?¿()[]\"'");
+    }
+
     private static function loadAll(): void
     {
         if (self::$loaded) return;
@@ -228,7 +238,7 @@ class BotMessages
     public static function resolveOption(string $id, string $input, array $vars = []): ?string
     {
         $opts  = self::parseOptions($id, $vars);
-        $upper = strtoupper(trim($input));
+        $upper = strtoupper(self::limpiarRespuesta($input));
 
         if (isset($opts[$upper])) return $opts[$upper];
 
@@ -248,7 +258,7 @@ class BotMessages
     public static function findOptionKey(string $id, string $input, array $vars = []): ?string
     {
         $opts  = self::parseOptions($id, $vars);
-        $upper = strtoupper(trim($input));
+        $upper = strtoupper(self::limpiarRespuesta($input));
 
         if (isset($opts[$upper])) return $upper;
 
@@ -299,7 +309,7 @@ class BotMessages
     public static function sectorRestaurante(string $opcion): ?string
     {
         $sectores = \App\Models\RestaurantSector::activos();
-        $trimmed  = trim($opcion);
+        $trimmed  = self::limpiarRespuesta($opcion);
         $upper    = strtoupper($trimmed);
 
         // Selección por letra: misma posición con la que se armó el mensaje (A=1er sector activo, B=2do...).
@@ -339,7 +349,7 @@ class BotMessages
     public static function resolveOptionValue(string $optionsKey, string $input, string $style = 'letter'): ?string
     {
         $opciones = BotMessageOption::activos($optionsKey);
-        $trimmed  = trim($input);
+        $trimmed  = self::limpiarRespuesta($input);
         $upper    = strtoupper($trimmed);
 
         if ($style === 'letter' && preg_match('/^[A-Z]$/', $upper)) {

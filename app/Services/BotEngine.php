@@ -214,9 +214,7 @@ class BotEngine
     private function handleConfirmandoNombre(BotSession $session, string $text): array
     {
         $upper = strtoupper(trim($text));
-        $lower = strtolower(trim($text));
-        $esSi  = in_array($upper, ['SI', 'SÍ', 'S'], true)
-              || in_array($lower, ['sí', 'si', 'confirmar', 'confirmo', 'yes'], true);
+        $esSi  = $upper === 'S' || $this->isAfirmacion($text);
 
         if (!$esSi) {
             // El usuario escribió su nombre correcto → preguntar de nuevo
@@ -1130,10 +1128,10 @@ class BotEngine
         $keys    = array_values(array_filter(array_keys($opts), fn ($k) => $k !== '0'));
         $upper   = strtoupper(trim($text));
 
-        // 1ra opción = confirmar (acepta SI, SÍ, CONFIRMAR, CONFIRMO, CONFIRMAMOS)
+        // 1ra opción = confirmar (acepta SI, SÍ, CONFIRMAR, CONFIRMO, CONFIRMAMOS, y variantes con íes repetidas)
         $lower = strtolower(trim($text));
         $esConfirmar = $upper === ($keys[0] ?? 'SI')
-            || in_array($lower, ['si', 'sí', 'confirmar', 'confirmo', 'confirmamos'], true);
+            || $this->isAfirmacion($text);
         if ($esConfirmar) {
             return $this->confirmarReserva($session);
         }
@@ -1547,9 +1545,9 @@ class BotEngine
                 return true;
 
             case 'mail_contacto':
-                $lower = strtolower($text);
-                if ($lower !== 'no' && !$this->isValidEmail($text)) return false;
-                $this->saveMailCliente($session, $lower === 'no' ? null : $text);
+                $esNo = $this->isNegacion($text);
+                if (!$esNo && !$this->isValidEmail($text)) return false;
+                $this->saveMailCliente($session, $esNo ? null : $text);
                 return true;
 
             default:
@@ -1638,6 +1636,27 @@ class BotEngine
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
+
+    /**
+     * Detecta una afirmación ("si") tolerando variantes con letras repetidas
+     * (ej. "siii", "siiii") que corrigen automáticos de teclado suelen generar
+     * cuando el usuario mantiene apretada la tecla o escribe con énfasis.
+     */
+    private function isAfirmacion(string $text): bool
+    {
+        $t = strtr(strtolower(trim($text)), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u']);
+        if (preg_match('/^s+i+$/', $t)) return true;
+
+        return in_array($t, ['confirmar', 'confirmo', 'confirmamos', 'yes', 'dale', 'ok', 'okay', 'correcto', 'exacto'], true);
+    }
+
+    /** Análogo a isAfirmacion() pero para negaciones ("no", "noo", "nooo"). */
+    private function isNegacion(string $text): bool
+    {
+        $t = strtr(strtolower(trim($text)), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u']);
+
+        return (bool) preg_match('/^n+o+$/', $t);
+    }
 
     private function handleInvalid(BotSession $session, \Closure $retryMsg): array
     {
@@ -1918,16 +1937,14 @@ class BotEngine
     {
         $datos        = $session->datos_parciales ?? [];
         $mailConocido = $datos['_mail_conocido'] ?? null;
-        $upper        = strtoupper(trim($text));
-        $lower        = strtolower(trim($text));
 
-        if ($mailConocido && $upper === 'SI') {
+        if ($mailConocido && $this->isAfirmacion($text)) {
             $this->saveDato($session, '_mail_conocido', null);
             $this->saveMailCliente($session, $mailConocido);
             return $advance();
         }
 
-        if ($noAllowed && $lower === 'no') {
+        if ($noAllowed && $this->isNegacion($text)) {
             $this->saveDato($session, '_mail_conocido', null);
             $this->saveMailCliente($session, null);
             return $advance();

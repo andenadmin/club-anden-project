@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Utensils, Wind, X } from 'lucide-react';
+import { Baby, ChevronLeft, ChevronRight, MessageCircle, Pencil, Plus, Search, Trash2, Utensils, Wind, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -253,6 +253,8 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
     const [form, setForm]         = useState(() => makeFormData(reserva));
     const [saving, setSaving]     = useState(false);
     const [errors, setErrors]     = useState<Record<string, string>>({});
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     // Si la reserva quedó con un sector que ya no está activo (renombrado o desactivado
     // desde el panel), lo agregamos igual a la lista para no perder el dato al editar.
@@ -280,6 +282,15 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
             preserveScroll: true,
             onSuccess: () => { setSaving(false); onClose(); },
             onError:   (errs) => { setSaving(false); setErrors(errs as Record<string, string>); },
+        });
+    }
+
+    function handleDelete() {
+        setDeleting(true);
+        router.delete(`/reservas/${reserva.id}`, {
+            preserveScroll: true,
+            onSuccess: () => { setDeleting(false); setConfirmDeleteOpen(false); onClose(); },
+            onError:   () => { setDeleting(false); },
         });
     }
 
@@ -377,16 +388,55 @@ function EditReservaDialog({ reserva, open, onClose }: { reserva: Reserva; open:
                         <textarea value={form.comentarios} onChange={e => set('comentarios', e.target.value)} rows={3} placeholder="Sin comentarios" className={`${inputCls} resize-none`} />
                     </div>
 
-                    <DialogFooter className="pt-2">
-                        <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors">
-                            Cancelar
+                    <DialogFooter className="pt-2 sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={() => setConfirmDeleteOpen(true)}
+                            className="flex items-center justify-center gap-1.5 rounded-md border border-red-200 dark:border-red-900 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar
                         </button>
-                        <button type="submit" disabled={saving} className="rounded-md px-4 py-2 text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-neutral-200 transition-colors disabled:opacity-50">
-                            {saving ? 'Guardando…' : 'Guardar'}
-                        </button>
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                            <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled={saving} className="rounded-md px-4 py-2 text-sm font-medium bg-neutral-900 text-white hover:bg-neutral-700 dark:bg-white dark:text-black dark:hover:bg-neutral-200 transition-colors disabled:opacity-50">
+                                {saving ? 'Guardando…' : 'Guardar'}
+                            </button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>
+
+            {/* Confirmación de eliminación — evita borrados accidentales desde la lista */}
+            <Dialog open={confirmDeleteOpen} onOpenChange={(o) => { if (!o) setConfirmDeleteOpen(false); }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>¿Eliminar esta reserva?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Se eliminará la reserva de <span className="font-medium text-foreground">{reserva.nombre}</span>. Esta acción no se puede deshacer.
+                    </p>
+                    <DialogFooter className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setConfirmDeleteOpen(false)}
+                            className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            className="rounded-md px-4 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                        >
+                            {deleting ? 'Eliminando…' : 'Sí, eliminar'}
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Dialog>
     );
 }

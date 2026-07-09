@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/reservas',                   [ReservasController::class, 'store'])->name('reservas.store');
     Route::post('/reservas/confirm-all-today', [ReservasController::class, 'confirmAllToday'])->name('reservas.confirmAllToday');
     Route::patch('/reservas/{reserva}',        [ReservasController::class, 'update'])->name('reservas.update');
+    Route::delete('/reservas/{reserva}',       [ReservasController::class, 'destroy'])->name('reservas.destroy');
 
     // Inbox
     Route::get('/inbox',                 [InboxController::class, 'index'])->name('inbox.index');
