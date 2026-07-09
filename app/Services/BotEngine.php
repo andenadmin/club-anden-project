@@ -148,6 +148,7 @@ class BotEngine
             'CONFIRMACION'         => $this->handleConfirmacion($session, $text),
             'COMPLETADO'           => $this->handleCompletado($session, $text),
             'CAMBIANDO_DATO'       => $this->handleCambiandoDato($session, $text),
+            'CANCELANDO_RESERVA'   => $this->handleCancelandoReserva($session, $text),
             default                => $this->handleInicio($session),
         };
     }
@@ -278,10 +279,133 @@ class BotEngine
             return [BotMessages::render('MSG_EVT_01')];
         }
 
+        if ($value === 'cancelar_reserva') {
+            return $this->iniciarCancelacion($session);
+        }
+
         return $this->handleInvalid(
             $session,
             fn () => [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])]
         );
+    }
+
+    // ─── CANCELACIÓN DE RESERVA (self-service, por número de contacto) ─────────
+
+    /**
+     * Busca las reservas activas del cliente de ESTA sesión (siempre filtrado por
+     * id_cliente, nunca por un ID que mande el usuario) y arranca el flujo de
+     * cancelación: confirma directo si hay una sola, o pide elegir si hay varias.
+     */
+    private function iniciarCancelacion(BotSession $session): array
+    {
+        $reservas = Reserva::where('id_cliente', $session->id_cliente)
+            ->whereIn('estado_reserva', ['CONFIRMADA', 'PENDIENTE_CONFIRMACION'])
+            ->orderBy('created_at')
+            ->get();
+
+        if ($reservas->isEmpty()) {
+            return ['No encontramos reservas activas a tu nombre para cancelar. ¿Te ayudo con algo más?'];
+        }
+
+        if ($reservas->count() === 1) {
+            $reserva = $reservas->first();
+            $this->saveDato($session, '_cancelar_reserva_id', $reserva->id);
+            $session->mergeEstado(['estado_actual' => 'CANCELANDO_RESERVA', 'current_step' => 'confirmar', 'contador_invalidos' => 0]);
+
+            return [
+                "Esta es tu reserva:\n\n" . $this->resumenReservaCorta($reserva)
+                . "\n\n¿Confirmás que querés *cancelarla*? Respondé *SI* o *NO*.",
+            ];
+        }
+
+        $ids = $reservas->pluck('id')->values()->toArray();
+        $this->saveDato($session, '_cancelar_ids', $ids);
+        $session->mergeEstado(['estado_actual' => 'CANCELANDO_RESERVA', 'current_step' => 'elegir', 'contador_invalidos' => 0]);
+
+        return [$this->buildElegirCancelacionMsg($ids)];
+    }
+
+    private function buildElegirCancelacionMsg(array $ids): string
+    {
+        $lines = ['Tenés varias reservas activas. ¿Cuál querés cancelar?', ''];
+        foreach ($ids as $i => $id) {
+            $reserva = Reserva::find($id);
+            if (!$reserva) continue;
+            $lines[] = ($i + 1) . '. ' . $this->resumenReservaCorta($reserva);
+        }
+        $lines[] = "\n*0.* Hablar con un asesor";
+
+        return implode("\n", $lines);
+    }
+
+    private function resumenReservaCorta(Reserva $reserva): string
+    {
+        $datos = $reserva->datos ?? [];
+        $fecha = $datos['fecha'] ?? '';
+
+        if ($reserva->rama_servicio === 'RESTAURANTE') {
+            $hora = $datos['hora'] ?? '';
+            return "🍽️ Restaurante — {$fecha}" . ($hora ? " {$hora}hs" : '');
+        }
+
+        $tipo = $datos['tipo_evento'] ?? 'Evento';
+        $horaInicio = $datos['hora_inicio'] ?? '';
+
+        return "🎉 {$tipo} — {$fecha}" . ($horaInicio ? " {$horaInicio}hs" : '');
+    }
+
+    private function handleCancelandoReserva(BotSession $session, string $text): array
+    {
+        $step = $session->current_step;
+
+        if ($step === 'elegir') {
+            $ids = $session->datos_parciales['_cancelar_ids'] ?? [];
+            $num = rtrim(trim($text), " .):,;");
+            $pos = ctype_digit($num) ? ((int) $num - 1) : -1;
+
+            if ($pos < 0 || !isset($ids[$pos])) {
+                return $this->handleInvalid($session, fn () => [$this->buildElegirCancelacionMsg($ids)]);
+            }
+
+            $reserva = Reserva::find($ids[$pos]);
+            if (!$reserva) {
+                return $this->handleInvalid($session, fn () => [$this->buildElegirCancelacionMsg($ids)]);
+            }
+
+            $this->saveDato($session, '_cancelar_reserva_id', $reserva->id);
+            $session->mergeEstado(['current_step' => 'confirmar', 'contador_invalidos' => 0]);
+
+            return [
+                "Esta es la reserva elegida:\n\n" . $this->resumenReservaCorta($reserva)
+                . "\n\n¿Confirmás que querés *cancelarla*? Respondé *SI* o *NO*.",
+            ];
+        }
+
+        // step === 'confirmar'
+        if ($this->isNegacion($text)) {
+            $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
+            return ['Ok, no cancelé nada. ¿Te ayudo con algo más?'];
+        }
+
+        if (!$this->isAfirmacion($text)) {
+            return $this->handleInvalid($session, fn () => ['¿Confirmás que querés *cancelarla*? Respondé *SI* o *NO*.']);
+        }
+
+        $reservaId = $session->datos_parciales['_cancelar_reserva_id'] ?? null;
+        // Siempre re-validado contra id_cliente de la sesión: aunque el ID quedara
+        // guardado en datos_parciales, nunca se cancela una reserva que no sea de
+        // este número de contacto.
+        $reserva = Reserva::where('id', $reservaId)->where('id_cliente', $session->id_cliente)->first();
+
+        $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
+
+        if (!$reserva) {
+            return ['No pudimos encontrar esa reserva. Si el problema persiste, escribinos y te ayudamos.'];
+        }
+
+        $reserva->update(['estado_reserva' => 'CANCELADA']);
+
+        return ['✅ Listo, tu reserva fue cancelada. ¿Te ayudo con algo más?'];
     }
 
     private function handleRecolectandoDatos(BotSession $session, string $text): array
@@ -2030,6 +2154,12 @@ class BotEngine
             $this->saveDato($session, 'cambiando_paso', null);
             $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
             return [$this->buildConfirmacionMsg($session)];
+        }
+
+        if ($estado === 'CANCELANDO_RESERVA') {
+            $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
+            $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
+            return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
         }
 
         $snapshot = $this->popHistory($session);

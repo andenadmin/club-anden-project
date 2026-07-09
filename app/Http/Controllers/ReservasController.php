@@ -41,7 +41,6 @@ class ReservasController extends Controller
 
         $reservas = Reserva::with('cliente')
             ->whereIn('rama_servicio', ['RESTAURANTE', 'EVENTOS'])
-            ->whereNotIn('estado_reserva', ['CANCELADA'])
             ->whereRaw("json_extract(datos, '$.fecha') IN ({$placeholders})", $fechasBotFormat)
             ->get()
             ->map(function (Reserva $r) {
