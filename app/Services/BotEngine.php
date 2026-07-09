@@ -301,10 +301,13 @@ class BotEngine
         $reservas = Reserva::where('id_cliente', $session->id_cliente)
             ->whereIn('estado_reserva', ['CONFIRMADA', 'PENDIENTE_CONFIRMACION'])
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->filter(fn (Reserva $r) => $this->esFechaHoyOFutura($r->datos['fecha'] ?? null))
+            ->values();
 
         if ($reservas->isEmpty()) {
-            return ['No encontramos reservas activas a tu nombre para cancelar. ¿Te ayudo con algo más?'];
+            $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'rama_activa' => null, 'current_step' => null, 'contador_invalidos' => 0]);
+            return ['No encontramos reservas activas a tu nombre para cancelar. Si necesitás algo más, escribinos cuando quieras 🌿'];
         }
 
         if ($reservas->count() === 1) {
@@ -336,6 +339,18 @@ class BotEngine
         $lines[] = "\n*0.* Hablar con un asesor";
 
         return implode("\n", $lines);
+    }
+
+    /** Reservas con fecha ya pasada no interesan para cancelar (aunque el estado siga activo). */
+    private function esFechaHoyOFutura(?string $fechaBot): bool
+    {
+        if (!$fechaBot) return false;
+
+        try {
+            return Carbon::createFromFormat('d/m/y', $fechaBot)->startOfDay()->gte(Carbon::today());
+        } catch (\Exception) {
+            return false;
+        }
     }
 
     private function resumenReservaCorta(Reserva $reserva): string
@@ -383,8 +398,8 @@ class BotEngine
 
         // step === 'confirmar'
         if ($this->isNegacion($text)) {
-            $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
-            return ['Ok, no cancelé nada. ¿Te ayudo con algo más?'];
+            $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'rama_activa' => null, 'current_step' => null, 'contador_invalidos' => 0]);
+            return ['Dale, no cancelé nada 🙌 Cualquier cosa, escribinos cuando quieras.'];
         }
 
         if (!$this->isAfirmacion($text)) {
@@ -397,7 +412,7 @@ class BotEngine
         // este número de contacto.
         $reserva = Reserva::where('id', $reservaId)->where('id_cliente', $session->id_cliente)->first();
 
-        $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
+        $session->mergeEstado(['estado_actual' => 'COMPLETADO', 'rama_activa' => null, 'current_step' => null, 'contador_invalidos' => 0]);
 
         if (!$reserva) {
             return ['No pudimos encontrar esa reserva. Si el problema persiste, escribinos y te ayudamos.'];
@@ -405,7 +420,7 @@ class BotEngine
 
         $reserva->update(['estado_reserva' => 'CANCELADA']);
 
-        return ['✅ Listo, tu reserva fue cancelada. ¿Te ayudo con algo más?'];
+        return ['✅ Listo, tu reserva fue cancelada. ¡Te esperamos la próxima! 🌿'];
     }
 
     private function handleRecolectandoDatos(BotSession $session, string $text): array
