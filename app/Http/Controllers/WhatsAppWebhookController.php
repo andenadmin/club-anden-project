@@ -93,8 +93,10 @@ class WhatsAppWebhookController extends Controller
     }
 
     /**
-     * Aplana el payload y devuelve mensajes que entendemos (text / button / interactive).
-     * Status updates, media, audio, etc. se ignoran por ahora.
+     * Aplana el payload y devuelve mensajes que entendemos (text / button / interactive),
+     * más un placeholder legible para media (audio/imagen/video/etc.) — antes esos tipos
+     * llegaban con body vacío ("" ) y se veían como una burbuja en blanco en el inbox.
+     * Status updates se ignoran por ahora.
      * Si channelMap está vacío (sin canales en BD), hace fallback al phone_number_id global.
      *
      * @param  \Illuminate\Support\Collection<string,int>  $channelMap  phone_number_id => channel_id
@@ -136,7 +138,15 @@ class WhatsAppWebhookController extends Controller
                         'interactive' => $message['interactive']['button_reply']['title']
                                        ?? $message['interactive']['list_reply']['title']
                                        ?? '',
-                        default       => '',
+                        'image'       => '[Imagen]',
+                        'audio'       => '[Audio]',
+                        'video'       => '[Video]',
+                        'document'    => '[Documento]',
+                        'sticker'     => '[Sticker]',
+                        'location'    => '[Ubicación]',
+                        'contacts'    => '[Contacto]',
+                        'reaction'    => '[Reacción] ' . ($message['reaction']['emoji'] ?? ''),
+                        default       => $type !== null ? '[Mensaje no compatible]' : '',
                     };
                     $from = PhoneNumber::normalize($message['from'] ?? null);
                     $id   = $message['id'] ?? null;

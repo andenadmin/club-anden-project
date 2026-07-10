@@ -26,7 +26,7 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
 
     /** Tipos de mensaje que NO son texto y deben recibir MSG_OPCION_INVALIDA. */
     private const NON_TEXT_TYPES = [
-        'sticker', 'audio', 'image', 'video', 'document', 'location', 'contacts',
+        'sticker', 'audio', 'image', 'video', 'document', 'location', 'contacts', 'reaction',
     ];
 
     public function __construct(
@@ -68,12 +68,23 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         // Marcar como leído (doble tilde azul en el lado del usuario)
         $client->markAsRead($this->waMessageId);
 
-        // §8a — Mensajes no-texto: responder con opción inválida sin avanzar estado.
+        // §8a — Mensajes no-texto: se registran igual en el inbox (con el placeholder que
+        // arma el webhook, ej. "[Audio]") para que no desaparezcan de la conversación, pero
+        // responden con opción inválida sin avanzar estado ni tocar contador_invalidos.
         if (in_array($this->messageType, self::NON_TEXT_TYPES, true)) {
             $session = BotSession::firstOrCreate(
                 ['numero_contacto' => $this->from],
                 ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $this->channelId]
             );
+            $engine->logInbound($session, $this->body);
+            $session->messages()
+                ->where('direction', ConversationMessage::DIRECTION_INBOUND)
+                ->where('sender', ConversationMessage::SENDER_USER)
+                ->whereNull('wa_message_id')
+                ->latest('id')
+                ->limit(1)
+                ->update(['wa_message_id' => $this->waMessageId]);
+
             $invalidMsg = BotMessages::render('MSG_OPCION_INVALIDA');
             $sender->sendBotResponses($session, [$invalidMsg]);
             return;

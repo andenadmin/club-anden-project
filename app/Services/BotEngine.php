@@ -153,7 +153,9 @@ class BotEngine
         };
     }
 
-    private function logInbound(BotSession $session, string $body): void
+    /** Público: lo usa ProcessIncomingWhatsAppMessage para dejar registrado un mensaje
+     *  no-texto (audio/imagen/etc.) en el inbox aunque no pase por dispatch(). */
+    public function logInbound(BotSession $session, string $body): void
     {
         ConversationMessage::create([
             'bot_session_id' => $session->id,
