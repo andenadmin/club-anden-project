@@ -110,6 +110,25 @@ class BotMessagesAdminController extends Controller
         return back()->with('success', 'Sectores actualizados.');
     }
 
+    private static function requiredVars(string $key): array
+    {
+        return match($key) {
+            'MSG_BIENVENIDA_CONOCIDO',
+            'MSG_REGISTRO_CONFIRMAR_NOMBRE',
+            'MSG_REGISTRO_BIENVENIDA',
+            'MSG_ACTUALIZAR_NOMBRE_CLIENTE' => ['{{nombre}}'],
+            'MSG_CONFIRMAR_MAIL'            => ['{{mail}}'],
+            'MSG_RES_CONFIRMACION',
+            'MSG_RES_CONFIRMACION_FUTURA',
+            'MSG_CONFIRMACION'              => ['{{resumen}}'],
+            'MSG_EVT_03_ENTERO'             => ['{{rango_horario}}'],
+            'MSG_EVT_COSTO_MENU'            => ['{{numero_ninos}}', '{{costo_menu_calculado}}'],
+            'MSG_EVT_MENU_ADULTOS'          => ['{{numero_adultos}}'],
+            'MSG_EVT_ADICIONAL_QTY'         => ['{{item_name}}'],
+            default                         => [],
+        };
+    }
+
     public function update(Request $request, BotMessage $botMessage)
     {
         if (!$this->isUnlocked()) {
@@ -119,6 +138,17 @@ class BotMessagesAdminController extends Controller
         $request->validate([
             'content' => ['required', 'string', 'max:4000'],
         ]);
+
+        $missing = array_values(array_filter(
+            self::requiredVars($botMessage->key),
+            fn($v) => !str_contains($request->content, $v),
+        ));
+
+        if (!empty($missing)) {
+            return back()->withErrors([
+                'content' => 'Faltan variables obligatorias: ' . implode(', ', $missing) . '. Sin ellas el bot no va a funcionar correctamente. Volvé a agregarlas al texto.',
+            ])->withInput();
+        }
 
         $botMessage->update(['content' => $request->content]);
         BotMessages::clearCache();

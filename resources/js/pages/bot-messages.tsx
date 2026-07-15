@@ -40,18 +40,27 @@ const CATEGORIES = [
     { key: 'eventos',     label: 'Eventos',     color: 'bg-purple-100 text-purple-700 border-purple-300' },
 ];
 
+// Variables que DEBEN estar en el contenido — si faltan el bot falla.
+const REQUIRED_VARS: Record<string, string[]> = {
+    MSG_BIENVENIDA_CONOCIDO:       ['{{nombre}}'],
+    MSG_REGISTRO_CONFIRMAR_NOMBRE: ['{{nombre}}'],
+    MSG_REGISTRO_BIENVENIDA:       ['{{nombre}}'],
+    MSG_ACTUALIZAR_NOMBRE_CLIENTE: ['{{nombre}}'],
+    MSG_CONFIRMAR_MAIL:            ['{{mail}}'],
+    MSG_RES_CONFIRMACION:          ['{{resumen}}'],
+    MSG_RES_CONFIRMACION_FUTURA:   ['{{resumen}}'],
+    MSG_CONFIRMACION:              ['{{resumen}}'],
+    MSG_EVT_03_ENTERO:             ['{{rango_horario}}'],
+    MSG_EVT_COSTO_MENU:            ['{{numero_ninos}}', '{{costo_menu_calculado}}'],
+    MSG_EVT_MENU_ADULTOS:          ['{{numero_adultos}}'],
+    MSG_EVT_ADICIONAL_QTY:         ['{{item_name}}'],
+};
+
+// Variables informativas (pueden estar o no, solo se muestran como referencia).
 const VARS_HINT: Record<string, string[]> = {
-    MSG_BIENVENIDA_CONOCIDO:     ['{{nombre}}'],
-    MSG_REGISTRO_BIENVENIDA:     ['{{nombre}}'],
-    MSG_RES_CONFIRMACION:        ['{{resumen}}'],
-    MSG_RES_CONFIRMACION_FUTURA: ['{{resumen}}'],
-    MSG_CONFIRMACION:            ['{{resumen}}'],
-    MSG_CONFIRMAR_MAIL:          ['{{mail}}'],
-    MSG_EVT_03_ENTERO:           ['{{rango_horario}}'],
-    MSG_EVT_COSTO_MENU:          ['{{numero_ninos}}', '{{pack_label}}', '{{costo_menu_calculado}}'],
-    MSG_EVT_ADULTOS:             ['{{precio_menu_adulto}}'],
-    MSG_EVT_MENU_ADULTOS:        ['{{numero_adultos}}'],
-    MSG_EVT_ADICIONAL_QTY:       ['{{item_name}}'],
+    ...REQUIRED_VARS,
+    MSG_EVT_COSTO_MENU: ['{{numero_ninos}}', '{{pack_label}}', '{{costo_menu_calculado}}'],
+    MSG_EVT_ADULTOS:    ['{{precio_menu_adulto}}'],
 };
 
 const LS_KEY = 'bot_messages_collapsed';
@@ -105,7 +114,10 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
         router.patch(`/bot/messages/${msg.id}/reset-default`, {}, { preserveScroll: true });
     };
 
-    const hints = VARS_HINT[msg.key] ?? [];
+    const hints        = VARS_HINT[msg.key] ?? [];
+    const requiredVars = REQUIRED_VARS[msg.key] ?? [];
+    const missingVars  = requiredVars.filter(v => !content.includes(v));
+    const hasMissing   = missingVars.length > 0;
 
     return (
         <div className="border border-sidebar-border/70 rounded-xl bg-white overflow-hidden shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
@@ -194,16 +206,62 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                             </div>
                         )}
                         {editing ? (
-                            <textarea
-                                value={content}
-                                onChange={e => setContent(e.target.value)}
-                                rows={Math.max(4, content.split('\n').length + 1)}
-                                className="w-full text-sm font-mono text-gray-800 dark:text-neutral-200 border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#25d366]/40 focus:border-[#25d366] resize-y leading-relaxed dark:bg-neutral-800 dark:border-neutral-600"
-                            />
+                            <>
+                                <textarea
+                                    value={content}
+                                    onChange={e => setContent(e.target.value)}
+                                    rows={Math.max(4, content.split('\n').length + 1)}
+                                    className={`w-full text-sm font-mono text-gray-800 dark:text-neutral-200 border rounded-lg px-3 py-2 outline-none focus:ring-2 resize-y leading-relaxed dark:bg-neutral-800 ${
+                                        hasMissing
+                                            ? 'border-red-400 focus:ring-red-300 dark:border-red-500'
+                                            : 'border-gray-300 focus:ring-[#25d366]/40 focus:border-[#25d366] dark:border-neutral-600'
+                                    }`}
+                                />
+                                {hasMissing && (
+                                    <div className="mt-1.5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 dark:bg-red-950/40 dark:border-red-800">
+                                        <svg className="size-4 shrink-0 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                                                Faltan variables obligatorias — no se puede guardar
+                                            </p>
+                                            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                                Tenés que incluir en el texto:{' '}
+                                                {missingVars.map((v, i) => (
+                                                    <span key={v}>
+                                                        <code className="font-mono bg-red-100 dark:bg-red-900/50 px-1 rounded">{v}</code>
+                                                        {i < missingVars.length - 1 ? ', ' : ''}
+                                                    </span>
+                                                ))}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         ) : (
-                            <pre className="text-sm text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-sans leading-relaxed">
-                                {content}
-                            </pre>
+                            <>
+                                <pre className="text-sm text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-sans leading-relaxed">
+                                    {content}
+                                </pre>
+                                {hasMissing && (
+                                    <div className="mt-2 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 dark:bg-red-950/40 dark:border-red-800">
+                                        <svg className="size-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                        </svg>
+                                        <p className="text-xs text-red-700 dark:text-red-400">
+                                            <span className="font-semibold">¡Atención!</span> Este mensaje guardado le falta{missingVars.length > 1 ? 'n' : ''} la variable{missingVars.length > 1 ? 's' : ''}{' '}
+                                            {missingVars.map((v, i) => (
+                                                <span key={v}>
+                                                    <code className="font-mono bg-red-100 dark:bg-red-900/50 px-1 rounded">{v}</code>
+                                                    {i < missingVars.length - 1 ? ' y ' : ''}
+                                                </span>
+                                            ))}
+                                            {' '}— el bot no va a funcionar bien. Editalo y agregala.
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
                         {msg.options && <OptionsEditor options={msg.options} config={msg.options_config} />}
                     </div>
@@ -218,7 +276,8 @@ function MessageCard({ msg, collapsed, onToggleCollapse }: CardProps) {
                             </button>
                             <button
                                 onClick={save}
-                                disabled={saving || !dirty}
+                                disabled={saving || !dirty || hasMissing}
+                                title={hasMissing ? `Faltan variables: ${missingVars.join(', ')}` : undefined}
                                 className="text-xs font-semibold text-white bg-[#075e54] rounded-lg px-4 py-1.5 hover:bg-[#0a7060] transition-colors disabled:opacity-50"
                             >
                                 {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar'}
