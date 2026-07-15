@@ -2835,8 +2835,8 @@ class BotEngine
     {
         $text = trim(strtolower($raw));
 
-        // HH:MM o HH.MM
-        if (preg_match('/^(\d{1,2})[:.](\d{2})$/', $text, $m)) {
+        // HH:MM, HH.MM, HH:MMhs, HH.MMhs (ej: 14:49, 14.49, 14:49hs, 14.49hs)
+        if (preg_match('/^(\d{1,2})[:.](\d{2})\s*(?:h(?:s)?)?$/', $text, $m)) {
             $h = (int)$m[1]; $min = (int)$m[2];
             if ($h > 23 || $min > 59) return null;
             return sprintf('%02d:%02d', $h, $min);
