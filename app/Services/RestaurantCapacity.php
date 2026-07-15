@@ -172,6 +172,9 @@ class RestaurantCapacity
         }
 
         $intro = BotMessages::render('MSG_RES_04');
+        if ($intro === '') {
+            $intro = BotMessages::hardcodedDefault('MSG_RES_04') ?? '¿Tenés preferencia de sector?';
+        }
 
         return $intro . "\n\n" . implode("\n", $lines) . "\n\n*0.* Hablar con un asesor";
     }

@@ -190,16 +190,16 @@ class BotEngine
                 'contador_invalidos' => 0,
                 'datos_parciales'    => [],
             ]);
-            return [BotMessages::render('MSG_EVT_01')];
+            return $this->renderOne('MSG_EVT_01');
         }
 
         if ($cliente->nombre_cliente) {
             $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL']);
-            return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $cliente->nombre_cliente])];
+            return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $cliente->nombre_cliente]);
         }
 
         $session->mergeEstado(['estado_actual' => 'REGISTRO_CLIENTE']);
-        return [BotMessages::render('MSG_REGISTRO_PEDIR_NOMBRE')];
+        return $this->renderOne('MSG_REGISTRO_PEDIR_NOMBRE');
     }
 
     private function handleRegistroCliente(BotSession $session, string $text): array
@@ -211,7 +211,7 @@ class BotEngine
             'estado_actual'     => 'CONFIRMANDO_NOMBRE',
             'contador_invalidos' => 0,
         ]);
-        return [BotMessages::render('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre])];
+        return $this->renderOne('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre]);
     }
 
     private function handleConfirmandoNombre(BotSession $session, string $text): array
@@ -224,7 +224,7 @@ class BotEngine
             $nombre = trim($text);
             $datos  = array_merge($session->datos_parciales ?? [], ['_nombre_pendiente' => $nombre]);
             $session->mergeEstado(['datos_parciales' => $datos, 'contador_invalidos' => 0]);
-            return [BotMessages::render('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre])];
+            return $this->renderOne('MSG_REGISTRO_CONFIRMAR_NOMBRE', ['nombre' => $nombre]);
         }
 
         $nombre  = $session->datos_parciales['_nombre_pendiente'] ?? trim($text);
@@ -238,7 +238,7 @@ class BotEngine
             'estado_actual'     => 'MENU_PRINCIPAL',
             'contador_invalidos' => 0,
         ]);
-        return [BotMessages::render('MSG_REGISTRO_BIENVENIDA', ['nombre' => $nombre])];
+        return $this->renderOne('MSG_REGISTRO_BIENVENIDA', ['nombre' => $nombre]);
     }
 
     private function handleMenuPrincipal(BotSession $session, string $text): array
@@ -254,7 +254,7 @@ class BotEngine
                 'rama_activa'    => 'DEPORTES',
                 'contador_invalidos' => 0,
             ]);
-            return [BotMessages::render('MSG_DEP_01')];
+            return $this->renderOne('MSG_DEP_01');
         }
 
         if ($value === 'restaurante') {
@@ -266,7 +266,7 @@ class BotEngine
                 'contador_invalidos' => 0,
                 'datos_parciales'    => [],
             ]);
-            return [BotMessages::render('MSG_RES_01')];
+            return $this->renderOne('MSG_RES_01');
         }
 
         if ($value === 'eventos') {
@@ -278,7 +278,7 @@ class BotEngine
                 'contador_invalidos' => 0,
                 'datos_parciales'    => [],
             ]);
-            return [BotMessages::render('MSG_EVT_01')];
+            return $this->renderOne('MSG_EVT_01');
         }
 
         if ($value === 'cancelar_reserva') {
@@ -470,7 +470,7 @@ class BotEngine
                             'datos_parciales' => [],
                             'rama_activa'     => null,
                         ]);
-                        return [BotMessages::render('MSG_RES_FINDE_ORDEN_LLEGADA')];
+                        return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
                     }
                 }
 
@@ -492,7 +492,7 @@ class BotEngine
                             'datos_parciales' => [],
                             'rama_activa'     => null,
                         ]);
-                        return [BotMessages::render('MSG_RES_FINDE_ORDEN_LLEGADA')];
+                        return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
                     }
                 } else {
                     $hora = $this->resolveHoraRestaurante($text);
@@ -1387,7 +1387,7 @@ class BotEngine
         if ($session->rama_activa === 'DEPORTES') {
             $lower = strtolower(trim($text));
             if (in_array($lower, ['ver', 'precio', 'precios', 'ver precios', 'ver precio'], true)) {
-                return [BotMessages::render('MSG_DEPORTES_PRECIOS_CANCHAS')];
+                return $this->renderOne('MSG_DEPORTES_PRECIOS_CANCHAS');
             }
         }
 
@@ -1406,7 +1406,7 @@ class BotEngine
             'contador_invalidos' => 0,
         ]);
         $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-        return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+        return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
     }
 
     // ─── CAMBIAR DATO ─────────────────────────────────────────────────────────
@@ -1442,6 +1442,12 @@ class BotEngine
     private function filterMsgs(array $msgs): array
     {
         return array_values(array_filter($msgs, fn($m) => $m !== ''));
+    }
+
+    /** Render de un único mensaje pasando por filterMsgs para descartar archivados. */
+    private function renderOne(string $msgId, array $vars = []): array
+    {
+        return $this->filterMsgs([BotMessages::render($msgId, $vars)]);
     }
 
     private function handleCambiandoDato(BotSession $session, string $text): array
@@ -1480,7 +1486,7 @@ class BotEngine
                         return [$confirmMsg];
                     }
                 }
-                return [BotMessages::render('MSG_RES_06')];
+                return $this->renderOne('MSG_RES_06');
             }
             if ($paso === 'sector') {
                 return [$this->buildSectorMsg($session)];
@@ -1492,7 +1498,7 @@ class BotEngine
                 'numero_personas'    => 'MSG_RES_03',
                 'nombre_responsable' => 'MSG_RES_05_CUSTOM',
             ];
-            return [BotMessages::render($msgMap[$paso])];
+            return $this->renderOne($msgMap[$paso]);
         }
 
         if ($cambiandoPaso === 'mail_contacto') {
@@ -1563,13 +1569,13 @@ class BotEngine
                         return [$confirmMsg];
                     }
                 }
-                return [BotMessages::render('MSG_EVT_MAIL')];
+                return $this->renderOne('MSG_EVT_MAIL');
             }
             if ($paso === 'nombre_hijo') {
-                return [BotMessages::render('MSG_EVT_NOMBRE_HIJO')];
+                return $this->renderOne('MSG_EVT_NOMBRE_HIJO');
             }
             if ($paso === 'hora_inicio' && $esSubtipoNinos && $subtipo !== 'HOCKEY') {
-                return [BotMessages::render('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)])];
+                return $this->renderOne('MSG_EVT_03_ENTERO', ['rango_horario' => $this->getRangoHorarioNinos($session)]);
             }
             $msgMap = [
                 'fecha'              => 'MSG_EVT_02',
@@ -1577,7 +1583,7 @@ class BotEngine
                 'numero_personas'    => 'MSG_EVT_PERSONAS',
                 'nombre_responsable' => 'MSG_EVT_07',
             ];
-            return [BotMessages::render($msgMap[$paso])];
+            return $this->renderOne($msgMap[$paso]);
         }
 
         if ($cambiandoPaso === 'mail_contacto') {
@@ -1773,7 +1779,12 @@ class BotEngine
             }
         }
 
-        return [BotMessages::render('MSG_ESCALADO_HUMANO')];
+        $msg = BotMessages::render('MSG_ESCALADO_HUMANO');
+        if ($msg === '') {
+            $msg = BotMessages::hardcodedDefault('MSG_ESCALADO_HUMANO')
+                ?? "Entendido. En breve un asesor se va a comunicar con vos.\n\nEl asistente queda en pausa. Escribí *reactivar bot* para continuar sin esperar.";
+        }
+        return [$msg];
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
@@ -1804,7 +1815,7 @@ class BotEngine
         $contador = ($session->contador_invalidos ?? 0) + 1;
         $session->mergeEstado(['contador_invalidos' => $contador]);
 
-        if ($contador >= 2) {
+        if ($contador >= 3) {
             return $this->escalate($session, 'OPCIONES_INVALIDAS_REITERADAS');
         }
 
@@ -1819,10 +1830,10 @@ class BotEngine
         if ($msg !== '') {
             return [$msg];
         }
-        Log::warning('[BOT][NEXT_STEP] Mensaje archivado, escalando', [
+        Log::info('[BOT][NEXT_STEP] Mensaje archivado, omitiendo paso', [
             'msgId' => $msgId, 'step' => $step, 'numero' => $session->numero_contacto,
         ]);
-        return $this->escalate($session, 'SOLICITUD_CLIENTE');
+        return [];
     }
 
     private function saveDato(BotSession $session, string $key, mixed $value): void
@@ -2066,6 +2077,9 @@ class BotEngine
             $this->saveDato($session, '_mail_conocido', $email);
             return $this->nextStep($session, 'mail_contacto', 'MSG_CONFIRMAR_MAIL', ['mail' => $email]);
         }
+        if (BotMessages::isArchived($mailMsgId) && $advance !== null) {
+            return $advance();
+        }
         return $this->nextStep($session, 'mail_contacto', $mailMsgId);
     }
 
@@ -2162,9 +2176,9 @@ class BotEngine
                     'contador_invalidos' => 0,
                 ]);
                 $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-                return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+                return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
             }
-            return [BotMessages::render('MSG_VOLVER_CONFIRMADA')];
+            return $this->renderOne('MSG_VOLVER_CONFIRMADA');
         }
 
         if ($estado === 'CAMBIANDO_DATO') {
@@ -2176,7 +2190,7 @@ class BotEngine
         if ($estado === 'CANCELANDO_RESERVA') {
             $session->mergeEstado(['estado_actual' => 'MENU_PRINCIPAL', 'current_step' => null, 'contador_invalidos' => 0]);
             $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-            return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+            return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
         }
 
         $snapshot = $this->popHistory($session);
@@ -2191,7 +2205,7 @@ class BotEngine
                 'contador_invalidos' => 0,
             ]);
             $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-            return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+            return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
         }
 
         // Restaurar snapshot y preservar historial actualizado
@@ -2221,7 +2235,7 @@ class BotEngine
             'datos_parciales'    => [],
             'contador_invalidos' => 0,
         ]);
-        return [BotMessages::render('MSG_DESPEDIDA')];
+        return $this->renderOne('MSG_DESPEDIDA');
     }
 
     // Responde al botón INFO del template de recordatorio: muestra datos de la reserva más reciente.
@@ -2305,7 +2319,7 @@ class BotEngine
         $datos   = $session->datos_parciales ?? [];
 
         if ($rama === 'EVENTOS' && $step === 'tipo_evento') {
-            return [BotMessages::render('MSG_EVT_01')];
+            return $this->renderOne('MSG_EVT_01');
         }
 
         if ($rama === 'RESTAURANTE') {
@@ -2379,7 +2393,7 @@ class BotEngine
         }
 
         $nombre = Cliente::find($session->id_cliente)?->nombre_cliente ?? 'cliente';
-        return [BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre])];
+        return $this->renderOne('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $nombre]);
     }
 
     private function getMailMessages(BotSession $session, string $fallbackMsgId): array
