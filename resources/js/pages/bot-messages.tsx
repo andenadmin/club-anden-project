@@ -40,7 +40,8 @@ const CATEGORIES = [
     { key: 'eventos',     label: 'Eventos',     color: 'bg-purple-100 text-purple-700 border-purple-300' },
 ];
 
-// Variables que DEBEN estar en el contenido — si faltan el bot falla.
+// Variables obligatorias por mensaje — si faltan, el bot no funciona.
+// Tiene que estar sincronizado con BotMessagesAdminController::requiredVars().
 const REQUIRED_VARS: Record<string, string[]> = {
     MSG_BIENVENIDA_CONOCIDO:       ['{{nombre}}'],
     MSG_REGISTRO_CONFIRMAR_NOMBRE: ['{{nombre}}'],
@@ -56,12 +57,8 @@ const REQUIRED_VARS: Record<string, string[]> = {
     MSG_EVT_ADICIONAL_QTY:         ['{{item_name}}'],
 };
 
-// Variables informativas (pueden estar o no, solo se muestran como referencia).
-const VARS_HINT: Record<string, string[]> = {
-    ...REQUIRED_VARS,
-    MSG_EVT_COSTO_MENU: ['{{numero_ninos}}', '{{pack_label}}', '{{costo_menu_calculado}}'],
-    MSG_EVT_ADULTOS:    ['{{precio_menu_adulto}}'],
-};
+// Alias — VARS_HINT es lo mismo que REQUIRED_VARS (todas son obligatorias).
+const VARS_HINT = REQUIRED_VARS;
 
 const LS_KEY = 'bot_messages_collapsed';
 
