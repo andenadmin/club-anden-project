@@ -18,7 +18,7 @@ class BotMessageOptionsRegistry
             'RES_CAMBIAR_MENU'        => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
             'EVT_CAMBIAR_MENU'        => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
             'EVT_NINOS_CAMBIAR_MENU'  => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
-            'RES_HORA_RESTAURANTE'    => ['style' => 'letter', 'allowAddRemove' => true,  'metaFields' => []],
+            'RES_HORA_RESTAURANTE'    => ['style' => 'letter', 'allowAddRemove' => true, 'hint' => 'El texto de cada opción debe incluir la hora en formato "XX hs" o "XX:XX hs" para que el bot la reconozca. La letra (A, B, C…) se asigna automáticamente por orden de posición.', 'metaFields' => []],
         ];
     }
 

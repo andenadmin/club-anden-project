@@ -37,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/bot/messages/{botMessage}/reset-default', [BotMessagesAdminController::class, 'resetDefault'])->name('bot.messages.reset-default');
     Route::put('/bot/sectores', [BotMessagesAdminController::class, 'updateSectores'])->name('bot.sectores.update');
     Route::put('/bot/message-options', [BotMessageOptionsController::class, 'update'])->name('bot.message-options.update');
+    Route::post('/bot/message-options', [BotMessageOptionsController::class, 'store'])->name('bot.message-options.store');
+    Route::delete('/bot/message-options/{option}', [BotMessageOptionsController::class, 'destroy'])->name('bot.message-options.destroy');
 
     // CRM — solo super admins
     Route::middleware('super_admin')->group(function () {

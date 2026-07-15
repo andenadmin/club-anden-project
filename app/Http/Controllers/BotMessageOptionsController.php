@@ -21,6 +21,51 @@ class BotMessageOptionsController extends Controller
         return $ts && now()->diffInMinutes($ts, true) < self::LOCK_MINUTES;
     }
 
+    public function store(Request $request): RedirectResponse
+    {
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
+
+        $data = $request->validate([
+            'options_key' => ['required', 'string'],
+            'label'       => ['required', 'string', 'max:255'],
+        ]);
+
+        $config = BotMessageOptionsRegistry::get($data['options_key']);
+        if (!$config || !($config['allowAddRemove'] ?? false)) {
+            abort(422, 'No se pueden agregar opciones a este grupo.');
+        }
+
+        $maxOrden = BotMessageOption::where('options_key', $data['options_key'])->max('orden') ?? 0;
+
+        BotMessageOption::create([
+            'options_key' => $data['options_key'],
+            'value'       => 'custom_' . uniqid(),
+            'label'       => $data['label'],
+            'orden'       => $maxOrden + 1,
+            'activo'      => true,
+        ]);
+
+        return back()->with('success', 'Opción agregada.');
+    }
+
+    public function destroy(BotMessageOption $option): RedirectResponse
+    {
+        if (!$this->isUnlocked()) {
+            return redirect()->route('bot.messages.unlock');
+        }
+
+        $config = BotMessageOptionsRegistry::get($option->options_key);
+        if (!$config || !($config['allowAddRemove'] ?? false)) {
+            abort(422, 'No se pueden eliminar opciones de este grupo.');
+        }
+
+        $option->delete();
+
+        return back()->with('success', 'Opción eliminada.');
+    }
+
     public function update(Request $request): RedirectResponse
     {
         if (!$this->isUnlocked()) {
