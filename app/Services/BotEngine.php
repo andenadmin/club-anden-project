@@ -1466,6 +1466,21 @@ class BotEngine
         $datos         = $session->datos_parciales ?? [];
         $cambiandoPaso = $datos['cambiando_paso'] ?? null;
 
+        if ($cambiandoPaso === 'confirmar_nombre_cliente') {
+            $pendingNombre = $datos['_pending_nombre_cliente'] ?? null;
+            $this->saveDato($session, 'cambiando_paso', null);
+            $this->saveDato($session, '_pending_nombre_cliente', null);
+            if ($pendingNombre && $this->isAfirmacion($text)) {
+                $cliente = Cliente::find($session->id_cliente);
+                if ($cliente) {
+                    $cliente->nombre_cliente = $pendingNombre;
+                    $cliente->save();
+                }
+            }
+            $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
+            return [$this->buildConfirmacionMsg($session)];
+        }
+
         if ($cambiandoPaso === null) {
             $steps     = $this->resCambiarSteps();
             $count     = count($steps);
@@ -1537,6 +1552,20 @@ class BotEngine
             return $this->handleInvalid($session, fn () => [BotMessages::render($msgMap[$cambiandoPaso] ?? 'MSG_RES_01')]);
         }
 
+        // Si cambió el nombre, preguntar si también quiere actualizar su perfil
+        if ($cambiandoPaso === 'nombre_responsable') {
+            $nuevoNombre  = trim($text);
+            $nombreActual = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
+            if ($nuevoNombre !== $nombreActual) {
+                $confirmMsg = BotMessages::render('MSG_ACTUALIZAR_NOMBRE_CLIENTE', ['nombre' => $nuevoNombre]);
+                if ($confirmMsg !== '') {
+                    $this->saveDato($session, '_pending_nombre_cliente', $nuevoNombre);
+                    $this->saveDato($session, 'cambiando_paso', 'confirmar_nombre_cliente');
+                    return [$confirmMsg];
+                }
+            }
+        }
+
         $this->saveDato($session, 'cambiando_paso', null);
         $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
         return [$this->buildConfirmacionMsg($session)];
@@ -1548,6 +1577,21 @@ class BotEngine
         $cambiandoPaso  = $datos['cambiando_paso'] ?? null;
         $subtipo        = $session->subtipo_activo;
         $esSubtipoNinos = in_array($subtipo, ['NINOS', 'FUTBOL', 'PADEL', 'HOCKEY'], true);
+
+        if ($cambiandoPaso === 'confirmar_nombre_cliente') {
+            $pendingNombre = $datos['_pending_nombre_cliente'] ?? null;
+            $this->saveDato($session, 'cambiando_paso', null);
+            $this->saveDato($session, '_pending_nombre_cliente', null);
+            if ($pendingNombre && $this->isAfirmacion($text)) {
+                $cliente = Cliente::find($session->id_cliente);
+                if ($cliente) {
+                    $cliente->nombre_cliente = $pendingNombre;
+                    $cliente->save();
+                }
+            }
+            $session->mergeEstado(['estado_actual' => 'CONFIRMACION', 'contador_invalidos' => 0]);
+            return [$this->buildConfirmacionMsg($session)];
+        }
 
         if ($cambiandoPaso === null) {
             $steps     = $this->evtCambiarSteps($session);
@@ -1627,6 +1671,20 @@ class BotEngine
             $this->saveDato($session, 'cambiando_paso', 'nombre_responsable_custom');
             $session->mergeEstado(['contador_invalidos' => 0]);
             return $this->filterMsgs([BotMessages::render('MSG_EVT_07_CUSTOM')]);
+        }
+
+        // Si ingresó un nombre personalizado, preguntar si también quiere actualizar su perfil
+        if ($cambiandoPaso === 'nombre_responsable_custom') {
+            $nuevoNombre  = trim($text);
+            $nombreActual = Cliente::find($session->id_cliente)?->nombre_cliente ?? '';
+            if ($nuevoNombre !== $nombreActual) {
+                $confirmMsg = BotMessages::render('MSG_ACTUALIZAR_NOMBRE_CLIENTE', ['nombre' => $nuevoNombre]);
+                if ($confirmMsg !== '') {
+                    $this->saveDato($session, '_pending_nombre_cliente', $nuevoNombre);
+                    $this->saveDato($session, 'cambiando_paso', 'confirmar_nombre_cliente');
+                    return [$confirmMsg];
+                }
+            }
         }
 
         $this->saveDato($session, 'cambiando_paso', null);

@@ -183,6 +183,7 @@ class BotMessages
             'MSG_RES_FINDE_TURNOS'         => "¿A qué turno querés asistir?\n\n*A.* 12:00 hs\n*B.* 14:00 hs\n\n*0.* Hablar con un asesor",
             'MSG_RES_FINDE_ORDEN_LLEGADA'  => "🗓️ Los sábados, domingos y feriados las reservas se toman hasta las *11:00 hs*.\n\nPasado ese horario, la atención es *por orden de llegada*. ¡Te esperamos! 🌿",
             'MSG_RES_SECTOR_LLENO'         => "⚠️ En este momento todos los sectores están completos para esa fecha.\n\nUn asesor se va a comunicar con vos para ver si podemos encontrarte lugar. 🙏",
+            'MSG_ACTUALIZAR_NOMBRE_CLIENTE' => "¿Querés que también te llamemos *{{nombre}}* la próxima vez que reserves?\n\nRespondé *SI* o *NO*.",
             'MSG_LINK_CUMPLE_PADEL' => "🎾 *Packs de Cumpleaños Pádel — Opciones y Precios:*\n_(link próximamente)_",
             'MSG_LINK_CUMPLE_HOCKEY' => "🏒 *Packs de Cumpleaños Hockey — Opciones y Precios:*\n_(link próximamente)_",
             'MSG_LINK_TYC' => "📄 *Términos y Condiciones de El Andén:*\nhttps://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing\n\nPor favor, leelo antes de confirmar tu reserva.",

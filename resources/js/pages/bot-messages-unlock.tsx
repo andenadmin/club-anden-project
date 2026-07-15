@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function BotMessagesUnlock() {
     const { data, setData, post, processing, errors } = useForm({ password: '' });
@@ -15,6 +15,16 @@ export default function BotMessagesUnlock() {
             <Head title="Acceso — Mensajes del Bot" />
             <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-neutral-950 px-4">
                 <div className="w-full max-w-sm">
+
+                    <Link
+                        href="/dashboard"
+                        className="mb-4 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+                    >
+                        <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Volver al panel
+                    </Link>
 
                     {/* Card */}
                     <div className="rounded-2xl border border-sidebar-border/70 bg-white shadow-sm dark:bg-neutral-900 dark:border-neutral-700 overflow-hidden">
