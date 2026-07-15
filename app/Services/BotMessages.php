@@ -125,7 +125,11 @@ class BotMessages
 
             // Restaurante — MSG_RES_01 es dinámico (fechas), no tiene default fijo
             'MSG_RES_01' => null,
-            'MSG_RES_02' => "¿A qué hora querés llegar?\n\n*A.* Turno mediodía 1: 11.30 hs (hasta las 14 hs)\n*B.* Turno mediodía 2: 14 hs\n*C.* Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)\n*D.* Turno noche 1: 20 hs\n*E.* Turno noche 2: 22 hs\n\n*0.* Hablar con un asesor",
+            // MSG_RES_02: solo el intro — las opciones de turno se arman dinámicamente
+            // desde bot_message_options (RES_HORA_RESTAURANTE), editables desde el panel.
+            // Importante: cada label debe contener la hora en formato "XX hs" o "XX:XX hs"
+            // para que extractHoraDeLabel() la extraiga correctamente.
+            'MSG_RES_02' => "¿A qué hora querés llegar?",
             'MSG_RES_HORA_PASADA' => "Ese horario ya pasó para hoy. Por favor elegí uno de los disponibles:",
             'MSG_RES_03' => "¿Para cuántas personas es la reserva?\n\n*A.* 1 a 2 personas\n*B.* 3 a 4 personas\n*C.* 5 a 6 personas\n*D.* 7 a 8 personas\n*E.* 9 a 14 personas\n*F.* 15 o más personas\n\n*0.* Hablar con un asesor",
             'MSG_RES_15PLUS' => "ℹ️ Para grupos de *15 o más personas*, la reserva requiere coordinación previa con nuestro equipo.\n\n⚠️ Los sábados y domingos al mediodía, grupos de 15 o más personas tienen *menú fijo completo obligatorio*.\n\nUn asesor se va a comunicar con vos para coordinar todos los detalles.",

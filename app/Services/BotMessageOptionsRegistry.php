@@ -18,6 +18,7 @@ class BotMessageOptionsRegistry
             'RES_CAMBIAR_MENU'        => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
             'EVT_CAMBIAR_MENU'        => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
             'EVT_NINOS_CAMBIAR_MENU'  => ['style' => 'number', 'allowAddRemove' => false, 'metaFields' => []],
+            'RES_HORA_RESTAURANTE'    => ['style' => 'letter', 'allowAddRemove' => true,  'metaFields' => []],
         ];
     }
 
@@ -42,6 +43,7 @@ class BotMessageOptionsRegistry
             'MSG_RES_CAMBIAR'         => 'RES_CAMBIAR_MENU',
             'MSG_EVT_CAMBIAR'         => 'EVT_CAMBIAR_MENU',
             'MSG_EVT_NINOS_CAMBIAR'   => 'EVT_NINOS_CAMBIAR_MENU',
+            'MSG_RES_02'              => 'RES_HORA_RESTAURANTE',
         ];
     }
 
