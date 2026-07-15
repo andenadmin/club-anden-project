@@ -312,10 +312,20 @@ class BotMessages
         $trimmed  = self::limpiarRespuesta($opcion);
         $upper    = strtoupper($trimmed);
 
+        $sectoresDisponibles = $sectores->map(fn($s) => ['key' => $s->key, 'label' => $s->label, 'requiere_capacidad' => $s->requiere_capacidad])->values()->toArray();
+
         // Selección por letra: misma posición con la que se armó el mensaje (A=1er sector activo, B=2do...).
         if (preg_match('/^[A-Z]$/', $upper)) {
-            $pos = ord($upper) - 65;
-            return $sectores[$pos]->label ?? null;
+            $pos    = ord($upper) - 65;
+            $result = $sectores[$pos]->label ?? null;
+            \Illuminate\Support\Facades\Log::info('[BOT][SECTOR_PARSE] Resolución por letra', [
+                'input'     => $opcion,
+                'letra'     => $upper,
+                'posicion'  => $pos,
+                'resultado' => $result,
+                'sectores'  => $sectoresDisponibles,
+            ]);
+            return $result;
         }
 
         // Texto libre: compara contra el label ACTUAL de cada sector (lo que haya escrito
@@ -326,6 +336,11 @@ class BotMessages
         foreach ($sectores as $sector) {
             $labelNorm = strtr(mb_strtolower($sector->label), ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
             if ($labelNorm !== '' && (str_contains($normalizado, $labelNorm) || str_contains($labelNorm, $normalizado))) {
+                \Illuminate\Support\Facades\Log::info('[BOT][SECTOR_PARSE] Resolución por texto libre', [
+                    'input'     => $opcion,
+                    'resultado' => $sector->label,
+                    'sectores'  => $sectoresDisponibles,
+                ]);
                 return $sector->label;
             }
         }
@@ -335,6 +350,11 @@ class BotMessages
             $sinPreferencia = $sectores->firstWhere('requiere_capacidad', false);
             if ($sinPreferencia) return $sinPreferencia->label;
         }
+
+        \Illuminate\Support\Facades\Log::warning('[BOT][SECTOR_PARSE] No se pudo resolver el sector', [
+            'input'    => $opcion,
+            'sectores' => $sectoresDisponibles,
+        ]);
 
         return null;
     }

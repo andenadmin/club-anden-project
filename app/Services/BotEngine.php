@@ -1447,7 +1447,11 @@ class BotEngine
     /** Render de un único mensaje pasando por filterMsgs para descartar archivados. */
     private function renderOne(string $msgId, array $vars = []): array
     {
-        return $this->filterMsgs([BotMessages::render($msgId, $vars)]);
+        $rendered = BotMessages::render($msgId, $vars);
+        if ($rendered === '') {
+            Log::info('[BOT][RENDER] Mensaje archivado/vacío, omitiendo', ['msgId' => $msgId]);
+        }
+        return $this->filterMsgs([$rendered]);
     }
 
     private function handleCambiandoDato(BotSession $session, string $text): array
@@ -1761,6 +1765,15 @@ class BotEngine
 
     private function escalate(BotSession $session, string $motivo): array
     {
+        Log::warning('[BOT][ESCALADO] Escalando a asesor humano', [
+            'numero'       => $session->numero_contacto,
+            'motivo'       => $motivo,
+            'estado'       => $session->estado_actual,
+            'rama'         => $session->rama_activa,
+            'current_step' => $session->current_step,
+            'datos'        => $session->datos_parciales,
+        ]);
+
         $session->mergeEstado([
             'estado_previo_pausa' => $session->estado_actual,
             'estado_actual'       => 'PAUSADO',
@@ -1814,6 +1827,14 @@ class BotEngine
     {
         $contador = ($session->contador_invalidos ?? 0) + 1;
         $session->mergeEstado(['contador_invalidos' => $contador]);
+
+        Log::warning('[BOT][INVALID] Entrada inválida', [
+            'numero'       => $session->numero_contacto,
+            'current_step' => $session->current_step,
+            'estado'       => $session->estado_actual,
+            'rama'         => $session->rama_activa,
+            'intento'      => $contador,
+        ]);
 
         if ($contador >= 3) {
             return $this->escalate($session, 'OPCIONES_INVALIDAS_REITERADAS');
