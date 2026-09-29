@@ -1,0 +1,285 @@
+{
+  "version": "7.3",
+  "data_api_version": "3.0",
+  "routing_model": {
+    "FECHA_PERSONAS": ["DATOS", "GRUPO"],
+    "DATOS": [],
+    "GRUPO": []
+  },
+  "screens": [
+    {
+      "id": "FECHA_PERSONAS",
+      "title": "Reservá tu mesa",
+      "data": {
+        "min_fecha": { "type": "string", "__example__": "2026-10-01" },
+        "max_fecha": { "type": "string", "__example__": "2026-10-08" },
+        "personas_opciones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "id": { "type": "string" }, "title": { "type": "string" } }
+          },
+          "__example__": [
+            { "id": "2", "title": "2 personas" },
+            { "id": "15+", "title": "15 o más" }
+          ]
+        },
+        "hay_error": { "type": "boolean", "__example__": false },
+        "error_msg": { "type": "string", "__example__": "" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextBody",
+            "text": "Elegí el día y cuántos van a ser. Podés reservar hasta 7 días antes."
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.error_msg}",
+            "font-weight": "bold",
+            "visible": "${data.hay_error}"
+          },
+          {
+            "type": "DatePicker",
+            "name": "fecha",
+            "label": "Fecha",
+            "min-date": "${data.min_fecha}",
+            "max-date": "${data.max_fecha}",
+            "required": true
+          },
+          {
+            "type": "Dropdown",
+            "name": "personas",
+            "label": "Personas",
+            "data-source": "${data.personas_opciones}",
+            "required": true
+          },
+          {
+            "type": "TextCaption",
+            "text": "Sábados, domingos y feriados: turnos de 12 y 14 hs. Ese mismo día, después de las 11, se atiende por orden de llegada."
+          },
+          {
+            "type": "Footer",
+            "label": "Ver horarios",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "accion": "buscar",
+                "fecha": "${form.fecha}",
+                "personas": "${form.personas}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DATOS",
+      "title": "Tu reserva",
+      "terminal": true,
+      "data": {
+        "fecha": { "type": "string", "__example__": "2026-10-03" },
+        "personas": { "type": "string", "__example__": "4" },
+        "resumen": { "type": "string", "__example__": "Sábado 3/10 · 4 personas" },
+        "turnos": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          "__example__": [
+            { "id": "12:00", "title": "12:00 a 16:00 hs", "description": "Turno mediodía completo: 12 hs (hasta las 16 hs — con menú fijo)" },
+            { "id": "20:00", "title": "20:00 hs", "description": "Turno noche 1: 20 hs" }
+          ]
+        },
+        "turno_sel": { "type": "string", "__example__": "20:00" },
+        "sectores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": { "id": { "type": "string" }, "title": { "type": "string" } }
+          },
+          "__example__": [
+            { "id": "salon", "title": "Salón" },
+            { "id": "sin_preferencia", "title": "Sin preferencia" }
+          ]
+        },
+        "nombre": { "type": "string", "__example__": "Martina" },
+        "comentarios": { "type": "string", "__example__": "" },
+        "hay_error": { "type": "boolean", "__example__": false },
+        "error_msg": { "type": "string", "__example__": "" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextSubheading",
+            "text": "${data.resumen}"
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.error_msg}",
+            "font-weight": "bold",
+            "visible": "${data.hay_error}"
+          },
+          {
+            "type": "Dropdown",
+            "name": "turno",
+            "label": "Horario",
+            "data-source": "${data.turnos}",
+            "init-value": "${data.turno_sel}",
+            "required": true,
+            "on-select-action": {
+              "name": "data_exchange",
+              "payload": {
+                "accion": "turno",
+                "fecha": "${data.fecha}",
+                "personas": "${data.personas}",
+                "turno": "${form.turno}",
+                "nombre": "${form.nombre}",
+                "comentarios": "${form.comentarios}"
+              }
+            }
+          },
+          {
+            "type": "Dropdown",
+            "name": "sector",
+            "label": "Sector",
+            "data-source": "${data.sectores}",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "nombre",
+            "label": "¿A nombre de quién?",
+            "input-type": "text",
+            "max-chars": 60,
+            "init-value": "${data.nombre}",
+            "required": true
+          },
+          {
+            "type": "TextArea",
+            "name": "comentarios",
+            "label": "Comentarios (opcional)",
+            "helper-text": "Ej: cumpleaños, silla de bebé, celíacos",
+            "max-length": 300,
+            "init-value": "${data.comentarios}",
+            "required": false
+          },
+          {
+            "type": "OptIn",
+            "name": "acepta_tyc",
+            "label": "Acepto los Términos y condiciones de El Andén",
+            "required": true,
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Confirmar reserva",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "accion": "confirmar",
+                "fecha": "${data.fecha}",
+                "personas": "${data.personas}",
+                "turno": "${form.turno}",
+                "sector": "${form.sector}",
+                "nombre": "${form.nombre}",
+                "comentarios": "${form.comentarios}",
+                "acepta_tyc": "${form.acepta_tyc}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "GRUPO",
+      "title": "Grupo grande",
+      "terminal": true,
+      "data": {
+        "fecha": { "type": "string", "__example__": "2026-10-03" },
+        "resumen": { "type": "string", "__example__": "Sábado 3/10 · 15 personas o más" },
+        "nombre": { "type": "string", "__example__": "Martina" },
+        "hay_error": { "type": "boolean", "__example__": false },
+        "error_msg": { "type": "string", "__example__": "" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextSubheading",
+            "text": "${data.resumen}"
+          },
+          {
+            "type": "TextBody",
+            "text": "Para 15 personas o más coordinamos la reserva con un asesor. Dejanos tus datos y te escribimos por este chat."
+          },
+          {
+            "type": "TextBody",
+            "text": "${data.error_msg}",
+            "font-weight": "bold",
+            "visible": "${data.hay_error}"
+          },
+          {
+            "type": "TextInput",
+            "name": "nombre",
+            "label": "¿A nombre de quién?",
+            "input-type": "text",
+            "max-chars": 60,
+            "init-value": "${data.nombre}",
+            "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "cantidad",
+            "label": "¿Cuántas personas?",
+            "input-type": "number",
+            "required": true
+          },
+          {
+            "type": "TextArea",
+            "name": "comentarios",
+            "label": "Comentarios (opcional)",
+            "helper-text": "Horario que preferís, motivo del festejo, etc.",
+            "max-length": 300,
+            "required": false
+          },
+          {
+            "type": "OptIn",
+            "name": "acepta_tyc",
+            "label": "Acepto los Términos y condiciones de El Andén",
+            "required": true,
+            "on-click-action": {
+              "name": "open_url",
+              "url": "https://drive.google.com/file/d/14djnk1Lp5-zvc33UeIbDDmTBcXr5ub3t/view?usp=sharing"
+            }
+          },
+          {
+            "type": "Footer",
+            "label": "Enviar consulta",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "accion": "grupo",
+                "fecha": "${data.fecha}",
+                "nombre": "${form.nombre}",
+                "cantidad": "${form.cantidad}",
+                "comentarios": "${form.comentarios}",
+                "acepta_tyc": "${form.acepta_tyc}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
