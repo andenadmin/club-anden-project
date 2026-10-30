@@ -281,6 +281,10 @@ class BotEngine
             return $this->renderOne('MSG_EVT_01');
         }
 
+        if ($value === 'asesor') {
+            return $this->escalate($session, 'SOLICITUD_CLIENTE');
+        }
+
         if ($value === 'cancelar_reserva') {
             return $this->iniciarCancelacion($session);
         }
