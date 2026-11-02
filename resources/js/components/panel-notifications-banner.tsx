@@ -18,6 +18,7 @@ interface PanelNotification {
         mensaje?: string;
         sector_key?: string;
         sector_label?: string;
+        fecha?: string;
         [key: string]: unknown;
     } | null;
     leida: boolean;
@@ -34,8 +35,9 @@ function SectorAlertaDialog({
     onDismiss: (id: number) => void;
 }) {
     const { id, payload } = notification;
-    const mensaje = payload?.mensaje ?? '';
+    const mensaje     = payload?.mensaje ?? '';
     const sectorLabel = payload?.sector_label ?? '';
+    const fecha       = payload?.fecha ?? '';
 
     const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
 
@@ -58,8 +60,22 @@ function SectorAlertaDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                         <AlertTriangle className="size-5 shrink-0" />
-                        Alerta de capacidad — {sectorLabel}
+                        Alerta de capacidad
                     </DialogTitle>
+                    {(sectorLabel || fecha) && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {sectorLabel && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                    Sector: {sectorLabel}
+                                </span>
+                            )}
+                            {fecha && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                    <Clock className="size-3" /> {fecha}
+                                </span>
+                            )}
+                        </div>
+                    )}
                     <DialogDescription className="text-sm text-foreground pt-1">
                         {mensaje}
                     </DialogDescription>

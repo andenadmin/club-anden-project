@@ -189,6 +189,7 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
                         >
                             <ChevronDown className={`size-4 transition-transform duration-200 ${tabsCollapsed ? '-rotate-90' : ''}`} />
                         </button>
+                        {/* Botón de notificaciones push del navegador */}
                         <button
                             onClick={requestPermission}
                             title={
@@ -198,25 +199,34 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
                                     ? 'Notificaciones bloqueadas — habilitá el permiso en la configuración del navegador'
                                     : 'Activar notificaciones del sistema'
                             }
-                            className={`p-2 rounded-md hover:bg-accent active:bg-accent/80 ${
+                            className={`relative p-2 rounded-md hover:bg-accent active:bg-accent/80 ${
                                 permission === 'granted'
-                                    ? 'text-green-500'
+                                    ? 'text-muted-foreground hover:text-foreground'
                                     : permission === 'denied'
-                                    ? 'text-red-400'
-                                    : 'text-muted-foreground hover:text-foreground'
+                                    ? 'text-red-400 hover:text-red-500'
+                                    : 'text-yellow-500 hover:text-yellow-600'
                             }`}
                         >
                             {permission === 'denied'
-                                ? <VolumeX className="size-4" />
-                                : <Volume2 className="size-4" />
+                                ? <BellOff className="size-4" />
+                                : <Bell className="size-4" />
                             }
+                            {/* Dot indicador del estado de permisos */}
+                            <span className={`absolute right-1 top-1 size-1.5 rounded-full ${
+                                permission === 'granted'
+                                    ? 'bg-green-500'
+                                    : permission === 'denied'
+                                    ? 'bg-red-500'
+                                    : 'bg-yellow-400'
+                            }`} />
                         </button>
+                        {/* Botón de sonido de alertas */}
                         <button
                             onClick={toggleMuted}
                             title={muted ? 'Activar sonido de alertas' : 'Silenciar alertas'}
                             className="relative p-2 rounded-md hover:bg-accent active:bg-accent/80 text-muted-foreground hover:text-foreground"
                         >
-                            {muted ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+                            {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
                             {!muted && alertCount > 0 && (
                                 <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-0.5 text-[10px] font-bold text-white">
                                     {alertCount > 99 ? '99+' : alertCount}

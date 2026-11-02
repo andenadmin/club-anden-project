@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { ConversationListItem } from '@/components/inbox/conversation-list';
 import { usePageVisibility } from '@/hooks/use-page-visibility';
+import { fireWebNotification } from '@/hooks/use-web-notifications';
 
-const LIST_INTERVAL_MS = 3000;
+const LIST_INTERVAL_MS        = 3_000;
+const LIST_INTERVAL_BG_MS     = 5 * 60 * 1_000; // 5 minutos
 
 interface PollResponse {
     conversations: ConversationListItem[];
@@ -35,8 +37,6 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
     }, [initial]);
 
     useEffect(() => {
-        if (!visible) return;
-
         let cancelled = false;
 
         const poll = async () => {
@@ -58,9 +58,12 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
             }
         };
 
-        const id = window.setInterval(poll, LIST_INTERVAL_MS);
-        // primer poll inmediato cuando la pestaña recupera foco
-        void poll();
+        // Intervalo según visibilidad: 3s cuando visible, 5 min en background.
+        const intervalMs = visible ? LIST_INTERVAL_MS : LIST_INTERVAL_BG_MS;
+        const id = window.setInterval(poll, intervalMs);
+
+        // Poll inmediato cuando la pestaña recupera foco (o al montar).
+        if (visible) void poll();
 
         return () => {
             cancelled = true;
@@ -92,11 +95,19 @@ function detectNewEscalations(
             toast(`Nueva conversación escalada: ${conv.nombre ?? conv.numero}`, {
                 description: conv.last_message?.body ?? '',
             });
+            fireWebNotification(
+                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
+                { body: conv.last_message?.body ?? '' },
+            );
             alerted = true;
         } else if (newlyEscalated) {
             toast(`${conv.nombre ?? conv.numero} pidió hablar con un asesor`, {
                 description: conv.last_message?.body ?? '',
             });
+            fireWebNotification(
+                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
+                { body: conv.last_message?.body ?? '' },
+            );
             alerted = true;
         }
     }
