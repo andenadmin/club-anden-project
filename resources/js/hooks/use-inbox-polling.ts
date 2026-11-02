@@ -10,6 +10,7 @@ const LIST_INTERVAL_BG_MS     = 5 * 60 * 1_000; // 5 minutos
 interface PollResponse {
     conversations: ConversationListItem[];
     inboxUnreadTotal: number;
+    bot_pausado?: boolean;
 }
 
 /**
@@ -20,11 +21,13 @@ interface PollResponse {
 export function useInboxPolling(initial: ConversationListItem[], onAlert?: () => void): {
     conversations: ConversationListItem[];
     unreadTotal: number;
+    botPausado: boolean;
 } {
     const [conversations, setConversations] = useState<ConversationListItem[]>(initial);
     const [unreadTotal, setUnreadTotal]     = useState<number>(
         initial.filter(c => c.estado_actual === 'PAUSADO').reduce((acc, c) => acc + c.unread_count, 0),
     );
+    const [botPausado, setBotPausado] = useState<boolean>(false);
     const visible = usePageVisibility();
     const prevRef = useRef<Map<string, ConversationListItem>>(
         new Map(initial.map(c => [c.numero, c])),
@@ -53,6 +56,7 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
                 prevRef.current = new Map(data.conversations.map(c => [c.numero, c]));
                 setConversations(data.conversations);
                 setUnreadTotal(data.inboxUnreadTotal);
+                if (typeof data.bot_pausado === 'boolean') setBotPausado(data.bot_pausado);
             } catch {
                 // silencioso — siguiente tick reintenta
             }
@@ -71,7 +75,7 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
         };
     }, [visible]);
 
-    return { conversations, unreadTotal };
+    return { conversations, unreadTotal, botPausado };
 }
 
 function detectNewEscalations(

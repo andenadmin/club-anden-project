@@ -84,6 +84,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/inbox/{numero}/unarchive', [InboxController::class, 'unarchive'])->name('inbox.unarchive')->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/important', [InboxController::class, 'important'])->name('inbox.important')->where('numero', '[0-9]+');
     Route::delete('/inbox/{numero}',         [InboxController::class, 'destroy'])->name('inbox.destroy')->where('numero', '[0-9]+');
+    Route::post('/inbox/{numero}/etiqueta',  [InboxController::class, 'setEtiqueta'])->name('inbox.etiqueta')->where('numero', '[0-9]+');
+    Route::post('/inbox/bot-pause',          [InboxController::class, 'toggleBotPause'])->name('inbox.bot-pause');
 });
 
 require __DIR__.'/settings.php';

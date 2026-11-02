@@ -132,14 +132,27 @@ class ReservasController extends Controller
                 ];
             });
 
+        // Monthly message count for current month
+        $mensajesMes = \App\Models\ConversationMessage::where('direction', 'outbound')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+
+        $mensajesMesAnterior = \App\Models\ConversationMessage::where('direction', 'outbound')
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->count();
+
         return Inertia::render('reservas', [
-            'reservas'     => $reservas,
-            'fecha'        => $fecha,
-            'ahora'        => Carbon::now()->format('H:i'),
-            'es_hoy'       => $fecha === Carbon::today()->format('Y-m-d'),
-            'vista'        => $vista,
-            'fechas_rango' => $fechasRango->map(fn ($f) => $f->format('Y-m-d'))->values(),
-            'sectores'     => RestaurantSector::activos()->pluck('label')->values(),
+            'reservas'              => $reservas,
+            'fecha'                 => $fecha,
+            'ahora'                 => Carbon::now()->format('H:i'),
+            'es_hoy'                => $fecha === Carbon::today()->format('Y-m-d'),
+            'vista'                 => $vista,
+            'fechas_rango'          => $fechasRango->map(fn ($f) => $f->format('Y-m-d'))->values(),
+            'sectores'              => RestaurantSector::activos()->pluck('label')->values(),
+            'mensajes_mes'          => $mensajesMes,
+            'mensajes_mes_anterior' => $mensajesMesAnterior,
         ]);
     }
 

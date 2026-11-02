@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Bell, BellOff, ChevronDown, Info, Menu, Search, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, ChevronDown, Info, Menu, PauseCircle, PlayCircle, Search, Volume2, VolumeX, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
@@ -53,7 +53,7 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
     }, []);
 
     // Polling de la lista (3s) — actualiza conversaciones y trigger toasts en escaladas nuevas.
-    const { conversations: polledConversations, unreadTotal } = useInboxPolling(initialConversations, playAlert);
+    const { conversations: polledConversations, unreadTotal, botPausado } = useInboxPolling(initialConversations, playAlert);
 
     // Estado local para actualizaciones optimistas (pin, archive, delete, important).
     const [activeConversations, setActiveConversations] = useState<ConversationListItem[]>(initialConversations);
@@ -124,6 +124,25 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
         if (selected?.numero === numero) router.visit('/inbox', { preserveScroll: false });
     };
 
+    const handleToggleBotPause = async () => {
+        await fetch('/inbox/bot-pause', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            body: JSON.stringify({ pausado: !botPausado }),
+        });
+    };
+
+    const handleSetEtiqueta = async (numero: string, etiqueta: string) => {
+        setActiveConversations(prev =>
+            prev.map(c => c.numero === numero ? { ...c, etiqueta: etiqueta as 'abierta' | 'confirmada' | 'finalizada' } : c),
+        );
+        await fetch(`/inbox/${numero}/etiqueta`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+            body: JSON.stringify({ etiqueta }),
+        });
+    };
+
     const displayedConversations = tab === 'archivados' ? archivedConversations : activeConversations;
 
     const filteredConversations = useMemo(() => {
@@ -168,7 +187,21 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
         && new Date(liveSession.next_resume_check_at).getTime() <= Date.now();
 
     return (
-        <div className="flex h-full overflow-hidden">
+        <div className="flex h-full overflow-hidden flex-col">
+            {/* Banner: bot pausado globalmente */}
+            {botPausado && (
+                <div className="shrink-0 flex items-center justify-between gap-3 bg-amber-400 dark:bg-amber-600 text-amber-950 dark:text-amber-50 px-4 py-2 text-sm font-medium z-20">
+                    <span>⚠️ Bot pausado globalmente — todos los chats están silenciados</span>
+                    <button
+                        onClick={handleToggleBotPause}
+                        className="flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-700 dark:bg-amber-800 dark:hover:bg-amber-900 text-white px-2.5 py-1 text-xs font-semibold transition-colors"
+                    >
+                        <PlayCircle className="size-3.5" />
+                        Reactivar
+                    </button>
+                </div>
+            )}
+            <div className="flex flex-1 overflow-hidden">
             {/* Lista de conversaciones (siempre visible en md+, oculta en mobile cuando hay seleccionada) */}
             <aside className={`${selected ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 shrink-0 bg-background border-r border-sidebar-border/50 overflow-hidden`}>
                 {/* Top bar mobile-only: en md+ el AppSidebar siempre está visible, pero en mobile
@@ -232,6 +265,13 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
                                     {alertCount > 99 ? '99+' : alertCount}
                                 </span>
                             )}
+                        </button>
+                        <button
+                            onClick={handleToggleBotPause}
+                            title={botPausado ? 'Reactivar bot' : 'Pausar bot globalmente'}
+                            className={`p-2 rounded-md hover:bg-accent active:bg-accent/80 transition-colors ${botPausado ? 'text-amber-500' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            {botPausado ? <PlayCircle className="size-4" /> : <PauseCircle className="size-4" />}
                         </button>
                     </div>
                     {!tabsCollapsed && <div className="flex">
@@ -326,6 +366,31 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
                     {/* Summary panel — desktop fijo a la derecha */}
                     {summaryDesktopVisible && (
                         <aside className="hidden lg:flex w-72 shrink-0 flex-col">
+                            {/* Etiqueta selector */}
+                            {(() => {
+                                const conv = activeConversations.find(c => c.numero === selected.numero);
+                                const etiqueta = conv?.etiqueta ?? 'abierta';
+                                const ETIQUETA_OPTS = [
+                                    { value: 'abierta',    label: 'Abierta',    cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
+                                    { value: 'confirmada', label: 'Confirmada', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' },
+                                    { value: 'finalizada', label: 'Finalizada', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+                                ] as const;
+                                const current = ETIQUETA_OPTS.find(o => o.value === etiqueta) ?? ETIQUETA_OPTS[0];
+                                return (
+                                    <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-b border-sidebar-border/50">
+                                        <span className="text-xs text-muted-foreground">Etiqueta:</span>
+                                        <select
+                                            value={etiqueta}
+                                            onChange={e => handleSetEtiqueta(selected.numero, e.target.value)}
+                                            className={`flex-1 rounded-md px-2 py-0.5 text-xs font-semibold border-0 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer ${current.cls}`}
+                                        >
+                                            {ETIQUETA_OPTS.map(o => (
+                                                <option key={o.value} value={o.value}>{o.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                );
+                            })()}
                             <SessionSummary
                                 numero={selected.numero}
                                 cliente={selected.cliente}
@@ -364,6 +429,7 @@ function InboxBody({ conversations: initialConversations, selected, templates }:
                     <p className="text-xs mt-1">El historial y el resumen aparecen acá.</p>
                 </div>
             )}
+        </div>
         </div>
     );
 }

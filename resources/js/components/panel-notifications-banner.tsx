@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, AlertTriangle, Bell, CheckCircle, Clock, Info, X } from 'lucide-react';
+import { fireWebNotification } from '@/hooks/use-web-notifications';
 import {
     Dialog,
     DialogContent,
@@ -275,11 +276,27 @@ function isTestMode(): boolean {
 export function PanelNotificationsBanner() {
     const [notifications, setNotifications] = useState<PanelNotification[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const seenIdsRef  = useRef<Set<number>>(new Set());
+
+    const applyNotifications = (incoming: PanelNotification[]) => {
+        // Fire browser notification for new sector_alerta notifications
+        for (const n of incoming) {
+            if (n.tipo === 'sector_alerta' && !seenIdsRef.current.has(n.id)) {
+                const sectorLabel = n.payload?.sector_label ?? 'sector';
+                fireWebNotification(`⚠️ Alerta de capacidad — ${sectorLabel}`, {
+                    body: n.payload?.mensaje ?? '',
+                    url: '/reservas',
+                });
+            }
+            seenIdsRef.current.add(n.id);
+        }
+        setNotifications(incoming);
+    };
 
     const fetchNotifications = async () => {
         try {
             const res = await fetch('/panel-notifications', { headers: { 'Accept': 'application/json' } });
-            if (res.ok) setNotifications(await res.json() as PanelNotification[]);
+            if (res.ok) applyNotifications(await res.json() as PanelNotification[]);
         } catch { /* best-effort */ }
     };
 
@@ -291,7 +308,19 @@ export function PanelNotificationsBanner() {
 
         const onInject = (e: Event) => {
             const n = (e as CustomEvent).detail as PanelNotification;
-            setNotifications(prev => [n, ...prev]);
+            setNotifications(prev => {
+                const updated = [n, ...prev];
+                // Fire browser notification for injected sector_alerta in test mode
+                if (n.tipo === 'sector_alerta' && !seenIdsRef.current.has(n.id)) {
+                    const sectorLabel = n.payload?.sector_label ?? 'sector';
+                    fireWebNotification(`⚠️ Alerta de capacidad — ${sectorLabel}`, {
+                        body: n.payload?.mensaje ?? '',
+                        url: '/reservas',
+                    });
+                }
+                seenIdsRef.current.add(n.id);
+                return updated;
+            });
         };
         const onClear = () => setNotifications([]);
 
