@@ -124,11 +124,11 @@ class RestaurantCapacity
 
         if ($usadas < $umbral) return;
 
-        // No crear notificación duplicada para el mismo sector hoy
+        // No crear notificación duplicada para el mismo sector y fecha
         $yaExiste = PanelNotification::where('tipo', 'sector_alerta')
             ->where('leida', false)
             ->whereRaw("json_extract(payload, '$.sector_key') = ?", [$sectorKey])
-            ->whereDate('created_at', Carbon::today())
+            ->whereRaw("json_extract(payload, '$.fecha') = ?", [$fechaBotFormat])
             ->exists();
 
         if ($yaExiste) return;
@@ -138,9 +138,10 @@ class RestaurantCapacity
         PanelNotification::create([
             'tipo'    => 'sector_alerta',
             'payload' => [
-                'mensaje'       => "Alcanzamos el {$alertaPct}% de la capacidad en *{$sectorLabel}*. ¿Querés que informemos a quienes reservan que no hay más cupo?",
+                'mensaje'       => "Alcanzamos el {$alertaPct}% de la capacidad en *{$sectorLabel}* para el *{$fechaBotFormat}*. ¿Querés que informemos a quienes reservan que no hay más cupo?",
                 'sector_key'    => $sectorKey,
                 'sector_label'  => $sectorLabel,
+                'fecha'         => $fechaBotFormat,
             ],
             'leida' => false,
         ]);

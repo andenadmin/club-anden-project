@@ -204,6 +204,15 @@ class BotEngine
 
     private function handleRegistroCliente(BotSession $session, string $text): array
     {
+        $saludos = ['hola', 'buenas', 'buenos dias', 'buenos días', 'buenas tardes',
+                    'buenas noches', 'buen dia', 'buen día', 'hi', 'hey', 'que tal',
+                    'qué tal', 'como estas', 'cómo estás', 'holi', 'buenas!', 'hola!'];
+
+        if (in_array(strtolower(trim($text)), $saludos, true)) {
+            // Es un saludo, no un nombre — volver a preguntar
+            return $this->renderOne('MSG_REGISTRO_PEDIR_NOMBRE');
+        }
+
         $nombre = trim($text);
         $datos  = array_merge($session->datos_parciales ?? [], ['_nombre_pendiente' => $nombre]);
         $session->mergeEstado([
@@ -264,7 +273,7 @@ class BotEngine
                 'subtipo_activo'     => null,
                 'current_step'       => 'fecha',
                 'contador_invalidos' => 0,
-                'datos_parciales'    => [],
+                'datos_parciales'    => ['_inicio_flujo_ts' => Carbon::now()->timestamp],
             ]);
             return $this->renderOne('MSG_RES_01');
         }
@@ -464,10 +473,14 @@ class BotEngine
                 $esFdS      = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
                 $esMismoDia = $carbonFecha->isSameDay(Carbon::today());
 
-                // Sábado/domingo/feriado del mismo día después de las 11am → por orden de llegada
-                if ($esFdS && $esMismoDia) {
+                // Cutoff de las 11am con período de gracia hasta las 11:30
+                if ($esMismoDia) {
                     $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
-                    if ($ahoraMin >= 11 * 60) {
+                    $corteMin = 11 * 60;       // 11:00
+                    $graceMin = 11 * 60 + 30;  // 11:30
+
+                    if ($ahoraMin >= $graceMin) {
+                        // Después de las 11:30 — bloquear siempre
                         $session->mergeEstado([
                             'estado_actual'   => 'INICIO',
                             'current_step'    => null,
@@ -475,6 +488,27 @@ class BotEngine
                             'rama_activa'     => null,
                         ]);
                         return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
+                    }
+
+                    if ($ahoraMin >= $corteMin) {
+                        // Entre 11:00 y 11:30 — bloquear solo si el flujo empezó después de las 11:00
+                        $inicioTs = $session->datos_parciales['_inicio_flujo_ts'] ?? null;
+                        if ($inicioTs) {
+                            $inicioMin = (int) date('H', $inicioTs) * 60 + (int) date('i', $inicioTs);
+                        } else {
+                            $inicioMin = $ahoraMin; // sin dato, asumir que empezó ahora
+                        }
+
+                        if ($inicioMin >= $corteMin) {
+                            $session->mergeEstado([
+                                'estado_actual'   => 'INICIO',
+                                'current_step'    => null,
+                                'datos_parciales' => [],
+                                'rama_activa'     => null,
+                            ]);
+                            return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
+                        }
+                        // Si empezó antes de las 11:00, dejar pasar (período de gracia hasta las 11:30)
                     }
                 }
 

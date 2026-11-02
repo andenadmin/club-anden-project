@@ -180,6 +180,10 @@ class ReservasController extends Controller
             ['nombre_cliente' => $v['nombre']]
         );
 
+        $sectorKey = isset($v['sector']) && $v['sector']
+            ? \App\Models\RestaurantSector::where('label', $v['sector'])->value('key')
+            : null;
+
         Reserva::create([
             'id_cliente'    => $cliente->id,
             'rama_servicio' => $ramaServicio,
@@ -193,12 +197,17 @@ class ReservasController extends Controller
                 'hora'               => $horaNorm,
                 'numero_personas'    => $v['numero_personas'] ?? null,
                 'sector'             => ($v['sector'] ?? null) ?: null,
+                'sector_key'         => $sectorKey,
                 'mail_contacto'      => ($v['mail'] ?? null) ?: null,
                 'extras_texto'       => ($v['comentarios'] ?? null) ?: null,
                 'tiene_extras'       => !empty($v['comentarios'] ?? null),
                 'ingreso_manual'     => true,
             ],
         ]);
+
+        if ($ramaServicio === 'RESTAURANTE' && $sectorKey) {
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot);
+        }
 
         return redirect()->back();
     }
@@ -239,11 +248,16 @@ class ReservasController extends Controller
             ['nombre_cliente' => $v['nombre']]
         );
 
+        $updateSectorKey = isset($v['sector']) && $v['sector']
+            ? \App\Models\RestaurantSector::where('label', $v['sector'])->value('key')
+            : null;
+
         $datos = $reserva->datos ?? [];
         $datos['nombre_responsable'] = $v['nombre'];
         $datos['telefono']           = $v['telefono'];
         $datos['fecha']              = Carbon::createFromFormat('Y-m-d', $v['fecha'])->format('d/m/y');
         $datos['sector']             = ($v['sector'] ?? null) ?: null;
+        $datos['sector_key']         = $updateSectorKey;
         $datos['mail_contacto']      = ($v['mail'] ?? null) ?: null;
         $datos['extras_texto']       = ($v['comentarios'] ?? null) ?: null;
         $datos['tiene_extras']       = !empty($v['comentarios'] ?? null);
@@ -273,6 +287,10 @@ class ReservasController extends Controller
             'estado_reserva' => $v['estado'],
             'tiene_extras'   => !empty($v['comentarios'] ?? null),
         ]);
+
+        if ($reserva->rama_servicio === 'RESTAURANTE' && $updateSectorKey) {
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion($updateSectorKey, $datos['fecha']);
+        }
 
         return redirect()->back();
     }
