@@ -37,11 +37,33 @@ class BotEngine
      */
     public function process(string $from, string $text, ?int $channelId = null): array
     {
-        $text    = trim($text);
+        $text = trim($text);
+
+        // Check global bot pause
+        $config = \App\Models\RestaurantConfig::get();
+        if ($config->bot_pausado_global) {
+            if ($config->bot_pausado_hasta) {
+                $hasta = \Carbon\Carbon::parse($config->bot_pausado_hasta);
+                if (\Carbon\Carbon::now()->gt($hasta)) {
+                    \App\Models\RestaurantConfig::clearCache();
+                    $config->forceFill(['bot_pausado_global' => false, 'bot_pausado_hasta' => null])->save();
+                    \App\Models\RestaurantConfig::clearCache();
+                } else {
+                    return [];
+                }
+            } else {
+                return [];
+            }
+        }
+
         $session = BotSession::firstOrCreate(
             ['numero_contacto' => $from],
             ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $channelId]
         );
+
+        if ($session->etiqueta === 'finalizada') {
+            $session->mergeEstado(['etiqueta' => 'abierta']);
+        }
 
         // Si la conversación estaba archivada, el usuario volvió a escribir → desarchivar
         if ($session->is_archived) {
@@ -1365,6 +1387,10 @@ class BotEngine
                 $crmUpdate['valor_lifetime'] = $crm->valor_lifetime + $presupuesto['total'];
             }
             $crm->update($crmUpdate);
+        }
+
+        if ($rama === 'RESTAURANTE' && $estado === 'CONFIRMADA') {
+            $session->mergeEstado(['etiqueta' => 'confirmada']);
         }
 
         $unreadDelta = ($rama === 'EVENTOS') ? 1 : 0;
