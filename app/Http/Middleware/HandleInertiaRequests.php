@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
                 : 0,
             'isSuperAdmin' => fn () => (bool) $request->user()?->isSuperAdmin(),
             'testMode'     => (bool) env('TEST_MODE', false),
+            'isSandbox'    => !app()->isProduction(),
         ];
     }
 }

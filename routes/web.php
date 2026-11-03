@@ -8,6 +8,7 @@ use App\Http\Controllers\CrmController;
 use App\Http\Controllers\InboxController;
 use App\Http\Controllers\PanelNotificationsController;
 use App\Http\Controllers\ReservasController;
+use App\Http\Controllers\SandboxTestController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -15,11 +16,14 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Bot Simulator (deshabilitado — redirige a inbox)
-    Route::get('/bot', fn() => redirect()->route('inbox.index'))->name('bot.simulator');
-    // Route::get('/bot', [BotSimulatorController::class, 'index'])->name('bot.simulator');
-    // Route::post('/bot/message', [BotSimulatorController::class, 'message'])->name('bot.message');
-    // Route::post('/bot/reset', [BotSimulatorController::class, 'reset'])->name('bot.reset');
+    // Bot Simulator (activo en sandbox/local, deshabilitado en produccion)
+    if (app()->isProduction()) {
+        Route::get('/bot', fn () => redirect()->route('inbox.index'))->name('bot.simulator');
+    } else {
+        Route::get('/bot',          [BotSimulatorController::class, 'index'])->name('bot.simulator');
+        Route::post('/bot/message', [BotSimulatorController::class, 'message'])->name('bot.message');
+        Route::post('/bot/reset',   [BotSimulatorController::class, 'reset'])->name('bot.reset');
+    }
 
     // Bot Precios Admin
     Route::get('/bot/precios', [BotPreciosController::class, 'index'])->name('bot.precios');
@@ -86,6 +90,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/inbox/{numero}',         [InboxController::class, 'destroy'])->name('inbox.destroy')->where('numero', '[0-9]+');
     Route::post('/inbox/{numero}/etiqueta',  [InboxController::class, 'setEtiqueta'])->name('inbox.etiqueta')->where('numero', '[0-9]+');
     Route::post('/inbox/bot-pause',          [InboxController::class, 'toggleBotPause'])->name('inbox.bot-pause');
+
+    // Sandbox Test Panel — solo disponible fuera de produccion
+    if (!app()->isProduction()) {
+        Route::get('/sandbox',              [SandboxTestController::class, 'index'])->name('sandbox.index');
+        Route::post('/sandbox/run/{scenario}', [SandboxTestController::class, 'run'])->name('sandbox.run');
+    }
 });
 
 require __DIR__.'/settings.php';
