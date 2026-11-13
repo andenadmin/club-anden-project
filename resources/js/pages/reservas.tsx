@@ -34,6 +34,8 @@ interface Props {
     vista: Vista;
     fechas_rango: string[]; // ["Y-m-d", ...]
     sectores: string[];     // labels de RestaurantSector activos, en orden — ver bot-messages > Sectores
+    mensajes_mes: number;
+    mensajes_mes_anterior: number;
 }
 
 // ─── Configuración de tipos y estados ────────────────────────────────────────
@@ -1097,7 +1099,7 @@ function VistaDia({
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas_rango }: Props) {
+export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas_rango, mensajes_mes, mensajes_mes_anterior }: Props) {
     const [query, setQuery]           = useState('');
     const [dateHighlight, setDateHighlight] = useState(false);
     const [filtroTipo, setFiltroTipo] = useState<TipoReserva | null>(null);
@@ -1265,6 +1267,24 @@ export default function Reservas({ reservas, fecha, ahora, es_hoy, vista, fechas
                         </div>
                     </div>
                 </div>
+
+                {/* Métrica: mensajes del mes */}
+                {(() => {
+                    const now = new Date();
+                    const mesActual = now.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+                    const diff = mensajes_mes - mensajes_mes_anterior;
+                    const diffLabel = diff > 0 ? `+${diff} vs mes anterior` : diff < 0 ? `${diff} vs mes anterior` : 'igual que mes anterior';
+                    const diffColor = diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : diff < 0 ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground';
+                    return (
+                        <div className="rounded-xl border border-border bg-card px-4 py-3 flex items-center justify-between gap-4 shadow-sm">
+                            <div>
+                                <p className="text-xs text-muted-foreground capitalize">Mensajes enviados — {mesActual}</p>
+                                <p className="text-2xl font-bold">{mensajes_mes.toLocaleString('es-AR')}</p>
+                            </div>
+                            <span className={`text-sm font-medium ${diffColor}`}>{diffLabel}</span>
+                        </div>
+                    );
+                })()}
 
                 {/* Tabs de vista */}
                 <div className="flex gap-1 rounded-lg border border-border bg-muted/40 p-1">

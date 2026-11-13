@@ -24,14 +24,18 @@ class RestaurantConfig extends Model
         'parrilla_cerrado',
         'patio_cerrado',
         'sectores_cerrado_fecha',
+        'bot_pausado_global',
+        'bot_pausado_hasta',
+        'bot_pausado_motivo',
     ];
 
     protected $casts = [
-        'salon_cerrado'    => 'boolean',
-        'galeria_cerrado'  => 'boolean',
-        'terraza_cerrado'  => 'boolean',
-        'parrilla_cerrado' => 'boolean',
-        'patio_cerrado'    => 'boolean',
+        'salon_cerrado'       => 'boolean',
+        'galeria_cerrado'     => 'boolean',
+        'terraza_cerrado'     => 'boolean',
+        'parrilla_cerrado'    => 'boolean',
+        'patio_cerrado'       => 'boolean',
+        'bot_pausado_global'  => 'boolean',
     ];
 
     private static ?self $cached = null;

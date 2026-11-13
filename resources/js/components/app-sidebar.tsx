@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ClipboardList, MessagesSquare, MessageSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
+import { ClipboardList, FlaskConical, MessagesSquare, MessageSquare, PanelLeftClose, PanelLeftOpen, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -44,9 +44,10 @@ function CollapseToggle() {
 export function AppSidebar() {
     const { isCurrentUrl } = useCurrentUrl();
     const { setOpenMobile } = useSidebar();
-    const { inboxUnreadTotal, isSuperAdmin } = usePage().props as {
+    const { inboxUnreadTotal, isSuperAdmin, isSandbox } = usePage().props as {
         inboxUnreadTotal?: number;
         isSuperAdmin?: boolean;
+        isSandbox?: boolean;
     };
     const inboxUnread = inboxUnreadTotal ?? 0;
 
@@ -55,6 +56,10 @@ export function AppSidebar() {
         { title: 'Reservas',         href: '/reservas',     icon: ClipboardList },
         { title: 'Mensajes del Bot', href: '/bot/messages', icon: MessagesSquare },
         ...(isSuperAdmin ? [{ title: 'CRM Clientes', href: '/crm', icon: Users }] : []),
+        ...(isSandbox ? [
+            { title: 'Bot Simulador',  href: '/bot',     icon: MessageSquare },
+            { title: 'Panel de Pruebas', href: '/sandbox', icon: FlaskConical },
+        ] : []),
     ];
 
 

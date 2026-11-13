@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCheck, Info, LayoutTemplate, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -40,6 +40,25 @@ const fmtTime = (iso: string | null): string => {
     return new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 };
 
+const fmtDate = (iso: string | null): string => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return 'Hoy';
+    if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+};
+
+const fmtFullDatetime = (iso: string | null): string => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleString('es-AR', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+};
+
 function waMd(raw: string): string {
     return raw
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -48,6 +67,18 @@ function waMd(raw: string): string {
             /https?:\/\/[^\s<>"]+/g,
             url => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline break-all">${url}</a>`,
         );
+}
+
+function DaySeparator({ label }: { label: string }) {
+    return (
+        <div className="flex items-center gap-2 my-2">
+            <div className="flex-1 h-px bg-gray-300/60" />
+            <span className="text-[11px] text-gray-500 bg-[#e5ddd5] px-2 py-0.5 rounded-full font-medium">
+                {label}
+            </span>
+            <div className="flex-1 h-px bg-gray-300/60" />
+        </div>
+    );
 }
 
 function csrf(): string {
@@ -64,7 +95,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                 <div className="size-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-[10px] font-bold shrink-0 shadow">U</div>
                 <div className="bg-white rounded-2xl rounded-bl-sm px-3.5 py-2 shadow-sm">
                     <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed break-words">{msg.body}</p>
-                    <p className="text-[10px] text-gray-400 text-right mt-0.5">{fmtTime(msg.created_at)}</p>
+                    <p className="text-[10px] text-gray-400 text-right mt-0.5" title={fmtFullDatetime(msg.created_at)}>{fmtTime(msg.created_at)}</p>
                 </div>
             </div>
         );
@@ -91,7 +122,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
                         dangerouslySetInnerHTML={{ __html: waMd(msg.body) }} />
                 )}
                 <div className={cn('flex items-center justify-end gap-1 mt-0.5', isImage && 'px-2 pb-1')}>
-                    <p className="text-[10px] text-gray-400">{fmtTime(msg.created_at)}</p>
+                    <p className="text-[10px] text-gray-400" title={fmtFullDatetime(msg.created_at)}>{fmtTime(msg.created_at)}</p>
                     {msg.wa_status === 'failed' && (
                         <span className="text-[10px] text-red-500 font-semibold">⚠ no enviado</span>
                     )}
@@ -365,7 +396,15 @@ export function ConversationChat({
                             Esta conversación todavía no tiene mensajes.
                         </p>
                     )}
-                    {messages.map(m => <MessageBubble key={m.id} msg={m} />)}
+                    {messages.reduce<React.ReactNode[]>((acc, m, i) => {
+                        const prevDate = i > 0 ? messages[i - 1].created_at?.slice(0, 10) : null;
+                        const currDate = m.created_at?.slice(0, 10);
+                        if (currDate && currDate !== prevDate) {
+                            acc.push(<DaySeparator key={`sep-${currDate}`} label={fmtDate(m.created_at)} />);
+                        }
+                        acc.push(<MessageBubble key={m.id} msg={m} />);
+                        return acc;
+                    }, [])}
                     <div ref={bottomRef} />
                 </div>
             </div>

@@ -27,6 +27,7 @@ export interface ConversationListItem {
     is_pinned: boolean;
     is_archived: boolean;
     is_important: boolean;
+    etiqueta?: 'abierta' | 'confirmada' | 'finalizada';
 }
 
 function formatRelative(iso: string | null): string {
@@ -104,9 +105,15 @@ function ConversationItem({
 }) {
     const isPaused = c.estado_actual === 'PAUSADO';
     const needsAttention = isPaused && c.motivo_pausa !== 'ASESOR_TAKEOVER';
+    const etiqueta = c.etiqueta ?? 'abierta';
+    const isAbierta = etiqueta === 'abierta';
 
     return (
-        <li className={cn('relative group border-b border-sidebar-border/50', needsAttention && 'attention-pulse')}>
+        <li className={cn(
+            'relative group border-b border-sidebar-border/50',
+            needsAttention && 'attention-pulse',
+            isAbierta && 'border-l-2 border-l-amber-400',
+        )}>
             <Link
                 href={`/inbox/${c.numero}`}
                 preserveScroll
@@ -114,6 +121,8 @@ function ConversationItem({
                     'flex items-start gap-3 px-3 py-3 pr-8 transition-colors',
                     isSelected
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : isAbierta
+                        ? 'hover:bg-amber-50/60 dark:hover:bg-amber-950/20'
                         : 'hover:bg-sidebar-accent/40',
                 )}
             >
@@ -143,7 +152,7 @@ function ConversationItem({
                             </span>
                         )}
                     </div>
-                    {(isPaused || c.evento_tipo || c.canal) && (
+                    {(isPaused || c.evento_tipo || c.canal || etiqueta !== 'abierta') && (
                         <div className="flex flex-wrap items-center gap-1 mt-1">
                             {isPaused && (
                                 <span className="text-[9px] uppercase tracking-wider font-semibold bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 dark:bg-amber-900/40 dark:text-amber-300">
@@ -158,6 +167,16 @@ function ConversationItem({
                             {c.canal && (
                                 <span className="text-[9px] uppercase tracking-wider font-semibold bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 dark:bg-slate-800 dark:text-slate-300">
                                     {c.canal}
+                                </span>
+                            )}
+                            {etiqueta === 'confirmada' && (
+                                <span className="text-[9px] uppercase tracking-wider font-semibold bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                    Confirmada
+                                </span>
+                            )}
+                            {etiqueta === 'finalizada' && (
+                                <span className="text-[9px] uppercase tracking-wider font-semibold bg-gray-100 text-gray-500 rounded px-1.5 py-0.5 dark:bg-gray-800 dark:text-gray-400">
+                                    Finalizada
                                 </span>
                             )}
                         </div>

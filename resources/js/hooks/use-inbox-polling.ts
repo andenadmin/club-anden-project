@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { ConversationListItem } from '@/components/inbox/conversation-list';
 import { usePageVisibility } from '@/hooks/use-page-visibility';
+import { fireWebNotification } from '@/hooks/use-web-notifications';
 
-const LIST_INTERVAL_MS = 3000;
+const LIST_INTERVAL_MS        = 3_000;
+const LIST_INTERVAL_BG_MS     = 5 * 60 * 1_000; // 5 minutos
 
 interface PollResponse {
     conversations: ConversationListItem[];
     inboxUnreadTotal: number;
+    bot_pausado?: boolean;
 }
 
 /**
@@ -18,11 +21,13 @@ interface PollResponse {
 export function useInboxPolling(initial: ConversationListItem[], onAlert?: () => void): {
     conversations: ConversationListItem[];
     unreadTotal: number;
+    botPausado: boolean;
 } {
     const [conversations, setConversations] = useState<ConversationListItem[]>(initial);
     const [unreadTotal, setUnreadTotal]     = useState<number>(
         initial.filter(c => c.estado_actual === 'PAUSADO').reduce((acc, c) => acc + c.unread_count, 0),
     );
+    const [botPausado, setBotPausado] = useState<boolean>(false);
     const visible = usePageVisibility();
     const prevRef = useRef<Map<string, ConversationListItem>>(
         new Map(initial.map(c => [c.numero, c])),
@@ -35,8 +40,6 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
     }, [initial]);
 
     useEffect(() => {
-        if (!visible) return;
-
         let cancelled = false;
 
         const poll = async () => {
@@ -53,14 +56,18 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
                 prevRef.current = new Map(data.conversations.map(c => [c.numero, c]));
                 setConversations(data.conversations);
                 setUnreadTotal(data.inboxUnreadTotal);
+                if (typeof data.bot_pausado === 'boolean') setBotPausado(data.bot_pausado);
             } catch {
                 // silencioso — siguiente tick reintenta
             }
         };
 
-        const id = window.setInterval(poll, LIST_INTERVAL_MS);
-        // primer poll inmediato cuando la pestaña recupera foco
-        void poll();
+        // Intervalo según visibilidad: 3s cuando visible, 5 min en background.
+        const intervalMs = visible ? LIST_INTERVAL_MS : LIST_INTERVAL_BG_MS;
+        const id = window.setInterval(poll, intervalMs);
+
+        // Poll inmediato cuando la pestaña recupera foco (o al montar).
+        if (visible) void poll();
 
         return () => {
             cancelled = true;
@@ -68,7 +75,7 @@ export function useInboxPolling(initial: ConversationListItem[], onAlert?: () =>
         };
     }, [visible]);
 
-    return { conversations, unreadTotal };
+    return { conversations, unreadTotal, botPausado };
 }
 
 function detectNewEscalations(
@@ -92,11 +99,19 @@ function detectNewEscalations(
             toast(`Nueva conversación escalada: ${conv.nombre ?? conv.numero}`, {
                 description: conv.last_message?.body ?? '',
             });
+            fireWebNotification(
+                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
+                { body: conv.last_message?.body ?? '' },
+            );
             alerted = true;
         } else if (newlyEscalated) {
             toast(`${conv.nombre ?? conv.numero} pidió hablar con un asesor`, {
                 description: conv.last_message?.body ?? '',
             });
+            fireWebNotification(
+                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
+                { body: conv.last_message?.body ?? '' },
+            );
             alerted = true;
         }
     }

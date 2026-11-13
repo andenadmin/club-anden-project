@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BotSession;
 use App\Models\Cliente;
 use App\Models\ConversationMessage;
+use App\Models\RestaurantConfig;
 use App\Services\BotEngine;
 use App\Services\Meta\WhatsAppSender;
 use Illuminate\Http\JsonResponse;
@@ -282,6 +283,32 @@ class InboxController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function toggleBotPause(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $v = $request->validate([
+            'pausado' => 'required|boolean',
+            'hasta'   => 'nullable|string',
+            'motivo'  => 'nullable|string|max:200',
+        ]);
+        $config = RestaurantConfig::get();
+        RestaurantConfig::clearCache();
+        $config->forceFill([
+            'bot_pausado_global' => $v['pausado'],
+            'bot_pausado_hasta'  => $v['hasta'] ?? null,
+            'bot_pausado_motivo' => $v['motivo'] ?? null,
+        ])->save();
+        RestaurantConfig::clearCache();
+        return response()->json(['ok' => true]);
+    }
+
+    public function setEtiqueta(Request $request, string $numero): \Illuminate\Http\JsonResponse
+    {
+        $v = $request->validate(['etiqueta' => 'required|in:abierta,confirmada,finalizada']);
+        $session = BotSession::where('numero_contacto', $numero)->firstOrFail();
+        $session->mergeEstado(['etiqueta' => $v['etiqueta']]);
+        return response()->json(['ok' => true]);
+    }
+
     public function important(string $numero): JsonResponse
     {
         $session = $this->findSessionOrFail($numero);
@@ -322,6 +349,7 @@ class InboxController extends Controller
             'conversations'    => $this->loadConversations(),
             'inboxUnreadTotal' => (int) BotSession::where('estado_actual', 'PAUSADO')->sum('unread_count'),
             'now'              => now()->toIso8601String(),
+            'bot_pausado'      => (bool) (RestaurantConfig::get()->bot_pausado_global ?? false),
         ]);
     }
 
@@ -422,6 +450,7 @@ class InboxController extends Controller
                 'is_archived'      => (bool) $s->is_archived,
                 'is_important'     => (bool) $s->is_important,
                 'canal'            => $s->channel?->label,
+                'etiqueta'         => $s->etiqueta ?? 'abierta',
             ])
             ->values()
             ->all();

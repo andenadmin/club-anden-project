@@ -30,6 +30,7 @@ class BotSession extends Model
         'is_important',
         'pinned_at',
         'important_at',
+        'etiqueta',
     ];
 
     protected $casts = [

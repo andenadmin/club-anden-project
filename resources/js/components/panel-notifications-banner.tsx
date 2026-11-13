@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, AlertTriangle, Bell, CheckCircle, Clock, Info, X } from 'lucide-react';
+import { fireWebNotification } from '@/hooks/use-web-notifications';
 import {
     Dialog,
     DialogContent,
@@ -18,6 +19,7 @@ interface PanelNotification {
         mensaje?: string;
         sector_key?: string;
         sector_label?: string;
+        fecha?: string;
         [key: string]: unknown;
     } | null;
     leida: boolean;
@@ -34,8 +36,9 @@ function SectorAlertaDialog({
     onDismiss: (id: number) => void;
 }) {
     const { id, payload } = notification;
-    const mensaje = payload?.mensaje ?? '';
+    const mensaje     = payload?.mensaje ?? '';
     const sectorLabel = payload?.sector_label ?? '';
+    const fecha       = payload?.fecha ?? '';
 
     const csrf = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
 
@@ -58,8 +61,22 @@ function SectorAlertaDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                         <AlertTriangle className="size-5 shrink-0" />
-                        Alerta de capacidad — {sectorLabel}
+                        Alerta de capacidad
                     </DialogTitle>
+                    {(sectorLabel || fecha) && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {sectorLabel && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                    Sector: {sectorLabel}
+                                </span>
+                            )}
+                            {fecha && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                                    <Clock className="size-3" /> {fecha}
+                                </span>
+                            )}
+                        </div>
+                    )}
                     <DialogDescription className="text-sm text-foreground pt-1">
                         {mensaje}
                     </DialogDescription>
@@ -259,11 +276,27 @@ function isTestMode(): boolean {
 export function PanelNotificationsBanner() {
     const [notifications, setNotifications] = useState<PanelNotification[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const seenIdsRef  = useRef<Set<number>>(new Set());
+
+    const applyNotifications = (incoming: PanelNotification[]) => {
+        // Fire browser notification for new sector_alerta notifications
+        for (const n of incoming) {
+            if (n.tipo === 'sector_alerta' && !seenIdsRef.current.has(n.id)) {
+                const sectorLabel = n.payload?.sector_label ?? 'sector';
+                fireWebNotification(`⚠️ Alerta de capacidad — ${sectorLabel}`, {
+                    body: n.payload?.mensaje ?? '',
+                    url: '/reservas',
+                });
+            }
+            seenIdsRef.current.add(n.id);
+        }
+        setNotifications(incoming);
+    };
 
     const fetchNotifications = async () => {
         try {
             const res = await fetch('/panel-notifications', { headers: { 'Accept': 'application/json' } });
-            if (res.ok) setNotifications(await res.json() as PanelNotification[]);
+            if (res.ok) applyNotifications(await res.json() as PanelNotification[]);
         } catch { /* best-effort */ }
     };
 
@@ -275,7 +308,19 @@ export function PanelNotificationsBanner() {
 
         const onInject = (e: Event) => {
             const n = (e as CustomEvent).detail as PanelNotification;
-            setNotifications(prev => [n, ...prev]);
+            setNotifications(prev => {
+                const updated = [n, ...prev];
+                // Fire browser notification for injected sector_alerta in test mode
+                if (n.tipo === 'sector_alerta' && !seenIdsRef.current.has(n.id)) {
+                    const sectorLabel = n.payload?.sector_label ?? 'sector';
+                    fireWebNotification(`⚠️ Alerta de capacidad — ${sectorLabel}`, {
+                        body: n.payload?.mensaje ?? '',
+                        url: '/reservas',
+                    });
+                }
+                seenIdsRef.current.add(n.id);
+                return updated;
+            });
         };
         const onClear = () => setNotifications([]);
 
