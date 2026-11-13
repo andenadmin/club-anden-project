@@ -39,23 +39,6 @@ class BotEngine
     {
         $text = trim($text);
 
-        // Check global bot pause
-        $config = \App\Models\RestaurantConfig::get();
-        if ($config->bot_pausado_global) {
-            if ($config->bot_pausado_hasta) {
-                $hasta = \Carbon\Carbon::parse($config->bot_pausado_hasta);
-                if (\Carbon\Carbon::now()->gt($hasta)) {
-                    \App\Models\RestaurantConfig::clearCache();
-                    $config->forceFill(['bot_pausado_global' => false, 'bot_pausado_hasta' => null])->save();
-                    \App\Models\RestaurantConfig::clearCache();
-                } else {
-                    return [];
-                }
-            } else {
-                return [];
-            }
-        }
-
         $session = BotSession::firstOrCreate(
             ['numero_contacto' => $from],
             ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $channelId]
@@ -71,9 +54,40 @@ class BotEngine
         }
 
         $this->lastSession = $session;
+        // Siempre registrar el inbound primero: aunque el bot esté en pausa global,
+        // el mensaje tiene que aparecer en el inbox del asesor.
         $this->logInbound($session, $text);
 
+        if ($this->isBotGloballyPaused()) {
+            // Marcar como no leído para que el panel lo vea aunque la sesión no esté PAUSADA.
+            if ($session->estado_actual !== 'PAUSADO') {
+                $session->mergeEstado([
+                    'unread_count' => ($session->unread_count ?? 0) + 1,
+                ]);
+            }
+            return [];
+        }
+
         return $this->dispatch($session, $text);
+    }
+
+    /** True si el bot está en pausa global (y el until todavía no venció). */
+    public function isBotGloballyPaused(): bool
+    {
+        $config = \App\Models\RestaurantConfig::get();
+        if (!$config->bot_pausado_global) {
+            return false;
+        }
+        if ($config->bot_pausado_hasta) {
+            $hasta = Carbon::parse($config->bot_pausado_hasta);
+            if (Carbon::now()->gt($hasta)) {
+                \App\Models\RestaurantConfig::clearCache();
+                $config->forceFill(['bot_pausado_global' => false, 'bot_pausado_hasta' => null])->save();
+                \App\Models\RestaurantConfig::clearCache();
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -226,11 +240,7 @@ class BotEngine
 
     private function handleRegistroCliente(BotSession $session, string $text): array
     {
-        $saludos = ['hola', 'buenas', 'buenos dias', 'buenos días', 'buenas tardes',
-                    'buenas noches', 'buen dia', 'buen día', 'hi', 'hey', 'que tal',
-                    'qué tal', 'como estas', 'cómo estás', 'holi', 'buenas!', 'hola!'];
-
-        if (in_array(strtolower(trim($text)), $saludos, true)) {
+        if ($this->pareceSaludoNoNombre($text)) {
             // Es un saludo, no un nombre — volver a preguntar
             return $this->renderOne('MSG_REGISTRO_PEDIR_NOMBRE');
         }
@@ -492,46 +502,11 @@ class BotEngine
                 $esFutura = $carbonFecha->diffInDays(Carbon::today(), false) < -7;
                 $this->saveDato($session, 'fecha', $fecha);
                 $this->saveDato($session, 'fecha_es_futura', $esFutura);
-                $esFdS      = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
-                $esMismoDia = $carbonFecha->isSameDay(Carbon::today());
+                $esFdS = $carbonFecha->isWeekend() || Feriado::esFeriado($fecha);
 
-                // Cutoff de las 11am con período de gracia hasta las 11:30
-                if ($esMismoDia) {
-                    $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
-                    $corteMin = 11 * 60;       // 11:00
-                    $graceMin = 11 * 60 + 30;  // 11:30
-
-                    if ($ahoraMin >= $graceMin) {
-                        // Después de las 11:30 — bloquear siempre
-                        $session->mergeEstado([
-                            'estado_actual'   => 'INICIO',
-                            'current_step'    => null,
-                            'datos_parciales' => [],
-                            'rama_activa'     => null,
-                        ]);
-                        return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
-                    }
-
-                    if ($ahoraMin >= $corteMin) {
-                        // Entre 11:00 y 11:30 — bloquear solo si el flujo empezó después de las 11:00
-                        $inicioTs = $session->datos_parciales['_inicio_flujo_ts'] ?? null;
-                        if ($inicioTs) {
-                            $inicioMin = (int) date('H', $inicioTs) * 60 + (int) date('i', $inicioTs);
-                        } else {
-                            $inicioMin = $ahoraMin; // sin dato, asumir que empezó ahora
-                        }
-
-                        if ($inicioMin >= $corteMin) {
-                            $session->mergeEstado([
-                                'estado_actual'   => 'INICIO',
-                                'current_step'    => null,
-                                'datos_parciales' => [],
-                                'rama_activa'     => null,
-                            ]);
-                            return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
-                        }
-                        // Si empezó antes de las 11:00, dejar pasar (período de gracia hasta las 11:30)
-                    }
+                // Cutoff 11:00/11:30 solo sáb/dom/feriado (mismo criterio del mensaje MSG_RES_FINDE_ORDEN_LLEGADA).
+                if ($blocked = $this->bloqueoOrdenLlegadaMismoDia($session, $carbonFecha, $esFdS)) {
+                    return $blocked;
                 }
 
                 $this->saveDato($session, 'es_finde', $esFdS);
@@ -627,17 +602,20 @@ class BotEngine
                     return $this->handleInvalid($session, fn () => [$this->buildSectorMsg($session)]);
                 }
 
-                // Verificar capacidad si elige un sector específico (no "Sin preferencia")
+                // Cupo por ventana ±1h del horario elegido (13:00/13:15/13:30 comparten cupo).
+                // Sector específico → cupo del sector. "Sin preferencia" → cupo total del restaurante.
                 $sectorKey = RestaurantCapacity::sectorKey($sectorLabel);
+                $horaReserva = $datos['hora'] ?? null;
                 if ($sectorKey !== null) {
                     $cerrado  = RestaurantCapacity::estaCerrado($sectorKey, $fecha);
-                    $usadas   = RestaurantCapacity::personasEnSector($sectorKey, $fecha);
+                    $usadas   = RestaurantCapacity::personasEnSector($sectorKey, $fecha, $horaReserva);
                     $limite   = \App\Models\RestaurantConfig::get()->limiteParaSector($sectorKey);
 
                     Log::info('[BOT][SECTOR] Chequeo capacidad', [
                         'numero'      => $session->numero_contacto,
                         'sector_key'  => $sectorKey,
                         'fecha'       => $fecha,
+                        'hora'        => $horaReserva,
                         'personas'    => $numPersonas,
                         'usadas'      => $usadas,
                         'limite'      => $limite,
@@ -656,23 +634,39 @@ class BotEngine
                             $this->buildSectorMsg($session),
                         ];
                     }
-                    if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                    if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas, $horaReserva)) {
                         Log::warning('[BOT][SECTOR] Sin capacidad', [
                             'numero'     => $session->numero_contacto,
                             'sector_key' => $sectorKey,
                             'fecha'      => $fecha,
+                            'hora'       => $horaReserva,
                             'personas'   => $numPersonas,
                             'usadas'     => $usadas,
                             'limite'     => $limite,
                         ]);
                         // Disparar alerta de panel si el sector ya cruzó el umbral
                         // (cubre sobrecargas manuales que no pasaron por confirmación del bot).
-                        RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fecha);
+                        RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fecha, $horaReserva);
                         return [
-                            "Ese sector no tiene lugar para {$numPersonas} personas en esa fecha. ¿Tenés otra preferencia?",
+                            "Ese sector no tiene lugar para {$numPersonas} personas en esa fecha y horario. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),
                         ];
                     }
+                } elseif (!RestaurantCapacity::tieneCapacidadTotal($fecha, $numPersonas, $horaReserva)) {
+                    $usadasTotal = RestaurantCapacity::personasEnRestaurante($fecha, $horaReserva);
+                    $limiteTotal = RestaurantCapacity::limiteTotalRestaurante($fecha);
+                    Log::warning('[BOT][SECTOR] Sin capacidad total (sin preferencia)', [
+                        'numero'       => $session->numero_contacto,
+                        'fecha'        => $fecha,
+                        'hora'         => $horaReserva,
+                        'personas'     => $numPersonas,
+                        'usadas_total' => $usadasTotal,
+                        'limite_total' => $limiteTotal,
+                    ]);
+                    return [
+                        "En este momento no hay lugar para {$numPersonas} personas en esa fecha y horario. ¿Querés probar otro horario o hablar con un asesor? (escribí *0*)",
+                        $this->buildSectorMsg($session),
+                    ];
                 }
 
                 Log::info('[BOT][SECTOR] Sector confirmado', [
@@ -1379,6 +1373,14 @@ class BotEngine
                         BotMessages::render('MSG_BIENVENIDA_CONOCIDO', ['nombre' => $session->cliente?->nombre_cliente ?? '']),
                     ];
                 }
+
+                // Re-chequear corte de orden de llegada al confirmar (no solo al elegir fecha).
+                if ($rama === 'RESTAURANTE') {
+                    $esFdS = $carbonGuardada->isWeekend() || Feriado::esFeriado($fechaGuardada);
+                    if ($blocked = $this->bloqueoOrdenLlegadaMismoDia($session, $carbonGuardada, $esFdS)) {
+                        return $blocked;
+                    }
+                }
             } catch (\Exception) {}
         }
 
@@ -1405,7 +1407,11 @@ class BotEngine
         // Alerta de ocupación por sector: si es reserva de restaurante con sector elegido,
         // verificar si se superó el umbral y emitir notificación de panel si corresponde.
         if ($rama === 'RESTAURANTE' && isset($datos['sector_key']) && $datos['sector_key'] !== null) {
-            RestaurantCapacity::checkAlertaOcupacion($datos['sector_key'], $datos['fecha'] ?? '');
+            RestaurantCapacity::checkAlertaOcupacion(
+                $datos['sector_key'],
+                $datos['fecha'] ?? '',
+                $datos['hora'] ?? null,
+            );
         }
 
         // Incrementar contador y actualizar CRM
@@ -1861,7 +1867,12 @@ class BotEngine
                 $fecha       = $datos['fecha'] ?? '';
                 $numPersonas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
                 $sectorKey   = RestaurantCapacity::sectorKey($sectorLabel);
-                if ($sectorKey !== null && !RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas)) {
+                $horaReserva = $datos['hora'] ?? null;
+                if ($sectorKey !== null) {
+                    if (!RestaurantCapacity::tieneCapacidad($sectorKey, $fecha, $numPersonas, $horaReserva)) {
+                        return false;
+                    }
+                } elseif (!RestaurantCapacity::tieneCapacidadTotal($fecha, $numPersonas, $horaReserva)) {
                     return false;
                 }
                 $this->saveDato($session, 'sector', $sectorLabel);
@@ -1946,6 +1957,87 @@ class BotEngine
         $t = strtr(strtolower(trim($text)), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u']);
 
         return (bool) preg_match('/^n+o+$/', $t);
+    }
+
+    /**
+     * Detecta saludos que no son un nombre real.
+     * Cubre "Hola!!", "hola buen día", "Hola soy Juan", etc. — no solo match exacto.
+     */
+    private function pareceSaludoNoNombre(string $text): bool
+    {
+        $t = strtr(mb_strtolower(trim($text)), ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u']);
+        $t = preg_replace('/[!?¡¿.,;:]+/u', '', $t) ?? $t;
+        $t = preg_replace('/\s+/u', ' ', trim($t)) ?? $t;
+
+        if ($t === '') return true;
+
+        $exactos = [
+            'hola', 'holi', 'holis', 'buenas', 'buen dia', 'buenos dias',
+            'buenas tardes', 'buenas noches', 'hi', 'hey', 'hello',
+            'que tal', 'como estas', 'como va', 'todo bien',
+        ];
+        if (in_array($t, $exactos, true)) return true;
+
+        // Empieza con saludo + resto corto (p.ej. "hola buen dia", "hola soy juan")
+        if (preg_match('/^(hola+|holi+|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|hi|hey|hello)\b/u', $t)) {
+            // Si después del saludo solo hay ruido / presentación, no es un nombre limpio.
+            $resto = trim(preg_replace('/^(hola+|holi+|holis|buenas|buen dia|buenos dias|buenas tardes|buenas noches|hi|hey|hello)\b/u', '', $t) ?? '');
+            if ($resto === '') return true;
+            if (preg_match('/^(buen[oa]s?\b|tardes|noches|dias|soy\b|me llamo\b|que tal|como estas|como va)/u', $resto)) {
+                return true;
+            }
+            // "Hola Juan" → dejamos pasar Juan como nombre (resto de 1-3 palabras sin verbos de chat).
+            if (str_word_count($resto) <= 3 && !preg_match('/\b(reserv|quiero|necesito|turno|mesa|hablar|asesor)\b/u', $resto)) {
+                // Si es "hola <nombre>", tratar el resto como nombre: NO es solo saludo.
+                return false;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Corte de reservas same-day para sábado/domingo/feriado (orden de llegada).
+     * Se evalúa al elegir fecha y de nuevo al confirmar, para no dejar pasar
+     * a quien eligió "hoy" antes de las 11 y confirma después de las 11:30.
+     *
+     * @return string[]|null Mensajes de bloqueo, o null si puede seguir.
+     */
+    private function bloqueoOrdenLlegadaMismoDia(BotSession $session, Carbon $carbonFecha, bool $esFdS): ?array
+    {
+        if (!$esFdS || !$carbonFecha->isSameDay(Carbon::today())) {
+            return null;
+        }
+
+        $ahoraMin = Carbon::now()->hour * 60 + Carbon::now()->minute;
+        $corteMin = 11 * 60;       // 11:00
+        $graceMin = 11 * 60 + 30;  // 11:30
+
+        $bloquear = false;
+        if ($ahoraMin >= $graceMin) {
+            $bloquear = true;
+        } elseif ($ahoraMin >= $corteMin) {
+            $inicioTs = $session->datos_parciales['_inicio_flujo_ts'] ?? null;
+            if ($inicioTs) {
+                $inicioMin = (int) date('H', $inicioTs) * 60 + (int) date('i', $inicioTs);
+            } else {
+                $inicioMin = $ahoraMin;
+            }
+            $bloquear = $inicioMin >= $corteMin;
+        }
+
+        if (!$bloquear) {
+            return null;
+        }
+
+        $session->mergeEstado([
+            'estado_actual'   => 'INICIO',
+            'current_step'    => null,
+            'datos_parciales' => [],
+            'rama_activa'     => null,
+        ]);
+        return $this->renderOne('MSG_RES_FINDE_ORDEN_LLEGADA');
     }
 
     private function handleInvalid(BotSession $session, \Closure $retryMsg): array
@@ -2806,24 +2898,28 @@ class BotEngine
     {
         $datos    = $session->datos_parciales ?? [];
         $fecha    = $datos['fecha'] ?? '';
+        $hora     = $datos['hora'] ?? null;
         $personas = RestaurantCapacity::extractPersonas($datos['numero_personas'] ?? '');
 
         $config   = \App\Models\RestaurantConfig::get();
         $snapshot = [];
         foreach (['salon', 'galeria', 'terraza', 'parrilla', 'patio'] as $s) {
-            $usadas = RestaurantCapacity::personasEnSector($s, $fecha);
+            $usadas = RestaurantCapacity::personasEnSector($s, $fecha, $hora);
             $limite = $config->limiteParaSector($s);
             $snapshot[$s] = "{$usadas}/{$limite}";
         }
+        $snapshot['total'] = RestaurantCapacity::personasEnRestaurante($fecha, $hora)
+            . '/' . RestaurantCapacity::limiteTotalRestaurante($fecha);
 
         Log::info('[BOT][SECTOR_MSG] Generando selector de sector', [
             'numero'   => $session->numero_contacto,
             'fecha'    => $fecha,
+            'hora'     => $hora,
             'personas' => $personas,
             'ocupacion'=> $snapshot,
         ]);
 
-        return RestaurantCapacity::buildSectorMessage($fecha, $personas);
+        return RestaurantCapacity::buildSectorMessage($fecha, $personas, $hora);
     }
 
     /**

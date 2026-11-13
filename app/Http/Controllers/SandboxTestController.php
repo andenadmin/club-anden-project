@@ -202,7 +202,8 @@ class SandboxTestController extends Controller
 
         $alertaPct   = $config->sector_alerta_pct ?? 70;
         $umbral      = (int) floor($limite * $alertaPct / 100);
-        $yaOcupadas  = RestaurantCapacity::personasEnSector($sectorKey, $fecha);
+        $horaTest    = '21:00'; // misma ventana (±1h) para disparar la alerta de ocupación
+        $yaOcupadas  = RestaurantCapacity::personasEnSector($sectorKey, $fecha, $horaTest);
         $necesarias  = max(0, $umbral - $yaOcupadas + 1);
         $creadas     = 0;
 
@@ -222,7 +223,7 @@ class SandboxTestController extends Controller
                 'tiene_extras'   => false,
                 'datos'          => [
                     'fecha'              => $fecha,
-                    'hora'               => '21:00',
+                    'hora'               => $horaTest,
                     'numero_personas'    => $personasStr,
                     'sector'             => $sectorLbl,
                     'sector_key'         => $sectorKey,
@@ -237,10 +238,10 @@ class SandboxTestController extends Controller
             $creadas++;
         }
 
-        // Disparar la alerta
-        RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fecha);
+        // Disparar la alerta para esa ventana horaria
+        RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fecha, $horaTest);
 
-        $totalAhora = RestaurantCapacity::personasEnSector($sectorKey, $fecha);
+        $totalAhora = RestaurantCapacity::personasEnSector($sectorKey, $fecha, $horaTest);
 
         return response()->json([
             'ok'    => true,

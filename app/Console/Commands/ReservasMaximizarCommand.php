@@ -25,7 +25,8 @@ class ReservasMaximizarCommand extends Command
         'patio'    => 'Patio',
     ];
 
-    private const HORAS = ['12:00', '13:00', '14:00', '15:00', '20:00', '21:00', '22:00', '23:00'];
+    // Misma ventana horaria (±1h) para que el cupo/alerta de ocupación se dispare de verdad.
+    private const HORA_VENTANA = '13:00';
 
     private const NOMBRES = [
         'Test Capacidad', 'Prueba Sistema', 'Demo Reserva', 'Test Bot', 'Prueba Lleno',
@@ -74,7 +75,7 @@ class ReservasMaximizarCommand extends Command
         foreach ($sectoresAFill as $key => $label) {
             $limite  = $config->limiteParaSector($key);
             $objetivo = (int) floor($limite * $alertaPct / 100);
-            $usadas  = RestaurantCapacity::personasEnSector($key, $fechaBot);
+            $usadas  = RestaurantCapacity::personasEnSector($key, $fechaBot, self::HORA_VENTANA);
             $hueco   = $objetivo - $usadas;
 
             if ($hueco <= 0) {
@@ -82,14 +83,12 @@ class ReservasMaximizarCommand extends Command
                 continue;
             }
 
-            $creadas    = 0;
-            $horaIndex  = 0;
-            $nombreIdx  = 0;
+            $creadas   = 0;
+            $nombreIdx = 0;
 
             while ($hueco > 0) {
-                $personas   = min($personasPorReserva, $hueco);
-                $hora       = self::HORAS[$horaIndex % count(self::HORAS)];
-                $nombre     = self::NOMBRES[$nombreIdx % count(self::NOMBRES)];
+                $personas = min($personasPorReserva, $hueco);
+                $nombre   = self::NOMBRES[$nombreIdx % count(self::NOMBRES)];
 
                 Reserva::create([
                     'id_cliente'     => $cliente->id,
@@ -98,7 +97,7 @@ class ReservasMaximizarCommand extends Command
                     'estado_reserva' => 'CONFIRMADA',
                     'datos'          => [
                         'fecha'              => $fechaBot,
-                        'hora'               => $hora,
+                        'hora'               => self::HORA_VENTANA,
                         'sector_key'         => $key,
                         'numero_personas'    => (string) $personas,
                         'nombre_responsable' => $nombre,
@@ -114,7 +113,6 @@ class ReservasMaximizarCommand extends Command
 
                 $hueco     -= $personas;
                 $creadas   += $personas;
-                $horaIndex++;
                 $nombreIdx++;
                 $total++;
             }
@@ -122,7 +120,8 @@ class ReservasMaximizarCommand extends Command
             $rows[] = [$label, "{$objetivo}/{$limite} ({$alertaPct}%)", $usadas, $creadas, '✅ Alerta disparada'];
         }
 
-        $this->info("Reservas de prueba creadas para el {$fechaFmt} (objetivo: {$alertaPct}% de capacidad):");
+        $horaVentana = self::HORA_VENTANA;
+        $this->info("Reservas de prueba creadas para el {$fechaFmt} (objetivo: {$alertaPct}% de capacidad, ventana {$horaVentana} ±1h):");
         $this->table(
             ['Sector', 'Objetivo/Límite', 'Ya tenía', 'Personas agregadas', 'Estado'],
             $rows,
@@ -133,7 +132,7 @@ class ReservasMaximizarCommand extends Command
 
         // Disparar las alertas de capacidad para que aparezcan los dialogs en el panel
         foreach (array_keys($sectoresAFill) as $key) {
-            RestaurantCapacity::checkAlertaOcupacion($key, $fechaBot);
+            RestaurantCapacity::checkAlertaOcupacion($key, $fechaBot, self::HORA_VENTANA);
         }
 
         return self::SUCCESS;

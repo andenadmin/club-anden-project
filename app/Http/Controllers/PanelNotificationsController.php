@@ -50,9 +50,22 @@ class PanelNotificationsController extends Controller
                     Log::error('@PanelNotificationsController-action: RestaurantConfig no existe en BD');
                 } else {
                     try {
+                        // Cerrar para la fecha de la reserva alertada (no "hoy"):
+                        // si la alerta es de un sábado futuro, el cierre tiene que aplicar a ese día.
+                        $fechaCierre = now()->toDateString();
+                        $fechaPayload = $notification->payload['fecha'] ?? null;
+                        if (is_string($fechaPayload) && $fechaPayload !== '') {
+                            try {
+                                $fechaCierre = \Carbon\Carbon::createFromFormat('d/m/y', $fechaPayload)
+                                    ->toDateString();
+                            } catch (\Throwable) {
+                                // payload inesperado → caer a hoy
+                            }
+                        }
+
                         $config->update([
                             "{$sector}_cerrado"      => true,
-                            'sectores_cerrado_fecha' => now()->toDateString(),
+                            'sectores_cerrado_fecha' => $fechaCierre,
                         ]);
                         RestaurantConfig::clearCache();
                     } catch (\Throwable $e) {

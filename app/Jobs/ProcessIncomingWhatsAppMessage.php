@@ -69,13 +69,16 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
         $client->markAsRead($this->waMessageId);
 
         // §8a — Mensajes no-texto: se registran igual en el inbox (con el placeholder que
-        // arma el webhook, ej. "[Audio]") para que no desaparezcan de la conversación, pero
-        // responden con opción inválida sin avanzar estado ni tocar contador_invalidos.
+        // arma el webhook, ej. "[Audio]") para que no desaparezcan de la conversación.
+        // Solo responden "opción inválida" si el bot está activo (no pausa global / no PAUSADO).
         if (in_array($this->messageType, self::NON_TEXT_TYPES, true)) {
             $session = BotSession::firstOrCreate(
                 ['numero_contacto' => $this->from],
                 ['estado_actual' => 'INICIO', 'datos_parciales' => [], 'contador_invalidos' => 0, 'channel_id' => $this->channelId]
             );
+            if ($session->is_archived) {
+                $session->update(['is_archived' => false]);
+            }
             $engine->logInbound($session, $this->body);
             $session->messages()
                 ->where('direction', ConversationMessage::DIRECTION_INBOUND)
@@ -84,6 +87,18 @@ class ProcessIncomingWhatsAppMessage implements ShouldQueue
                 ->latest('id')
                 ->limit(1)
                 ->update(['wa_message_id' => $this->waMessageId]);
+
+            $pausedGlobal = $engine->isBotGloballyPaused();
+            if ($pausedGlobal && $session->estado_actual !== 'PAUSADO') {
+                $session->mergeEstado([
+                    'unread_count' => ($session->unread_count ?? 0) + 1,
+                ]);
+            }
+
+            // En pausa (global o por asesor) no contestar: el mensaje queda para el humano.
+            if ($pausedGlobal || $session->estado_actual === 'PAUSADO') {
+                return;
+            }
 
             $invalidMsg = BotMessages::render('MSG_OPCION_INVALIDA');
             $sender->sendBotResponses($session, [$invalidMsg]);

@@ -132,15 +132,23 @@ class ReservasController extends Controller
                 ];
             });
 
-        // Monthly message count for current month
+        // Monthly message count for current month (excluye fallidos de envío a Meta)
         $mensajesMes = \App\Models\ConversationMessage::where('direction', 'outbound')
             ->whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
+            ->where(function ($q) {
+                $q->whereNull('wa_status')
+                    ->orWhere('wa_status', 'not like', 'failed%');
+            })
             ->count();
 
         $mensajesMesAnterior = \App\Models\ConversationMessage::where('direction', 'outbound')
             ->whereYear('created_at', now()->subMonth()->year)
             ->whereMonth('created_at', now()->subMonth()->month)
+            ->where(function ($q) {
+                $q->whereNull('wa_status')
+                    ->orWhere('wa_status', 'not like', 'failed%');
+            })
             ->count();
 
         return Inertia::render('reservas', [
@@ -197,6 +205,7 @@ class ReservasController extends Controller
             ? \App\Models\RestaurantSector::where('label', $v['sector'])->value('key')
             : null;
 
+        // Alta manual: no bloquea por cupo (el bot sí). Se puede sobrecargar a propósito.
         Reserva::create([
             'id_cliente'    => $cliente->id,
             'rama_servicio' => $ramaServicio,
@@ -219,7 +228,7 @@ class ReservasController extends Controller
         ]);
 
         if ($ramaServicio === 'RESTAURANTE' && $sectorKey) {
-            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot);
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot, $horaNorm);
         }
 
         return redirect()->back();
@@ -302,7 +311,11 @@ class ReservasController extends Controller
         ]);
 
         if ($reserva->rama_servicio === 'RESTAURANTE' && $updateSectorKey) {
-            \App\Services\RestaurantCapacity::checkAlertaOcupacion($updateSectorKey, $datos['fecha']);
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion(
+                $updateSectorKey,
+                $datos['fecha'],
+                $datos['hora'] ?? $horaNorm,
+            );
         }
 
         return redirect()->back();
@@ -324,9 +337,21 @@ class ReservasController extends Controller
             ->whereRaw("json_extract(datos, '$.fecha') = ?", [$fechaBot])
             ->update(['estado_reserva' => 'CONFIRMADA']);
 
-        // Tras confirmar en masa, chequear umbral de alerta en todos los sectores.
-        foreach (\App\Models\RestaurantSector::activos()->where('requiere_capacidad', true)->pluck('key') as $sectorKey) {
-            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot);
+        // Tras confirmar en masa, chequear umbral por sector+ventana horaria de cada reserva.
+        $confirmadas = Reserva::where('rama_servicio', 'RESTAURANTE')
+            ->where('estado_reserva', 'CONFIRMADA')
+            ->whereRaw("json_extract(datos, '$.fecha') = ?", [$fechaBot])
+            ->get(['datos']);
+
+        $vistos = [];
+        foreach ($confirmadas as $r) {
+            $sectorKey = $r->datos['sector_key'] ?? null;
+            $hora      = $r->datos['hora'] ?? null;
+            if (!$sectorKey) continue;
+            $clave = $sectorKey . '|' . ($hora ?? '');
+            if (isset($vistos[$clave])) continue;
+            $vistos[$clave] = true;
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot, $hora);
         }
 
         return redirect()->back();
