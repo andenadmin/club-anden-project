@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, AlertTriangle, Bell, CheckCircle, Clock, Info, X } from 'lucide-react';
+import { playNotificationSound } from '@/hooks/use-notification-sound';
 import { fireWebNotification } from '@/hooks/use-web-notifications';
 import {
     Dialog,
@@ -279,12 +280,14 @@ export function PanelNotificationsBanner() {
     const seenIdsRef  = useRef<Set<number>>(new Set());
 
     const applyNotifications = (incoming: PanelNotification[]) => {
-        // Fire browser notification for new sector_alerta notifications
+        // Fire browser notification + sonido for new sector_alerta notifications
         for (const n of incoming) {
             if (n.tipo === 'sector_alerta' && !seenIdsRef.current.has(n.id)) {
                 const sectorLabel = n.payload?.sector_label ?? 'sector';
+                playNotificationSound();
                 fireWebNotification(`⚠️ Alerta de capacidad — ${sectorLabel}`, {
                     body: n.payload?.mensaje ?? '',
+                    tag: `anden-sector-${n.payload?.sector_key ?? n.id}`,
                     url: '/reservas',
                 });
             }
@@ -303,7 +306,8 @@ export function PanelNotificationsBanner() {
     useEffect(() => {
         if (!isTestMode()) {
             fetchNotifications();
-            intervalRef.current = setInterval(fetchNotifications, 30_000);
+            // 10s: si se sobrecarga capacidad a mano, la alerta no puede tardar media hora.
+            intervalRef.current = setInterval(fetchNotifications, 10_000);
         }
 
         const onInject = (e: Event) => {

@@ -665,6 +665,9 @@ class BotEngine
                             'usadas'     => $usadas,
                             'limite'     => $limite,
                         ]);
+                        // Disparar alerta de panel si el sector ya cruzó el umbral
+                        // (cubre sobrecargas manuales que no pasaron por confirmación del bot).
+                        RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fecha);
                         return [
                             "Ese sector no tiene lugar para {$numPersonas} personas en esa fecha. ¿Tenés otra preferencia?",
                             $this->buildSectorMsg($session),

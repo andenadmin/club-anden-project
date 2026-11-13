@@ -24,20 +24,32 @@ export function useWebNotifications(): {
     return { permission, requestPermission };
 }
 
+/**
+ * Notificación del sistema operativo. Suena aunque la pestaña esté minimizada
+ * (el sonido lo pone el OS, no el tab). Es el mismo mecanismo que usa WhatsApp Web
+ * cuando no estás mirando la pestaña.
+ */
 export function fireWebNotification(
     title: string,
     options?: NotificationOptions & { url?: string },
 ): void {
     if (!SUPPORTED || Notification.permission !== 'granted') return;
     try {
-        const { url, ...rest } = options ?? {};
-        const n = new Notification(title, { icon: '/favicon.ico', ...rest });
-        if (url) {
-            n.onclick = () => {
-                window.focus();
-                window.location.href = url;
-                n.close();
-            };
-        }
+        const { url, tag, ...rest } = options ?? {};
+        const n = new Notification(title, {
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            // silent:false es el default, pero lo dejamos explícito.
+            silent: false,
+            // renotify+tag: si llega otra alerta con el mismo tag, vuelve a sonar.
+            renotify: true,
+            tag: tag ?? `anden-${Date.now()}`,
+            ...rest,
+        });
+        n.onclick = () => {
+            try { window.focus(); } catch {}
+            if (url) window.location.href = url;
+            n.close();
+        };
     } catch {}
 }

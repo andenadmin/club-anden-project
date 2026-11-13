@@ -324,6 +324,11 @@ class ReservasController extends Controller
             ->whereRaw("json_extract(datos, '$.fecha') = ?", [$fechaBot])
             ->update(['estado_reserva' => 'CONFIRMADA']);
 
+        // Tras confirmar en masa, chequear umbral de alerta en todos los sectores.
+        foreach (\App\Models\RestaurantSector::activos()->where('requiere_capacidad', true)->pluck('key') as $sectorKey) {
+            \App\Services\RestaurantCapacity::checkAlertaOcupacion($sectorKey, $fechaBot);
+        }
+
         return redirect()->back();
     }
 }

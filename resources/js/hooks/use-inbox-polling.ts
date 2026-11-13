@@ -5,7 +5,9 @@ import { usePageVisibility } from '@/hooks/use-page-visibility';
 import { fireWebNotification } from '@/hooks/use-web-notifications';
 
 const LIST_INTERVAL_MS        = 3_000;
-const LIST_INTERVAL_BG_MS     = 5 * 60 * 1_000; // 5 minutos
+// En background hay que seguir pollando seguido: si no, el +N del título aparece
+// tarde y el ding solo suena al volver a la pestaña. 15s es un buen balance.
+const LIST_INTERVAL_BG_MS     = 15_000;
 
 interface PollResponse {
     conversations: ConversationListItem[];
@@ -95,23 +97,22 @@ function detectNewEscalations(
         const newConversation = !before;
         const newlyEscalated  = !wasEscalated && isEscalated;
 
-        if (newConversation && isEscalated) {
-            toast(`Nueva conversación escalada: ${conv.nombre ?? conv.numero}`, {
-                description: conv.last_message?.body ?? '',
-            });
-            fireWebNotification(
-                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
-                { body: conv.last_message?.body ?? '' },
-            );
-            alerted = true;
-        } else if (newlyEscalated) {
-            toast(`${conv.nombre ?? conv.numero} pidió hablar con un asesor`, {
-                description: conv.last_message?.body ?? '',
-            });
-            fireWebNotification(
-                `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
-                { body: conv.last_message?.body ?? '' },
-            );
+        if ((newConversation && isEscalated) || newlyEscalated) {
+            const title = newConversation && isEscalated
+                ? `Nueva conversación escalada: ${conv.nombre ?? conv.numero}`
+                : `${conv.nombre ?? conv.numero} pidió hablar con un asesor`;
+            toast(title, { description: conv.last_message?.body ?? '' });
+            // OS notification solo en background — ahí es donde hace falta el sonido del sistema.
+            if (document.visibilityState !== 'visible') {
+                fireWebNotification(
+                    `💬 ${conv.nombre ?? conv.numero} pidió un asesor`,
+                    {
+                        body: conv.last_message?.body ?? '',
+                        tag: `anden-escalation-${conv.numero}`,
+                        url: `/inbox?numero=${conv.numero}`,
+                    },
+                );
+            }
             alerted = true;
         }
     }

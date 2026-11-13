@@ -115,7 +115,8 @@ class RestaurantCapacity
     public static function checkAlertaOcupacion(string $sectorKey, string $fechaBotFormat): void
     {
         $config = RestaurantConfig::get();
-        $limite = $config->limiteParaSector($sectorKey);
+        // Usar el mismo límite efectivo que tieneCapacidad (incluye overrides por fecha).
+        $limite = self::limiteEfectivoParaSector($sectorKey, $fechaBotFormat);
         if ($limite <= 0) return;
 
         $alertaPct = $config->sector_alerta_pct ?? 70;
@@ -166,6 +167,11 @@ class RestaurantCapacity
             if ($sector->requiere_capacidad) {
                 $disponible = self::tieneCapacidad($sector->key, $fecha, $personas);
                 $suffix     = $disponible ? '' : ' _(sin capacidad)_';
+                // Si al armar la lista ya estamos sobre el umbral, avisar al panel
+                // (cubre sobrecarga manual / override de cupo sin pasar por una confirmación).
+                if (!$disponible) {
+                    self::checkAlertaOcupacion($sector->key, $fecha);
+                }
             } else {
                 $suffix = '';
             }

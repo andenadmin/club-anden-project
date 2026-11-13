@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { NotificationsPermissionDialog, PanelNotificationsBanner } from '@/components/panel-notifications-banner';
 import { TestToolbar } from '@/components/test-toolbar';
-import { playNotificationSound } from '@/hooks/use-notification-sound';
+import { initNotificationSoundUnlock, playNotificationSound } from '@/hooks/use-notification-sound';
 import { fireWebNotification } from '@/hooks/use-web-notifications';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -87,9 +87,17 @@ function GlobalAlertPoller() {
                 const { count, unattended = [] } = data;
 
                 if (prevCountRef.current !== null && count > prevCountRef.current) {
+                    // Ding in-page (funciona en background si el AudioContext ya fue unlocked).
                     playNotificationSound();
+                    // Notificación del OS: suena aunque el browser esté minimizado
+                    // (mismo path que WhatsApp Web). Siempre en background; en foreground
+                    // el ding alcanza y evita spamear el tray.
                     if (document.visibilityState !== 'visible') {
-                        fireWebNotification('El Andén — Nuevo mensaje', { body: 'Hay conversaciones esperando respuesta.' });
+                        fireWebNotification('El Andén — Nuevo mensaje', {
+                            body: 'Hay conversaciones esperando respuesta.',
+                            tag: 'anden-inbox-alert',
+                            url: '/inbox',
+                        });
                     }
                 }
                 prevCountRef.current = count;
@@ -164,3 +172,7 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Unlock del sonido de alertas en el primer click/tecla — necesario para que
+// suene con la pestaña minimizada (política de autoplay del browser).
+initNotificationSoundUnlock();
